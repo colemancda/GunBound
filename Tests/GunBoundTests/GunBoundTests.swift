@@ -163,7 +163,7 @@ final class GunBoundTests: XCTestCase {
         }
     }
     
-    func testTokenRequest() {
+    func testNonceRequest() {
         
         // Packet(size: 6, id: 0x36B1, command: 0x1000, parameters: 0 bytes)
         let data = Data([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
@@ -172,14 +172,14 @@ final class GunBoundTests: XCTestCase {
             return
         }
         XCTAssertEqual(packet.data, data)
-        XCTAssertEqual(packet.command, .tokenRequest)
+        XCTAssertEqual(packet.command, .nonceRequest)
         XCTAssertEqual(packet.size, numericCast(Packet.minSize))
         XCTAssertEqual(packet.data.count, numericCast(Packet.minSize))
         XCTAssertEqual(packet.id, 0x36B1)
         XCTAssertEqual(packet.parametersSize, 0)
     }
     
-    func testTokenResponse() {
+    func testNonceResponse() {
         
         
     }
