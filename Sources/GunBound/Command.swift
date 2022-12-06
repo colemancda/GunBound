@@ -26,6 +26,19 @@ extension Command: ExpressibleByIntegerLiteral {
     }
 }
 
+// MARK: - Command
+
+extension Command: CustomStringConvertible, CustomDebugStringConvertible {
+    
+    public var description: String {
+        "0x" + rawValue.toHexadecimal()
+    }
+    
+    public var debugDescription: String {
+        description
+    }
+}
+
 // MARK: - Definitions
 
 public extension Command {
