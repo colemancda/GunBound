@@ -20,12 +20,10 @@ public extension Packet {
 
 public extension Packet.ID {
     
-    mutating func increment() {
-        if rawValue == .max {
-            rawValue = 0
-        } else {
-            rawValue += 1
-        }
+    init(sumPacketLength: Int) {
+        let intermediate = (sumPacketLength * 0x43FD) & 0xFFFF
+        let value = (intermediate - 0x53FD) & 0xFFFF
+        self.init(rawValue: UInt16(value))
     }
 }
 
@@ -33,7 +31,8 @@ public extension Packet.ID {
 
 public extension Packet.ID {
     
-    static var start: Packet.ID { 0xEBCB }
+    /// First login packet is special
+    static var login: Packet.ID { 0xEBCB }
 }
 
 // MARK: - ExpressibleByIntegerLiteral
