@@ -6,10 +6,7 @@ import PackageDescription
 let package = Package(
     name: "GunBound",
     platforms: [
-        .macOS(.v10_15),
-        .iOS(.v13),
-        .watchOS(.v6),
-        .tvOS(.v13),
+        .macOS("13.0")
     ],
     products: [
         .executable(
@@ -31,12 +28,20 @@ let package = Package(
             url: "https://github.com/apple/swift-argument-parser",
             from: "1.2.0"
         ),
+        .package(
+            url: "https://github.com/apple/swift-algorithms.git",
+            from: "1.0.0"
+        )
     ],
     targets: [
         .target(
             name: "GunBound",
             dependencies: [
-                "Socket"
+                "Socket",
+                .product(
+                    name: "Algorithms",
+                    package: "swift-algorithms"
+                )
             ]
         ),
         .executableTarget(
