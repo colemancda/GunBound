@@ -12,8 +12,13 @@ import GunBound
 @main
 struct Server: AsyncParsableCommand {
     
-    func run() async throws {
-        
-        
-    }
+    static let configuration = CommandConfiguration(
+        commandName: "GunBoundServer",
+        abstract: "GunBound Server emulator",
+        version: "1.0.0",
+        subcommands: [
+            Broker.self,
+            World.self
+        ]
+    )
 }

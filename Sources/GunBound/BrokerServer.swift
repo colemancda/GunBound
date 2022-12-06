@@ -6,10 +6,13 @@
 //
 
 import Foundation
+import Socket
 
 public actor BrokerServer {
     
     public var directory: ServerDirectory
+    
+    internal static let encoder = GunBoundEncoder()
     
     public init(directory: ServerDirectory) {
         self.directory = directory
@@ -19,12 +22,24 @@ public actor BrokerServer {
         return body(&directory)
     }
     
-    func handle(_ packet: Packet) async -> Packet {
-        switch packet.command {
-        case .serverDirectoryRequest:
-            fatalError()
-        default:
+    public func handle(address: IPv4Address, packet: Packet) async -> Packet {
+        do {
+            switch packet.command {
+            case .serverDirectoryRequest:
+                return try serverDirectory()
+            default:
+                fatalError()
+            }
+        } catch {
             fatalError()
         }
+    }
+    
+    func errorResponse(_ error: Error) -> Packet {
+        fatalError()
+    }
+    
+    func serverDirectory() throws -> Packet {
+        return try Self.encoder.encode(ServerDirectoryResponse(directory: directory))
     }
 }
