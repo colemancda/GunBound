@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// GunBound Packet
+/// GunBound Packet Data Container
 public struct Packet: Equatable, Hashable, Identifiable {
     
     public internal(set) var data: Data
@@ -100,4 +100,18 @@ extension Packet: CustomStringConvertible, CustomDebugStringConvertible {
     public var debugDescription: String {
         description
     }
+}
+
+// MARK: -
+
+/// Gunbound Packet Parameters protocol
+public protocol GunBoundPacket {
+    
+    /// GunBound command type
+    static var command: Command { get }
+}
+
+internal protocol GunBoundPacketEncodable: GunBoundPacket, Encodable {
+    
+    var expectedLength: Int { get }
 }

@@ -20,8 +20,13 @@ public extension Packet {
 
 public extension Packet.ID {
     
-    init(packetLength: Int) {
-        let intermediate = (packetLength * 0x43FD) & 0xFFFF
+    /*
+     Generate a sequence value that is based on the sum of the packet lengths in a sequence of packets.
+     
+     This sequence value is then used to verify that the packets have been received in the correct order by the server.
+     */
+    init(serverPacketLength length: Int) {
+        let intermediate = (length * 0x43FD) & 0xFFFF
         let value = (intermediate - 0x53FD) & 0xFFFF
         self.init(rawValue: UInt16(value))
     }

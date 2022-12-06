@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct ServerDirectoryRequest: Equatable, Hashable, Codable {
+public struct ServerDirectoryRequest: GunBoundPacket, Equatable, Hashable, Codable {
     
     public static var command: Command { .serverDirectoryRequest }
     
@@ -16,4 +16,9 @@ public struct ServerDirectoryRequest: Equatable, Hashable, Codable {
     public init() {
         self.padding = 0x0000
     }
+}
+
+extension ServerDirectoryRequest: GunBoundPacketEncodable {
+    
+    var expectedLength: Int { 4 }
 }

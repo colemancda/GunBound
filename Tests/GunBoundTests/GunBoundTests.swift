@@ -26,7 +26,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x46A5)
         XCTAssertEqual(packet.parametersSize, 4)
         XCTAssertEqual(packet.parameters, Data([0x00, 0x00, 0x00, 0x00]))
-        XCTAssertEncode(ServerDirectoryRequest(), .serverDirectoryRequest, 0x46A5, data)
+        XCTAssertEncode(ServerDirectoryRequest(), id: 0x46A5, data)
         
     }
     
@@ -113,13 +113,14 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 0x0118)
         XCTAssertEqual(packet.data.count, 280)
-        XCTAssertEqual(packet.id, .init(packetLength: 280))
+        XCTAssertEqual(packet.id, .init(serverPacketLength: 280))
         XCTAssertEqual(packet.id, 0x08BB)
         XCTAssertEqual(packet.parametersSize, 280 - 6)
         
         XCTAssertEqual(serverDirectory.count, 5)
         XCTAssertEqual(serverDirectory[0].name, "JG Test Broker")
         XCTAssertEqual(serverDirectory[0].descriptionText, "Broker description\n goes here")
+        //XCTAssertEncode(serverDirectory, .authenticationResponse, data)
     }
 }
 
@@ -163,18 +164,17 @@ func XCTAssertEqual<T>(_ value: T, _ data: Data, file: StaticString = #file, lin
 
 func XCTAssertEncode<T>(
     _ value: T,
-    _ command: Command,
-    _ id: Packet.ID? = nil,
+    id: Packet.ID? = nil,
     _ data: Data,
     file: StaticString = #file,
     line: UInt = #line
-) where T: Equatable, T: Codable {
+) where T: Equatable, T: Encodable, T: GunBoundPacket {
     
     var encoder = GunBoundEncoder()
     encoder.log = { print("Encoder:", $0) }
     
     do {
-        let packet = try encoder.encode(value, for: command, id: id)
+        let packet = try encoder.encode(value, id: id)
         XCTAssertFalse(packet.data.isEmpty, file: file, line: line)
         XCTAssertEqual(packet.data, data, "\(packet.data.hexString) is not equal to \(data.hexString)", file: file, line: line)
     } catch {

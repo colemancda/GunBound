@@ -25,15 +25,19 @@ public struct GunBoundEncoder {
     
     // MARK: - Methods
     
-    public func encode<T>(_ value: T, for command: Command, id: Packet.ID? = nil) throws -> Packet where T: Encodable {
+    public func encode<T>(_ value: T, id: Packet.ID? = nil) throws -> Packet where T: Encodable, T: GunBoundPacket {
+        let command = T.command
         log?("Will encode \(command) packet")
-        // TODO: reserve buffer capacity
         // initialize encoder
         let encoder = Encoder(
             userInfo: userInfo,
             log: log,
             command: command
         )
+        // Reserve buffer capacity
+        if let encodable = value as? GunBoundPacketEncodable {
+            encoder.packet.data.reserveCapacity(Packet.minSize + encodable.expectedLength)
+        }
         // encode value
         try value.encode(to: encoder)
         // set size
@@ -42,7 +46,7 @@ public struct GunBoundEncoder {
         if let id = id {
             encoder.packet.id = id
         } else {
-            encoder.packet.id = .init(packetLength: Int(encoder.packet.size))
+            encoder.packet.id = .init(serverPacketLength: Int(encoder.packet.size))
         }
         // return value
         return encoder.packet
