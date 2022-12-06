@@ -27,6 +27,7 @@ public struct Packet: Equatable, Hashable, Identifiable {
     
     internal init(command: Command) {
         self.data = Data(count: Packet.minSize)
+        self.size = numericCast(Packet.minSize)
         self.command = command
     }
 }
