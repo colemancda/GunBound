@@ -31,8 +31,14 @@ extension Command: ExpressibleByIntegerLiteral {
 public extension Command {
     
     /// Authentication Request
-    static var authenticationRequest: Command { 0x1013 }
+    static var authenticationRequest: Command { 0x1310 }
+    
+    /// Authentication Response
+    static var authenticationResponse: Command { 0x1312 }
     
     /// Server Directory Request
     static var serverDirectoryRequest: Command { 0x1100 }
+    
+    /// Server Directory Response
+    static var serverDirectoryResponse: Command { 0x1102 }
 }
