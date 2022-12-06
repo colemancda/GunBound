@@ -43,13 +43,15 @@ public struct GunBoundEncoder {
         // set size
         encoder.packet.size = numericCast(encoder.packet.data.count)
         // set packet ID / sequence number (might be based on length)
-        if let id = id {
-            encoder.packet.id = id
-        } else {
-            encoder.packet.id = .init(serverPacketLength: Int(encoder.packet.size))
-        }
+        encoder.packet.id = id ?? .init(serverPacketLength: Int(encoder.packet.size))
         // return value
         return encoder.packet
+    }
+    
+    public func encode(_ command: Command, id: Packet.ID? = nil) -> Packet {
+        var packet = Packet(command: command)
+        packet.id = id ?? .init(serverPacketLength: Int(packet.size))
+        return packet
     }
 }
 
