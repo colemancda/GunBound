@@ -118,9 +118,9 @@ public extension ServerDirectory {
         
         public var port: UInt16
         
-        public var utilization: UInt
+        public var utilization: UInt16
         
-        public var capacity: UInt
+        public var capacity: UInt16
         
         public var isEnabled: Bool
     }

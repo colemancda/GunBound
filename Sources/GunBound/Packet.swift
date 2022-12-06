@@ -103,7 +103,7 @@ extension Packet: CustomStringConvertible, CustomDebugStringConvertible {
     }
 }
 
-// MARK: -
+// MARK: - Supporting Types
 
 /// Gunbound Packet Parameters protocol
 public protocol GunBoundPacket {
