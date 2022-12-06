@@ -39,7 +39,12 @@ public struct GunBoundEncoder {
             encoder.packet.data.reserveCapacity(Packet.minSize + encodable.expectedLength)
         }
         // encode value
-        try value.encode(to: encoder)
+        if let _ = value as? GunBoundEncodable {
+            try encoder.writeEncodable(value)
+        } else {
+            try value.encode(to: encoder)
+        }
+        
         // set size
         encoder.packet.size = numericCast(encoder.packet.data.count)
         // set packet ID / sequence number (might be based on length)
@@ -120,16 +125,17 @@ internal extension GunBoundEncoder.Encoder {
         return try boxLengthPrefixString(value)
     }
     
-    func boxInteger <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T) -> Data {
-        return withUnsafePointer(to: value.littleEndian, { Data(bytes: $0, count: MemoryLayout<T>.size) })
+    func boxInteger <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T, isLittleEndian: Bool = true) -> Data {
+        let endianValue = isLittleEndian ? value.littleEndian : value.bigEndian
+        return withUnsafePointer(to: endianValue, { Data(bytes: $0, count: MemoryLayout<T>.size) })
     }
     
-    func boxDouble(_ double: Double) -> Data {
-        return boxInteger(double.bitPattern)
+    func boxDouble(_ double: Double, isLittleEndian: Bool = true) -> Data {
+        return boxInteger(double.bitPattern, isLittleEndian: isLittleEndian)
     }
     
-    func boxFloat(_ float: Float) -> Data {
-        return boxInteger(float.bitPattern)
+    func boxFloat(_ float: Float, isLittleEndian: Bool = true) -> Data {
+        return boxInteger(float.bitPattern, isLittleEndian: isLittleEndian)
     }
     
     func writeEncodable <T: Encodable> (_ value: T) throws {
@@ -296,11 +302,11 @@ internal struct GunBoundKeyedEncodingContainer <K : CodingKey> : KeyedEncodingCo
     
     // MARK: Private Methods
     
-    private func encodeNumeric <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T, forKey key: K, isLittleEndian: Bool = false) throws {
+    private func encodeNumeric <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T, forKey key: K, isLittleEndian: Bool = true) throws {
         
         self.encoder.codingPath.append(key)
         defer { self.encoder.codingPath.removeLast() }
-        let data = encoder.boxInteger(value)
+        let data = encoder.boxInteger(value, isLittleEndian: isLittleEndian)
         try setValue(value, data: data, for: key)
     }
     
@@ -349,15 +355,15 @@ public struct GunBoundEncodingContainer {
         try encodeGunBound(value)
     }
     
-    public func encode(_ value: Int16, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: Int16, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value, isLittleEndian: isLittleEndian)
     }
     
-    public func encode(_ value: Int32, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: Int32, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value, isLittleEndian: isLittleEndian)
     }
     
-    public func encode(_ value: Int64, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: Int64, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value, isLittleEndian: isLittleEndian)
     }
     
@@ -365,23 +371,23 @@ public struct GunBoundEncodingContainer {
         try encodeGunBound(value)
     }
     
-    public func encode(_ value: UInt16, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: UInt16, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value, isLittleEndian: isLittleEndian)
     }
     
-    public func encode(_ value: UInt32, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: UInt32, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value, isLittleEndian: isLittleEndian)
     }
     
-    public func encode(_ value: UInt64, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: UInt64, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value, isLittleEndian: isLittleEndian)
     }
     
-    public func encode(_ value: Float, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: Float, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value.bitPattern, isLittleEndian: isLittleEndian)
     }
     
-    public func encode(_ value: Double, isLittleEndian: Bool = false) throws {
+    public func encode(_ value: Double, isLittleEndian: Bool = true) throws {
         try encodeNumeric(value.bitPattern, isLittleEndian: isLittleEndian)
     }
     
@@ -405,9 +411,8 @@ public struct GunBoundEncodingContainer {
         try setValue(data, data: data)
     }
     
-    private func encodeNumeric <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T, isLittleEndian: Bool = false) throws {
-        
-        let data = encoder.boxInteger(value)
+    private func encodeNumeric <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T, isLittleEndian: Bool = true) throws {
+        let data = encoder.boxInteger(value, isLittleEndian: isLittleEndian)
         try setValue(value, data: data)
     }
     
@@ -646,11 +651,15 @@ extension Double: GunBoundRawEncodable {
     }
 }
 
-extension IPv4Address: GunBoundRawEncodable {
+extension IPv4Address: GunBoundEncodable {
     
     public var binaryData: Data {
         return self.withUnsafeBytes {
-            Data(bytes: $0.baseAddress!, count: MemoryLayout<UInt32>.size)
+            Data(bytes: $0.baseAddress!, count: 4)
         }
+    }
+    
+    public func encode(to container: GunBoundEncodingContainer) throws {
+        try container.encode(binaryData)
     }
 }
