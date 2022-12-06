@@ -20,16 +20,21 @@ final class GunBoundTests: XCTestCase {
             XCTFail()
             return
         }
+        XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 10)
         XCTAssertEqual(packet.data.count, 10)
         XCTAssertEqual(packet.id, 0x46A5)
         XCTAssertEqual(packet.parametersSize, 4)
         XCTAssertEqual(packet.parameters, Data([0x00, 0x00, 0x00, 0x00]))
+        XCTAssertEncode(ServerDirectoryRequest(), .serverDirectoryRequest, 0x46A5, data)
+        
     }
     
     func testServerDirectoryResponse() throws {
         
         /*
+         Server Directory Response
+         
          0000   18 01 bb 08 02 11 00 00 01 05 00 00 00 0e 4a 47   ..............JG
          0010   20 54 65 73 74 20 42 72 6f 6b 65 72 1e 42 72 6f    Test Broker.Bro
          0020   6b 65 72 20 64 65 73 63 72 69 70 74 69 6f 6e 5c   ker description\
@@ -105,9 +110,10 @@ final class GunBoundTests: XCTestCase {
             XCTFail()
             return
         }
+        XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 0x0118)
         XCTAssertEqual(packet.data.count, 280)
-        XCTAssertEqual(packet.id, .init(sumPacketLength: 280))
+        XCTAssertEqual(packet.id, .init(packetLength: 280))
         XCTAssertEqual(packet.id, 0x08BB)
         XCTAssertEqual(packet.parametersSize, 280 - 6)
         
@@ -116,3 +122,79 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(serverDirectory[0].descriptionText, "Broker description\n goes here")
     }
 }
+
+// MARK: - Extensions
+
+extension Sequence where Element == UInt8 {
+    
+    var hexString: String {
+        return "[" + reduce("", { $0 + ($0.isEmpty ? "" : ", ") + "0x" + $1.toHexadecimal().uppercased() }) + "]"
+    }
+}
+
+/*
+func XCTAssertEqual<T>(_ value: T, _ data: Data, file: StaticString = #file, line: UInt = #line) where T: GunBoundPacket, T: Equatable, T: Codable {
+    
+    var encoder = GunBoundEncoder()
+    encoder.log = { print("Encoder:", $0) }
+    
+    var decoder = GunBoundDecoder()
+    decoder.log = { print("Decoder:", $0) }
+    
+    do {
+        
+        let decodedValue = try decoder.decode(T.self, from: data)
+        XCTAssertEqual(decodedValue, value, file: file, line: line)
+        
+        let encodedData = try encoder.encode(value)
+        
+        print(encodedData.hexString)
+        print(decodedValue)
+        
+        XCTAssertFalse(encodedData.isEmpty, file: file, line: line)
+        XCTAssertEqual(encodedData, data, "\(encodedData.hexString) is not equal to \(data.hexString)", file: file, line: line)
+        
+    } catch {
+        XCTFail(error.localizedDescription, file: file, line: line)
+        dump(error)
+    }
+}
+*/
+
+func XCTAssertEncode<T>(
+    _ value: T,
+    _ command: Command,
+    _ id: Packet.ID? = nil,
+    _ data: Data,
+    file: StaticString = #file,
+    line: UInt = #line
+) where T: Equatable, T: Codable {
+    
+    var encoder = GunBoundEncoder()
+    encoder.log = { print("Encoder:", $0) }
+    
+    do {
+        let packet = try encoder.encode(value, for: command, id: id)
+        XCTAssertFalse(packet.data.isEmpty, file: file, line: line)
+        XCTAssertEqual(packet.data, data, "\(packet.data.hexString) is not equal to \(data.hexString)", file: file, line: line)
+    } catch {
+        XCTFail(error.localizedDescription, file: file, line: line)
+        dump(error)
+    }
+}
+
+/*
+func XCTAssertDecode<T>(_ value: T, _ data: Data, file: StaticString = #file, line: UInt = #line) where T: GunBoundPacket, T: Equatable, T: Codable {
+    
+    var decoder = GunBoundDecoder()
+    decoder.log = { print("Decoder:", $0) }
+    
+    do {
+        let decodedValue = try decoder.decode(T.self, from: data)
+        XCTAssertEqual(decodedValue, value, file: file, line: line)
+    } catch {
+        XCTFail(error.localizedDescription, file: file, line: line)
+        dump(error)
+    }
+}
+*/
