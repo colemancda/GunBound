@@ -22,7 +22,7 @@ final class GunBoundTests: XCTestCase {
         }
         XCTAssertEqual(packet.size, 10)
         XCTAssertEqual(packet.data.count, 10)
-        XCTAssertEqual(packet.id, 0xEBCB)
+        XCTAssertEqual(packet.id, 0x46A5)
         XCTAssertEqual(packet.parametersSize, 4)
         XCTAssertEqual(packet.parameters, Data([0x00, 0x00, 0x00, 0x00]))
     }
@@ -99,9 +99,16 @@ final class GunBoundTests: XCTestCase {
         """#
         
         let jsonDecoder = JSONDecoder()
-        
         let serverDirectory = try jsonDecoder.decode(ServerDirectory.self, from: Data(jsonString.utf8))
         
-        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.size, 0x0118)
+        XCTAssertEqual(packet.data.count, 280)
+        XCTAssertEqual(packet.id, .init(sumPacketLength: 280))
+        XCTAssertEqual(packet.id, 0x08BB)
+        XCTAssertEqual(packet.parametersSize, 280 - 6)
     }
 }
