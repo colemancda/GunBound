@@ -17,6 +17,10 @@ public actor WorldServer {
     }
     
     public func handle(address: IPv4Address, packet: Packet) async -> Packet {
+        
+        NSLog(packet.description)
+        NSLog(packet.data.toHexadecimal())
+        
         do {
             switch packet.command {
             case .authenticationRequest:

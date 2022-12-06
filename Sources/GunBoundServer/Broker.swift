@@ -48,5 +48,7 @@ struct Broker: AsyncParsableCommand {
         
         // run indefinitely
         try await Task.sleep(until: .now.advanced(by: Duration(secondsComponent: Int64(Date.distantFuture.timeIntervalSinceNow), attosecondsComponent: .zero)), clock: .suspending)
+        
+        withExtendedLifetime(server, { })
     }
 }

@@ -22,6 +22,7 @@ struct World: AsyncParsableCommand {
     var backlog: Int = 10_000
     
     func run() async throws {
+        let worldServer = WorldServer()
         // start server
         let address = address.flatMap { IPv4Address(rawValue: $0) } ?? .any
         let configuration = GunBoundServer.Configuration(
@@ -30,10 +31,12 @@ struct World: AsyncParsableCommand {
             backlog: backlog
         )
         let server = try await GunBoundServer(configuration: configuration) { address, packet in
-            fatalError()
+            await worldServer.handle(address: address.address, packet: packet)
         }
         
         // run indefinitely
         try await Task.sleep(until: .now.advanced(by: Duration(secondsComponent: Int64(Date.distantFuture.timeIntervalSinceNow), attosecondsComponent: .zero)), clock: .suspending)
+        
+        withExtendedLifetime(server, { })
     }
 }

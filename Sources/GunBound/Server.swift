@@ -59,7 +59,7 @@ public final class GunBoundServer {
                     // read remote address
                     let address = try newSocket.fileDescriptor.peerAddress(IPv4SocketAddress.self)
                     if let self = self {
-                        self.log?("[\(address)] New connection")
+                        self.log?("[\(address.address)] New connection")
                         let connection = await Connection(address: address, socket: newSocket, server: self)
                         await self.storage.newConnection(connection)
                     }
@@ -92,7 +92,7 @@ internal extension GunBoundServer {
         // remove connection cache
         await storage.removeConnection(address)
         // log
-        log?("[\(address)]: " + "Did disconnect. \(error?.localizedDescription ?? "")")
+        log?("[\(address.address)]: " + "Did disconnect. \(error?.localizedDescription ?? "")")
     }
 }
 
@@ -158,6 +158,10 @@ internal extension GunBoundServer {
         
         private(set) var isConnected = true
         
+        private(set) var sentBytes = 0
+        
+        private(set) var recievedBytes = 0
+        
         // MARK: - Initialization
         
         deinit {
@@ -209,22 +213,23 @@ internal extension GunBoundServer {
             do {
                 // read packet
                 let request = try await read()
-                self.server.log?("[\(address)] Recieved packet \(request.command) ID \(request.id)")
+                self.server.log?("[\(address.address)] Recieved packet \(request.command) ID \(request.id)")
                 // respond
                 let response = await self.server.response(address, request)
                 try await respond(response)
             } catch {
-                self.server.log?("[\(address)] Error: \(error.localizedDescription)")
+                self.server.log?("[\(address.address)] Error: \(error.localizedDescription)")
                 await self.socket.close()
             }
         }
         
         private func read() async throws -> Packet {
             let data = try await socket.read(Packet.maxSize)
-            self.server.log?("[\(address)] Read \(data.count) bytes")
+            self.server.log?("[\(address.address)] Read \(data.count) bytes")
             guard let packet = Packet(data: data) else {
                 throw GunBoundError.invalidData(data)
             }
+            self.recievedBytes += data.count
             return packet
         }
         
@@ -234,12 +239,13 @@ internal extension GunBoundServer {
             for chunk in chunks {
                 try await socket.write(chunk)
             }
-            self.server.log?("[\(address)] Wrote \(data.count) bytes (\(chunks.count) chunks)")
+            self.sentBytes += data.count
+            self.server.log?("[\(address.address)] Wrote \(data.count) bytes (\(chunks.count) chunks)")
         }
         
         private func respond(_ response: Packet) async throws {
             try await self.write(response.data)
-            self.server.log?("[\(address)] Response Command \(response.command) ID \(response.id) (\(response.data.count) bytes)")
+            self.server.log?("[\(address.address)] Response Command \(response.command) ID \(response.id) (\(response.data.count) bytes)")
         }
     }
 }

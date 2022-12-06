@@ -19,6 +19,7 @@ struct Server: AsyncParsableCommand {
         subcommands: [
             Broker.self,
             World.self
-        ]
+        ],
+        defaultSubcommand: World.self
     )
 }

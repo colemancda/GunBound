@@ -3,7 +3,7 @@ import XCTest
 
 final class GunBoundTests: XCTestCase {
     
-    func testServerDirectoryRequest() throws {
+    func testServerDirectoryRequest() {
         
         /*
          0a 00 a5 46 00 11 00 00 00 00
@@ -23,6 +23,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 10)
         XCTAssertEqual(packet.data.count, 10)
+        XCTAssertEqual(packet.command, .serverDirectoryRequest)
         XCTAssertEqual(packet.id, 0x46A5)
         XCTAssertEqual(packet.parametersSize, 4)
         XCTAssertEqual(packet.parameters, Data([0x00, 0x00, 0x00, 0x00]))
@@ -59,6 +60,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(packet.data.count, 72)
             XCTAssertEqual(packet.id, .init(serverPacketLength: packet.data.count))
             XCTAssertEqual(packet.id, 0xCB2B)
+            XCTAssertEqual(packet.command, .serverDirectoryResponse)
             XCTAssertEqual(packet.parametersSize, packet.data.count - 6)
             
             XCTAssertEqual(serverDirectory.count, 1)
@@ -151,6 +153,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(packet.data.count, 280)
             XCTAssertEqual(packet.id, .init(serverPacketLength: 280))
             XCTAssertEqual(packet.id, 0x08BB)
+            XCTAssertEqual(packet.command, .serverDirectoryResponse)
             XCTAssertEqual(packet.parametersSize, 280 - 6)
             
             XCTAssertEqual(serverDirectory.count, 5)
@@ -158,6 +161,27 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(serverDirectory[0].descriptionText, #"Broker description\n goes here"#)
             XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), data)
         }
+    }
+    
+    func testTokenRequest() {
+        
+        // Packet(size: 6, id: 0x36B1, command: 0x1000, parameters: 0 bytes)
+        let data = Data([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.command, .tokenRequest)
+        XCTAssertEqual(packet.size, numericCast(Packet.minSize))
+        XCTAssertEqual(packet.data.count, numericCast(Packet.minSize))
+        XCTAssertEqual(packet.id, 0x36B1)
+        XCTAssertEqual(packet.parametersSize, 0)
+    }
+    
+    func testTokenResponse() {
+        
+        
     }
 }
 

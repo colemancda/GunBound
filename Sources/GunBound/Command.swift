@@ -43,6 +43,12 @@ extension Command: CustomStringConvertible, CustomDebugStringConvertible {
 
 public extension Command {
     
+    static var keepAlive: Command { 0x000 }
+    
+    static var tokenRequest: Command { 0x1000 }
+    
+    static var tokenResponse: Command { 0x1001 }
+    
     /// Authentication Request
     static var authenticationRequest: Command { 0x1310 }
     
