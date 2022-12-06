@@ -158,7 +158,9 @@ private extension GunBoundEncoder.Encoder {
     }
     
     func boxLengthPrefixString(_ value: String) throws -> Data {
-        let stringData = Data(value.utf8)
+        guard let stringData = value.data(using: .ascii) else {
+            throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: codingPath, debugDescription: "Cannot encode to ASCII."))
+        }
         guard stringData.count <= UInt8.max else {
             throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: codingPath, debugDescription: "String must be less than \(Int(UInt8.max) + 1) characters to be encoded."))
         }
