@@ -638,4 +638,11 @@ extension Double: GunBoundRawEncodable {
     }
 }
 
-extension IPv4Address: GunBoundRawEncodable { }
+extension IPv4Address: GunBoundRawEncodable {
+    
+    public var binaryData: Data {
+        return self.withUnsafeBytes {
+            Data(bytes: $0.baseAddress!, count: MemoryLayout<UInt32>.size)
+        }
+    }
+}
