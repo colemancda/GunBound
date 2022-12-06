@@ -6,7 +6,9 @@
 //
 
 /// Authentication Response
-public enum AuthenticationResponse: UInt16, Codable {
+public enum AuthenticationResponse: UInt16, Codable, GunBoundPacket {
+    
+    public static var command: Command { .authenticationResponse }
     
     case success = 0x0000
     case badUsername = 0x0010
