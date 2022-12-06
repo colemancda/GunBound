@@ -20,8 +20,8 @@ public extension Packet {
 
 public extension Packet.ID {
     
-    init(sumPacketLength: Int) {
-        let intermediate = (sumPacketLength * 0x43FD) & 0xFFFF
+    init(packetLength: Int) {
+        let intermediate = (packetLength * 0x43FD) & 0xFFFF
         let value = (intermediate - 0x53FD) & 0xFFFF
         self.init(rawValue: UInt16(value))
     }

@@ -10,7 +10,7 @@ import Foundation
 /// GunBound Packet
 public struct Packet: Equatable, Hashable, Identifiable {
     
-    public let data: Data
+    public internal(set) var data: Data
     
     public init?(data: Data) {
         // validate size
@@ -23,6 +23,11 @@ public struct Packet: Equatable, Hashable, Identifiable {
             return nil
         }
         self.data = data
+    }
+    
+    internal init(command: Command) {
+        self.data = Data(count: Packet.minSize)
+        self.command = command
     }
 }
 
@@ -38,18 +43,33 @@ public extension Packet {
 public extension Packet {
     
     /// Packet size
-    var size: UInt16 {
-        UInt16(data.count)
+    internal(set) var size: UInt16 {
+        get { UInt16(data.count) }
+        set {
+            let bytes = newValue.littleEndian.bytes
+            data[0] = bytes.0
+            data[1] = bytes.1
+        }
     }
     
     /// Packet sequence
-    var id: ID {
-        ID(rawValue: UInt16(littleEndian: UInt16(bytes: (data[2], data[3]))))
+    internal(set) var id: ID {
+        get { ID(rawValue: UInt16(littleEndian: UInt16(bytes: (data[2], data[3])))) }
+        set {
+            let bytes = newValue.rawValue.littleEndian.bytes
+            data[2] = bytes.0
+            data[3] = bytes.1
+        }
     }
     
     /// Packet command
-    var command: Command {
-        Command(rawValue: UInt16(littleEndian: UInt16(bytes: (data[4], data[5]))))
+    internal(set) var command: Command {
+        get { Command(rawValue: UInt16(littleEndian: UInt16(bytes: (data[4], data[5])))) }
+        set {
+            let bytes = newValue.rawValue.littleEndian.bytes
+            data[4] = bytes.0
+            data[5] = bytes.1
+        }
     }
     
     /// Packet parameters
@@ -63,7 +83,8 @@ public extension Packet {
     
     func withUnsafeParameters<ResultType>(_ body: ((UnsafeRawBufferPointer) throws -> ResultType)) rethrows -> ResultType {
         return try data.withUnsafeBytes { pointer in
-            return try body(UnsafeRawBufferPointer(start: pointer.baseAddress?.advanced(by: 6), count: parametersSize))
+            let parametersPointer = pointer.count > 6 ? pointer.baseAddress?.advanced(by: 6) : nil
+            return try body(UnsafeRawBufferPointer(start: parametersPointer, count: parametersSize))
         }
     }
 }

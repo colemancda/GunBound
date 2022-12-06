@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Socket
 
 /// GunBound Server Directory
 public struct ServerDirectory: Equatable, Hashable {
@@ -113,7 +114,7 @@ public extension ServerDirectory {
         
         public var descriptionText: String
         
-        public var address: String
+        public var address: IPv4Address
         
         public var port: UInt16
         
