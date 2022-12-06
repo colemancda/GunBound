@@ -25,6 +25,10 @@ let package = Package(
             branch: "main"
         ),
         .package(
+            url: "https://github.com/krzyzanowskim/CryptoSwift.git",
+            .upToNextMajor(from: "1.6.0")
+        ),
+        .package(
             url: "https://github.com/apple/swift-argument-parser",
             from: "1.2.0"
         ),
@@ -38,6 +42,7 @@ let package = Package(
             name: "GunBound",
             dependencies: [
                 "Socket",
+                "CryptoSwift",
                 .product(
                     name: "Algorithms",
                     package: "swift-algorithms"
