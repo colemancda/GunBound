@@ -19,11 +19,19 @@ public enum Opcode: UInt16, Codable {
     /// Nonce Response
     case nonceResponse              = 0x1001
     
-    /// Authentication Request
-    case authenticationRequest      = 0x1310
+    /// Login Request
+    case authenticationRequest      = 0x1010
     
-    /// Authentication Response
-    case authenticationResponse     = 0x1312
+    /// Login Response
+    case authenticationResponse     = 0x1012
+    
+    /// User Request
+    case userRequest                = 0x1020
+    
+    /// User Response
+    case userResponse               = 0x1021
+    
+    case joinChannelCommand         = 0x2000
     
     /// Server Directory Request
     case serverDirectoryRequest     = 0x1100
@@ -45,6 +53,9 @@ public extension Opcode {
         case .authenticationResponse:               return .response
         case .serverDirectoryRequest:               return .request
         case .serverDirectoryResponse:              return .response
+        case .userRequest:                          return .request
+        case .userResponse:                         return .response
+        case .joinChannelCommand:                   return .command
         }
     }
     
@@ -65,6 +76,8 @@ private extension Opcode {
         (nonceRequest,                  nonceResponse),
         (authenticationRequest,         authenticationResponse),
         (serverDirectoryRequest,        serverDirectoryResponse),
+        (userRequest,                   userResponse),
+        
     ]
     
     static let responsesByRequest: [Opcode: Opcode] = {
