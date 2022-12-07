@@ -85,7 +85,10 @@ internal actor Connection <Socket: GunBoundSocket> {
             log?("Pending read")
             #endif
             do { try await read() }
-            catch { log?("Unable to read. \(error)") }
+            catch {
+                log?("Unable to read. \(error)")
+                await self.socket.close()
+            }
         case let .read(byteCount):
             #if DEBUG
             log?("Did read \(byteCount) bytes")
@@ -180,8 +183,11 @@ internal actor Connection <Socket: GunBoundSocket> {
     private func writePending() {
         Task(priority: .high) { [weak self] in
             guard let self = self, await self.isConnected else { return }
-            do { try await self.write() } // event will call write again
-            catch { log?("Unable to write. \(error)") }
+            do { try await self.write() }
+            catch {
+                log?("Unable to write. \(error)")
+                await self.socket.close()
+            }
         }
     }
     

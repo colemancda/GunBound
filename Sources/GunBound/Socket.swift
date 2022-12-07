@@ -26,6 +26,9 @@ public protocol GunBoundSocket {
     /// Attempt to accept an incoming connection.
     func accept() async throws -> Self
     
+    /// Close immediately.
+    func close() async
+    
     static func client(
         address: GunBoundAddress,
         destination: GunBoundAddress
@@ -148,6 +151,10 @@ public final class GunBoundTCPSocket: GunBoundSocket {
     /// Reads from the socket.
     public func recieve(_ bufferSize: Int) async throws -> Data {
         return try await socket.read(bufferSize)
+    }
+    
+    public func close() async {
+        await socket.close()
     }
 }
 
