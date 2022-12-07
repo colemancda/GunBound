@@ -48,7 +48,6 @@ public extension Opcode {
         }
     }
     
-    
     /// Get the equivalent request for the current response opcode (if applicable).
     var request: Opcode? {
         return Opcode.requestsByResponse[self]

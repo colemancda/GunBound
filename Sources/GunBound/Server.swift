@@ -175,6 +175,8 @@ internal extension GunBoundServer {
         
         private unowned var server: GunBoundServer
         
+        var nonce: Nonce = 0x0000
+        
         // MARK: - Initialization
         
         init(
@@ -188,6 +190,39 @@ internal extension GunBoundServer {
             self.connection = await GunBound.Connection(socket: socket, log: { log?("[\(address)] \($0)") }) { error in
                 await server.connection(address, didDisconnect: error)
             }
+            await self.registerHandlers()
+        }
+        
+        private func registerHandlers() async {
+            // server directory
+            await connection.register { [weak self] in await self?.serverDirectory($0) }
+            // nonce
+            await connection.register { [weak self] in await self?.serverDirectory($0) }
+        }
+        
+        private func log(_ message: String) {
+            server.log?(message)
+        }
+        
+        /// Respond to a client-initiated PDU message.
+        private func respond <T> (_ response: T) async where T: GunBoundPacket, T:Encodable {
+            log("Response: \(response)")
+            guard let _ = await connection.queue(response)
+                else { fatalError("Could not add PDU to queue: \(response)") }
+        }
+        
+        private func serverDirectory(_ packet: ServerDirectoryRequest) async {
+            log("Server Directory Request")
+            let directory = await self.server.dataSource.serverDirectory
+            let response = ServerDirectoryResponse(directory: directory)
+            await self.respond(response)
+        }
+        
+        private func nonce(_ packet: ServerDirectoryRequest) async {
+            log("Nonce Request")
+            self.nonce = Nonce() // now random nonce
+            let response = NonceResponse(nonce: nonce)
+            await self.respond(response)
         }
     }
 }

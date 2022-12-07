@@ -22,9 +22,7 @@ internal actor Connection <Socket: GunBoundSocket> {
     var sentBytes = 0
     
     var recievedBytes = 0
-    
-    let nonce = Nonce()
-    
+        
     let encoder = GunBoundEncoder()
     
     let decoder = GunBoundDecoder()
