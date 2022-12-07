@@ -15,7 +15,7 @@ public typealias GunBoundCodable = GunBoundEncodable & GunBoundDecodable
 /// GunBound Decodable type
 public protocol GunBoundDecodable: Decodable {
     
-    //init(from container: GunBoundDecodingContainer) throws
+    init(from container: GunBoundDecodingContainer) throws
 }
 
 /// GunBound Encodable type
