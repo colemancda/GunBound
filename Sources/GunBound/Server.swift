@@ -197,7 +197,7 @@ internal extension GunBoundServer {
             // server directory
             await connection.register { [weak self] in await self?.serverDirectory($0) }
             // nonce
-            await connection.register { [weak self] in await self?.serverDirectory($0) }
+            await connection.register { [weak self] in await self?.nonce($0) }
         }
         
         private func log(_ message: String) {
