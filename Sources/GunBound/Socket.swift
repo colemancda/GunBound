@@ -75,9 +75,12 @@ public final class GunBoundTCPSocket: GunBoundSocket {
     // MARK: - Initialization
     
     deinit {
+        // TODO: Fix crash
+        /*
         Task(priority: .high) {
             await socket.close()
         }
+         */
     }
     
     internal init(
