@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct NonceRequest: GunBoundPacket {
+public struct NonceRequest: GunBoundPacket, Equatable, Hashable, Codable {
     
     static public var command: Command { .nonceRequest }
 }

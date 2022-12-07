@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct NonceResponse: GunBoundPacket {
+public struct NonceResponse: GunBoundPacket, Equatable, Hashable, Codable {
     
     public static var command: Command { .nonceResponse }
     
@@ -17,4 +17,3 @@ public struct NonceResponse: GunBoundPacket {
         self.nonce = nonce
     }
 }
-

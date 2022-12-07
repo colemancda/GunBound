@@ -116,3 +116,10 @@ internal protocol GunBoundPacketEncodable: GunBoundPacket, Encodable {
     
     var expectedLength: Int { get }
 }
+
+internal extension GunBoundPacket where Self: Decodable {
+    
+    init(data: Data, decoder: GunBoundDecoder = GunBoundDecoder()) throws {
+        self = try decoder.decode(Self.self, from: data)
+    }
+}
