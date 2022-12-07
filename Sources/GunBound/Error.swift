@@ -9,6 +9,8 @@ import Foundation
 
 public enum GunBoundError: Error {
     
+    case invalidAddress(String)
+    
     case invalidData(Data)
     
     case unexpectedResponse(Data)

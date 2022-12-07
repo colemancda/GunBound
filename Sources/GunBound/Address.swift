@@ -34,6 +34,13 @@ public struct GunBoundAddress: Equatable, Hashable, Codable {
     }
 }
 
+public extension GunBoundAddress {
+    
+    static var serverDefault: GunBoundAddress {
+        GunBoundAddress(ipAddress: .any, port: 8370)
+    }
+}
+
 internal extension GunBoundAddress {
     
     init(_ address: IPv4SocketAddress) {

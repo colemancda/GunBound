@@ -50,7 +50,7 @@ public typealias GunBoundSocketEventStream = AsyncStream<GunBoundSocketEvent>
 
 // MARK: - Implementation
 
-public final class GunBoundTCPSocket {
+public final class GunBoundTCPSocket: GunBoundSocket {
     
     // MARK: - Properties
     

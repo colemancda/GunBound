@@ -19,20 +19,24 @@ struct World: AsyncParsableCommand {
     var port: UInt16 = 8370
     
     @Option(help: "Server backlog.")
-    var backlog: Int = 10_000
+    var backlog: Int = 1000
     
     func run() async throws {
-        let worldServer = WorldServer()
         // start server
-        let address = address.flatMap { IPv4Address(rawValue: $0) } ?? .any
-        let configuration = GunBoundServer.Configuration(
+        let ipAddress = self.address ?? IPv4Address.any.rawValue
+        guard let address = GunBoundAddress(address: ipAddress, port: port) else {
+            throw GunBoundError.invalidAddress(ipAddress)
+        }
+        let configuration = GunBoundServerConfiguration(
             address: address,
-            port: port,
             backlog: backlog
         )
-        let server = try await GunBoundServer(configuration: configuration) { address, packet in
-            await worldServer.handle(address: address.address, packet: packet)
-        }
+        let dataSource = InMemoryGunBoundServerDataSource()
+        let server = try await GunBoundServer(
+            configuration: configuration,
+            dataSource: dataSource,
+            socket: GunBoundTCPSocket.self
+        )
         
         // run indefinitely
         try await Task.sleep(until: .now.advanced(by: Duration(secondsComponent: Int64(Date.distantFuture.timeIntervalSinceNow), attosecondsComponent: .zero)), clock: .suspending)

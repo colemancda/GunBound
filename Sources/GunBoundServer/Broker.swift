@@ -22,9 +22,11 @@ struct Broker: AsyncParsableCommand {
     var port: UInt16 = 8372 //  Port 8372 is the default broker server port
     
     @Option(help: "Server backlog.")
-    var backlog: Int = 10_000
+    var backlog: Int = 1000
     
     func run() async throws {
+        
+        // Load static server list file
         let data = try Data(contentsOf: URL(fileURLWithPath: path), options: [.mappedIfSafe])
         let decoder = JSONDecoder()
         let directory = try decoder.decode(ServerDirectory.self, from: data)
@@ -33,18 +35,25 @@ struct Broker: AsyncParsableCommand {
             print("\(index + 1).", server.name)
             print("\(server.address):\(server.port)")
         }
-        // Create handler
-        let broker = BrokerServer(directory: directory)
+        
         // start server
-        let address = address.flatMap { IPv4Address(rawValue: $0) } ?? .any
-        let configuration = GunBoundServer.Configuration(
+        let ipAddress = self.address ?? IPv4Address.any.rawValue
+        guard let address = GunBoundAddress(address: ipAddress, port: port) else {
+            throw GunBoundError.invalidAddress(ipAddress)
+        }
+        let configuration = GunBoundServerConfiguration(
             address: address,
-            port: port,
             backlog: backlog
         )
-        let server = try await GunBoundServer(configuration: configuration) { address, packet in
-            await broker.handle(address: address.address, packet: packet)
+        let dataSource = InMemoryGunBoundServerDataSource()
+        await dataSource.update {
+            $0.serverDirectory = directory
         }
+        let server = try await GunBoundServer(
+            configuration: configuration,
+            dataSource: dataSource,
+            socket: GunBoundTCPSocket.self
+        )
         
         // run indefinitely
         try await Task.sleep(until: .now.advanced(by: Duration(secondsComponent: Int64(Date.distantFuture.timeIntervalSinceNow), attosecondsComponent: .zero)), clock: .suspending)

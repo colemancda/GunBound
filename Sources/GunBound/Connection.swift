@@ -128,6 +128,8 @@ internal actor Connection <Socket: GunBoundSocket> {
         }
         assert(packet.opcode == opcode)
         
+        log?("Recieved packet \(packet.opcode) ID \(packet.id)")
+        
         // handle packet
         switch opcode.type {
         case .response:
