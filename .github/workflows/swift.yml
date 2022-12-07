@@ -18,8 +18,6 @@ jobs:
       run: swift build -c debug
     - name: Build (Release)
       run: swift build -c release
-    - name: Test (Debug)
-      run: swift test -c debug
   
   linux:
     name: Linux
