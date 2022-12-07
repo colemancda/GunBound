@@ -208,7 +208,7 @@ internal extension GunBoundServer {
             await self.respond(response)
         }
         
-        private func nonce(_ packet: ServerDirectoryRequest) async {
+        private func nonce(_ packet: NonceRequest) async {
             log("Nonce Request")
             self.nonce = Nonce() // now random nonce
             let response = NonceResponse(nonce: nonce)
