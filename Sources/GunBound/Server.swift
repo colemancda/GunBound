@@ -57,7 +57,7 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
                     // wait for incoming sockets
                     let newSocket = try await socket.accept()
                     if let self = self {
-                        self.log?("[\(newSocket.address)] New connection")
+                        self.log?("[\(newSocket.address.address)] New connection")
                         let connection = await Connection(socket: newSocket, server: self)
                         await self.storage.newConnection(connection)
                     }
@@ -79,16 +79,6 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
         Task {
             await storage.removeAllConnections()
         }
-    }
-}
-
-internal extension GunBoundServer {
-    
-    func connection(_ address: GunBoundAddress, didDisconnect error: Swift.Error?) async {
-        // remove connection cache
-        await storage.removeConnection(address)
-        // log
-        log?("[\(address.address)]: " + "Did disconnect. \(error?.localizedDescription ?? "")")
     }
 }
 
@@ -175,6 +165,8 @@ internal extension GunBoundServer {
         
         private unowned var server: GunBoundServer
         
+        private let log: (String) -> ()
+        
         var nonce: Nonce = 0x0000
         
         // MARK: - Initialization
@@ -184,11 +176,13 @@ internal extension GunBoundServer {
             server: GunBoundServer
         ) async {
             let address = socket.address
-            let log = server.log
+            let serverLog = server.log
+            let log: (String) -> () = { serverLog?("[\(address.address)] \($0)") }
+            self.log = log
             self.address = address
             self.server = server
-            self.connection = await GunBound.Connection(socket: socket, log: { log?("[\(address)] \($0)") }) { error in
-                await server.connection(address, didDisconnect: error)
+            self.connection = await GunBound.Connection(socket: socket, log: log) { error in
+                await server.storage.removeConnection(address)
             }
             await self.registerHandlers()
         }
@@ -198,10 +192,6 @@ internal extension GunBoundServer {
             await connection.register { [weak self] in await self?.serverDirectory($0) }
             // nonce
             await connection.register { [weak self] in await self?.nonce($0) }
-        }
-        
-        private func log(_ message: String) {
-            server.log?(message)
         }
         
         /// Respond to a client-initiated PDU message.

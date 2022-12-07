@@ -134,12 +134,12 @@ internal actor Connection <Socket: GunBoundSocket> {
         // handle packet
         switch opcode.type {
         case .response:
-            try await handle(response: packet, opcode: opcode)
+            try await handle(response: packet)
         case .request:
-            try await handle(request: packet, opcode: opcode)
+            try await handle(request: packet)
         case .command, .notification:
             // For all other opcodes notify the upper layer of the PDU and let them act on it.
-            try await handle(notify: packet, opcode: opcode)
+            try await handle(notify: packet)
         }
     }
     
@@ -291,7 +291,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         return nil
     }
     
-    private func handle(notify packet: Packet, opcode: Opcode) async throws {
+    private func handle(notify packet: Packet) async throws {
         
         var foundPDU: GunBoundPacket?
         
@@ -299,7 +299,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         for notify in oldList {
             
             // try next opcode
-            guard type(of: notify).packetType.opcode == opcode else {
+            guard type(of: notify).packetType.opcode == packet.opcode else {
                 continue
             }
             
@@ -316,13 +316,13 @@ internal actor Connection <Socket: GunBoundSocket> {
         }
         // TODO: Unsupported packets
         // If this was a request and no handler was registered for it, respond with "Not Supported"
-        if foundPDU == nil && opcode.type == .request {
+        if foundPDU == nil && packet.opcode.type == .request {
             //let errorResponse = ATTErrorResponse(request: opcode, attributeHandle: 0x00, error: .requestNotSupported)
             //let _ = queue(errorResponse)
         }
     }
     
-    private func handle(response packet: Packet, opcode: Opcode) async throws {
+    private func handle(response packet: Packet) async throws {
         
         // If no request is pending, then the response is unexpected. Disconnect the bearer.
         guard let sendOperation = self.pendingRequest else {
@@ -332,7 +332,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         // If the received response doesn't match the pending request, or if the request is malformed,
         // end the current request with failure.
                 
-        guard let requestOpcode = opcode.request
+        guard let requestOpcode = packet.opcode.request
             else { throw GunBoundError.unexpectedResponse(packet.data) }
                 
         // clear current pending request
@@ -349,7 +349,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         writePending()
     }
     
-    private func handle(request packet: Packet, opcode: Opcode) async throws {
+    private func handle(request packet: Packet) async throws {
         
         /*
         * If a request is currently pending, then the sequential
@@ -364,7 +364,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         incomingRequest = true
         
         // notify
-        try await handle(notify: packet, opcode: opcode)
+        try await handle(notify: packet)
     }
 }
 
