@@ -130,6 +130,9 @@ internal actor Connection <Socket: GunBoundSocket> {
         assert(packet.opcode == opcode)
         
         log?("Recieved packet \(packet.opcode) ID \(packet.id)")
+        #if DEBUG
+        log?("\(packet.data.hexString)")
+        #endif
         
         // handle packet
         switch opcode.type {
@@ -317,7 +320,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         // TODO: Unsupported packets
         // If this was a request and no handler was registered for it, respond with "Not Supported"
         if foundPDU == nil && packet.opcode.type == .request {
-            //let errorResponse = ATTErrorResponse(request: opcode, attributeHandle: 0x00, error: .requestNotSupported)
+            //let errorResponse = ErrorResponse(request: opcode, error: .requestNotSupported)
             //let _ = queue(errorResponse)
         }
     }
