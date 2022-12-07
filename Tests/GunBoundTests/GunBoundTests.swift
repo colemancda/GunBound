@@ -3,6 +3,13 @@ import XCTest
 
 final class GunBoundTests: XCTestCase {
     
+    func testAddress() {
+        XCTAssertEqual(GunBoundAddress(rawValue: "192.168.1.1:1234")?.address, "192.168.1.1")
+        XCTAssertEqual(GunBoundAddress(rawValue: "192.168.1.1:1234")?.port, 1234)
+        XCTAssertEqual(GunBoundAddress(rawValue: "192.168.1.1:1234")?.rawValue, "192.168.1.1:1234")
+        XCTAssertNil(GunBoundAddress(rawValue: "192.168.1.1"))
+    }
+    
     func testServerDirectoryRequest() {
         
         /*
