@@ -23,6 +23,8 @@ public actor WorldServer {
         
         do {
             switch packet.command {
+            case .nonceRequest:
+                fatalError()
             case .authenticationRequest:
                 return try authenticate(packet)
             default:
@@ -34,6 +36,10 @@ public actor WorldServer {
     }
     
     func errorResponse(_ error: Error) -> Packet {
+        fatalError()
+    }
+    
+    func nonce(_ packet: Packet) throws -> Packet {
         fatalError()
     }
     
