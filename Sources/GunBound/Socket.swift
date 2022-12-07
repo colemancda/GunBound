@@ -11,7 +11,11 @@ import Socket
 /// GunBound Socket protocol
 public protocol GunBoundSocket {
     
+    /// Socket address
     var address: GunBoundAddress { get }
+    
+    /// Event stream
+    var event: GunBoundSocketEventStream { get }
     
     /// Write to the socket.
     func send(_ data: Data) async throws
