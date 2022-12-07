@@ -29,6 +29,8 @@ internal actor Connection <Socket: GunBoundSocket> {
     
     let decoder = GunBoundDecoder()
     
+    private var didAuthenticate = false
+    
     /// There's a pending incoming request.
     private var incomingRequest = false
     
@@ -146,13 +148,22 @@ internal actor Connection <Socket: GunBoundSocket> {
         guard let sendOperation = pickNextSendOpcode()
             else { return false }
         
+        // encode packet
+        var packet = try encoder.encode(sendOperation.packet, id: 0x0000)
+        
+        // use special ID for first login
+        self.sentBytes += packet.data.count
+        if didAuthenticate == false, type(of: sendOperation.packet).opcode == .authenticationRequest {
+            packet.id = .login
+        } else {
+            packet.id = .init(serverPacketLength: Int(sentBytes))
+        }
+        
         // write data to socket
-        try await socket.send(sendOperation.data)
-        self.sentBytes += sendOperation.data.count
-        let opcode = sendOperation.opcode
+        try await socket.send(packet.data)
         
         // wait for pending response
-        switch opcode.type {
+        switch packet.opcode.type {
         case .request:
             pendingRequest = sendOperation
         case .response:
@@ -209,6 +220,55 @@ internal actor Connection <Socket: GunBoundSocket> {
         notifyList.removeAll()
     }
     
+    /// Adds a packet to the queue to send.
+    ///
+    /// - Returns: Identifier of queued send operation or `nil` if the packet cannot be sent.
+    @discardableResult
+    public func queue <T> (
+        _ packet: T,
+        response: (callback: (GunBoundPacket) -> (), GunBoundPacket.Type)? = nil
+    ) -> UInt? where T: GunBoundPacket, T: Encodable {
+        
+        // Only request PDUs should have response callbacks.
+        switch T.opcode.type {
+        case .request:
+            
+            guard response != nil
+                else { return nil }
+            
+        case .response,
+             .command,
+             .notification:
+            
+            guard response == nil
+                else { return nil }
+        }
+        
+        // increment ID
+        let id = nextSendOpcodeID
+        nextSendOpcodeID += 1
+        
+        let sendOpcode = SendOperation(
+            id: id,
+            packet: packet,
+            response: response
+        )
+        
+        // Add the op to the correct queue based on its type
+        switch T.opcode.type {
+        case .request:
+            requestQueue.append(sendOpcode)
+        case .response,
+             .command,
+             .notification:
+            writeQueue.append(sendOpcode)
+        }
+        
+        writePending()
+        
+        return sendOpcode.id
+    }
+    
     private func pickNextSendOpcode() -> SendOperation? {
         
         // See if any operations are already in the write queue
@@ -232,8 +292,10 @@ internal actor Connection <Socket: GunBoundSocket> {
         let oldList = notifyList
         for notify in oldList {
             
-            // try next
-            if type(of: notify).packetType.opcode != opcode { continue }
+            // try next opcode
+            guard type(of: notify).packetType.opcode == opcode else {
+                continue
+            }
             
             // attempt to deserialize
             guard let PDU = foundPDU ?? (try? type(of: notify).packetType.init(packet: packet, decoder: decoder))
@@ -271,7 +333,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         defer { self.pendingRequest = nil }
         
         /// Verify the recieved response belongs to the pending request
-        guard sendOperation.opcode == requestOpcode else {
+        guard type(of: sendOperation.packet).opcode == requestOpcode else {
             throw GunBoundError.invalidData(packet.data)
         }
         
@@ -305,25 +367,20 @@ internal final class SendOperation {
     /// The operation identifier.
     let id: UInt
     
-    /// The sent data.
-    let data: Data
-    
-    /// The sent opcode
-    let opcode: Opcode
+    /// The packet to send.
+    let packet: any (GunBoundPacket & Encodable)
     
     /// The response callback.
     let response: (callback: (GunBoundPacket) -> (), responseType: GunBoundPacket.Type)?
     
     fileprivate init(
         id: UInt,
-        opcode: Opcode,
-        data: Data,
+        packet: any (GunBoundPacket & Encodable),
         response: (callback: (GunBoundPacket) -> (),
                    responseType: GunBoundPacket.Type)? = nil
     ) {
         self.id = id
-        self.opcode = opcode
-        self.data = data
+        self.packet = packet
         self.response = response
     }
 }
