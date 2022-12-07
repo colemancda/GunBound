@@ -13,21 +13,28 @@ public struct Packet: Equatable, Hashable, Identifiable {
     public internal(set) var data: Data
     
     public init?(data: Data) {
+        self.init(data: data, validateOpcode: true)
+    }
+    
+    internal init?(data: Data, validateOpcode: Bool) {
         // validate size
         guard data.count >= Packet.minSize,
               data.count <= Packet.maxSize else {
             return nil
         }
+        // validate length
         let length = UInt16(littleEndian: UInt16(bytes: (data[0], data[1])))
         guard data.count == Int(length) else {
             return nil
         }
         self.data = data
         // validate opcode
-        guard let opcode = Opcode(rawValue: self.opcodeRawValue) else {
-            return nil
+        if validateOpcode {
+            guard let opcode = Opcode(rawValue: self.opcodeRawValue) else {
+                return nil
+            }
+            assert(self.opcode == opcode)
         }
-        assert(self.opcode == opcode)
     }
     
     internal init(opcode: Opcode) {
@@ -132,7 +139,7 @@ internal protocol GunBoundPacketEncodable: GunBoundPacket, Encodable {
 
 internal extension GunBoundPacket where Self: Decodable {
     
-    init(data: Data, decoder: GunBoundDecoder = GunBoundDecoder()) throws {
-        self = try decoder.decode(Self.self, from: data)
+    init(packet: Packet, decoder: GunBoundDecoder = GunBoundDecoder()) throws {
+        self = try decoder.decode(Self.self, from: packet)
     }
 }
