@@ -6,13 +6,21 @@
 //
 
 /// Authentication Response
-public enum AuthenticationResponse: UInt16, Codable, GunBoundPacket {
+public struct AuthenticationResponse: GunBoundPacket, Encodable, Hashable {
     
     public static var opcode: Opcode { .authenticationResponse }
     
-    case success = 0x0000
-    case badUsername = 0x0010
-    case badPassword = 0x0011
-    case bannedUser = 0x0030
-    case badVersion = 0x0060
+    public let status: AuthenticationStatus
+    
+    public let profile: Profile?
+}
+
+// MARK: - Supporting Types
+
+public extension AuthenticationResponse {
+    
+    struct Profile: Encodable, Hashable {
+        
+        
+    }
 }
