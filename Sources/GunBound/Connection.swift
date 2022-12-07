@@ -108,39 +108,60 @@ internal actor Connection <Socket: GunBoundSocket> {
     
     /// Performs the actual IO for recieving data.
     internal func read() async throws {
+        
         // read packet
         let bytesToRead = Packet.maxSize
         let recievedData = try await socket.recieve(bytesToRead)
         self.recievedBytes += recievedData.count
-        guard let packet = Packet(data: recievedData) else {
+        
+        // parse packet
+        guard let packet = Packet(data: recievedData, validateOpcode: false) else {
             throw GunBoundError.invalidData(recievedData)
         }
-        // handle packet
         
+        // validate opcode
+        guard let opcode = Opcode(rawValue: packet.opcodeRawValue) else {
+            log?("Recieved unknown opcode 0x\(packet.opcodeRawValue.toHexadecimal())")
+            return
+        }
+        assert(packet.opcode == opcode)
+        
+        // handle packet
+        switch opcode.type {
+        case .response:
+            try await handle(response: packet, opcode: opcode)
+        case .request:
+            try await handle(request: packet, opcode: opcode)
+        case .command, .notification:
+            // For all other opcodes notify the upper layer of the PDU and let them act on it.
+            try await handle(notify: packet, opcode: opcode)
+        }
     }
     
     /// Performs the actual IO for sending data.
     @discardableResult
     internal func write() async throws -> Bool {
+        
+        // get next write operation
         guard let sendOperation = pickNextSendOpcode()
             else { return false }
+        
+        // write data to socket
         try await socket.send(sendOperation.data)
+        self.sentBytes += sendOperation.data.count
         let opcode = sendOperation.opcode
-        /*
+        
+        // wait for pending response
         switch opcode.type {
         case .request:
-            pendingRequest = sendOperation
-        case .indication:
             pendingRequest = sendOperation
         case .response:
             // Set `incomingRequest` to false to indicate that no request is pending
             incomingRequest = false
-        case .command,
-             .notification,
-             .confirmation:
+        case .command, .notification:
             break
         }
-        */
+        
         return true
     }
     
@@ -204,7 +225,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         return nil
     }
     
-    private func handle(notify data: Data, opcode: Opcode) async throws {
+    private func handle(notify packet: Packet, opcode: Opcode) async throws {
         
         var foundPDU: GunBoundPacket?
         
@@ -215,8 +236,8 @@ internal actor Connection <Socket: GunBoundSocket> {
             if type(of: notify).packetType.opcode != opcode { continue }
             
             // attempt to deserialize
-            guard let PDU = foundPDU ?? (try? type(of: notify).packetType.init(data: data, decoder: decoder))
-                else { throw GunBoundError.invalidData(data) }
+            guard let PDU = foundPDU ?? (try? type(of: notify).packetType.init(packet: packet, decoder: decoder))
+                else { throw GunBoundError.invalidData(packet.data) }
             
             foundPDU = PDU
             
@@ -227,10 +248,55 @@ internal actor Connection <Socket: GunBoundSocket> {
         }
         // TODO: Unsupported packets
         // If this was a request and no handler was registered for it, respond with "Not Supported"
-        /*if foundPDU == nil && opcode.type == .request {
-            let errorResponse = ATTErrorResponse(request: opcode, attributeHandle: 0x00, error: .requestNotSupported)
-            let _ = queue(errorResponse)
-        }*/
+        if foundPDU == nil && opcode.type == .request {
+            //let errorResponse = ATTErrorResponse(request: opcode, attributeHandle: 0x00, error: .requestNotSupported)
+            //let _ = queue(errorResponse)
+        }
+    }
+    
+    private func handle(response packet: Packet, opcode: Opcode) async throws {
+        
+        // If no request is pending, then the response is unexpected. Disconnect the bearer.
+        guard let sendOperation = self.pendingRequest else {
+            throw GunBoundError.invalidData(packet.data)
+        }
+        
+        // If the received response doesn't match the pending request, or if the request is malformed,
+        // end the current request with failure.
+                
+        guard let requestOpcode = opcode.request
+            else { throw GunBoundError.unexpectedResponse(packet.data) }
+                
+        // clear current pending request
+        defer { self.pendingRequest = nil }
+        
+        /// Verify the recieved response belongs to the pending request
+        guard sendOperation.opcode == requestOpcode else {
+            throw GunBoundError.invalidData(packet.data)
+        }
+        
+        // success!
+        try sendOperation.handleResponse(packet)
+        
+        writePending()
+    }
+    
+    private func handle(request packet: Packet, opcode: Opcode) async throws {
+        
+        /*
+        * If a request is currently pending, then the sequential
+        * protocol was violated. Disconnect the bearer, which will
+        * promptly notify the upper layer via disconnect handlers.
+        */
+        
+        // Received request while another is pending.
+        guard incomingRequest == false
+            else { throw GunBoundError.invalidData(packet.data) }
+        
+        incomingRequest = true
+        
+        // notify
+        try await handle(notify: packet, opcode: opcode)
     }
 }
 
@@ -239,7 +305,7 @@ internal final class SendOperation {
     /// The operation identifier.
     let id: UInt
     
-    /// The request data.
+    /// The sent data.
     let data: Data
     
     /// The sent opcode
@@ -259,6 +325,38 @@ internal final class SendOperation {
         self.opcode = opcode
         self.data = data
         self.response = response
+    }
+}
+
+extension SendOperation {
+    
+    func handleResponse(_ packet: Packet) throws {
+        // TODO: Handle response
+        /*
+        guard let responseInfo = self.response
+            else { throw GunBoundError.unexpectedResponse(data) }
+        
+        guard let opcode = data.first.flatMap(Opcode.init(rawValue:))
+            else { throw GunBoundError.invalidData(data) }
+        
+        if opcode == .errorResponse {
+            
+            guard let errorResponse = ErrorResponse(data: data)
+                else { throw GunBoundError.invalidData(data) }
+            
+            responseInfo.callback(errorResponse)
+            
+        } else if opcode == responseInfo.responseType.attributeOpcode {
+            
+            guard let response = responseInfo.responseType.init(data: data)
+                else { throw GunBoundError.invalidData(data) }
+            
+            responseInfo.callback(response)
+            
+        } else {
+            // other response
+            throw GunBoundError.unexpectedResponse(packet.data)
+        }*/
     }
 }
 
