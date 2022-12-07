@@ -55,6 +55,16 @@ public final class GunBoundTCPSocket {
     @usableFromInline
     internal let socket: Socket
     
+    public var event: GunBoundSocketEventStream {
+        let stream = self.socket.event
+        var iterator = stream.makeAsyncIterator()
+        return GunBoundSocketEventStream(unfolding: {
+            await iterator
+                .next()
+                .map { .init($0) }
+        })
+    }
+    
     // MARK: - Initialization
     
     deinit {
@@ -80,10 +90,18 @@ public final class GunBoundTCPSocket {
     }
     
     public static func client(
-        address: GunBoundAddress,
-        destination: GunBoundAddress
+        address localAddress: GunBoundAddress,
+        destination destinationAddress: GunBoundAddress
     ) async throws -> Self {
-        fatalError()
+        let fileDescriptor = try SocketDescriptor.tcp(localAddress) // [.closeOnExec, .nonBlocking])
+        try await fileDescriptor.closeIfThrows {
+            try fileDescriptor.setNonblocking()
+            try await fileDescriptor.connect(to: IPv4SocketAddress(destinationAddress), sleep: 100_000_000)
+        }
+        return await Self(
+            fileDescriptor: fileDescriptor,
+            address: localAddress
+        )
     }
     
     public static func server(
@@ -153,7 +171,7 @@ internal extension SocketDescriptor {
         _ address: GunBoundAddress
     ) throws -> SocketDescriptor {
         let socketProtocol = IPv4Protocol.tcp
-        let socketAddress = IPv4SocketAddress(address: address.ipAddress, port: address.port)
+        let socketAddress = IPv4SocketAddress(address)
         return try self.init(socketProtocol, bind: socketAddress)
     }
     
