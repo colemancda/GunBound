@@ -73,7 +73,7 @@ internal extension GunBoundDecoder {
         
         let data: Data
         
-        fileprivate(set) var offset: Int = 0
+        fileprivate(set) var offset: Int = 6
         
         // MARK: - Initialization
         
