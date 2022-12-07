@@ -34,6 +34,20 @@ public struct GunBoundAddress: Equatable, Hashable, Codable {
     }
 }
 
+internal extension GunBoundAddress {
+    
+    init(_ address: IPv4SocketAddress) {
+        self.init(ipAddress: address.address, port: address.port)
+    }
+}
+
+internal extension IPv4SocketAddress {
+    
+    init(_ address: GunBoundAddress) {
+        self.init(address: address.ipAddress, port: address.port)
+    }
+}
+
 // MARK: - RawRepresentable
 
 extension GunBoundAddress: RawRepresentable {
