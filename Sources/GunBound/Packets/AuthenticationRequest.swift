@@ -9,7 +9,7 @@ import Foundation
 
 public struct AuthenticationRequest: GunBoundPacket, Equatable, Hashable, Codable {
     
-    public static var command: Command { .authenticationRequest }
+    public static var opcode: Opcode { .authenticationRequest }
     
     
     

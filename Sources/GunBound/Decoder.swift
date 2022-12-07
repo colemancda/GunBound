@@ -25,8 +25,8 @@ public struct GunBoundDecoder {
     // MARK: - Methods
     
     public func decode<T>(_ type: T.Type, from data: Data) throws -> T where T: Decodable, T: GunBoundPacket {
-        let command = T.command
-        log?("Will decode \(command) packet")
+        let opcode = T.opcode
+        log?("Will decode \(opcode) packet")
         
         fatalError()
     }

@@ -9,7 +9,7 @@ import Foundation
 
 public struct NonceResponse: GunBoundPacket, Equatable, Hashable, Codable {
     
-    public static var command: Command { .nonceResponse }
+    public static var opcode: Opcode { .nonceResponse }
     
     public let nonce: Nonce
     

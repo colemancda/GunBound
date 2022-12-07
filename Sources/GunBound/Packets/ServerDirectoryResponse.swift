@@ -9,7 +9,7 @@ import Foundation
 
 public struct ServerDirectoryResponse: GunBoundPacket, Equatable, Hashable, Encodable {
     
-    public static var command: Command { .serverDirectoryResponse }
+    public static var opcode: Opcode { .serverDirectoryResponse }
     
     public let directory: ServerDirectory
     

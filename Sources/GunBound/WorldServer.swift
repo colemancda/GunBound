@@ -22,7 +22,7 @@ public actor WorldServer {
         NSLog(packet.data.toHexadecimal())
         
         do {
-            switch packet.command {
+            switch packet.opcode {
             case .nonceRequest:
                 fatalError()
             case .authenticationRequest:

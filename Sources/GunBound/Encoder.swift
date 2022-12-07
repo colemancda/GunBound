@@ -26,13 +26,13 @@ public struct GunBoundEncoder {
     // MARK: - Methods
     
     public func encode<T>(_ value: T, id: Packet.ID? = nil) throws -> Packet where T: Encodable, T: GunBoundPacket {
-        let command = T.command
-        log?("Will encode \(command) packet")
+        let opcode = T.opcode
+        log?("Will encode \(opcode) packet")
         // initialize encoder
         let encoder = Encoder(
             userInfo: userInfo,
             log: log,
-            command: command
+            opcode: opcode
         )
         // Reserve buffer capacity
         if let encodable = value as? GunBoundPacketEncodable {
@@ -53,8 +53,8 @@ public struct GunBoundEncoder {
         return encoder.packet
     }
     
-    public func encode(_ command: Command, id: Packet.ID? = nil) -> Packet {
-        var packet = Packet(command: command)
+    public func encode(_ opcode: Opcode, id: Packet.ID? = nil) -> Packet {
+        var packet = Packet(opcode: opcode)
         packet.id = id ?? .init(serverPacketLength: Int(packet.size))
         return packet
     }
@@ -79,15 +79,16 @@ internal extension GunBoundEncoder {
         
         // MARK: - Initialization
         
-        fileprivate init(codingPath: [CodingKey] = [],
-             userInfo: [CodingUserInfoKey : Any],
-             log: ((String) -> ())?,
-             command: Command) {
-            
+        fileprivate init(
+            codingPath: [CodingKey] = [],
+            userInfo: [CodingUserInfoKey : Any],
+            log: ((String) -> ())?,
+            opcode: Opcode
+        ) {
             self.codingPath = codingPath
             self.userInfo = userInfo
             self.log = log
-            self.packet = Packet(command: command)
+            self.packet = Packet(opcode: opcode)
         }
         
         // MARK: - Encoder

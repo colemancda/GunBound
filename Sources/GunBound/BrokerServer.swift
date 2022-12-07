@@ -24,7 +24,7 @@ public actor BrokerServer {
     
     public func handle(address: IPv4Address, packet: Packet) async -> Packet {
         do {
-            switch packet.command {
+            switch packet.opcode {
             case .serverDirectoryRequest:
                 return try serverDirectory()
             default:

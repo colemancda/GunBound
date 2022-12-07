@@ -23,12 +23,18 @@ public struct Packet: Equatable, Hashable, Identifiable {
             return nil
         }
         self.data = data
+        // validate opcode
+        guard let opcode = Opcode(rawValue: self.opcodeRawValue) else {
+            return nil
+        }
+        assert(self.opcode == opcode)
     }
     
-    internal init(command: Command) {
+    internal init(opcode: Opcode) {
         self.data = Data(count: Packet.minSize)
         self.size = numericCast(Packet.minSize)
-        self.command = command
+        self.opcodeRawValue = opcode.rawValue
+        assert(self.opcode == opcode)
     }
 }
 
@@ -64,10 +70,17 @@ public extension Packet {
     }
     
     /// Packet command
-    internal(set) var command: Command {
-        get { Command(rawValue: UInt16(littleEndian: UInt16(bytes: (data[4], data[5])))) }
+    var opcode: Opcode {
+        guard let opcode = Opcode(rawValue: opcodeRawValue) else {
+            fatalError("Invalid opcode \(opcodeRawValue.toHexadecimal())")
+        }
+        return opcode
+    }
+    
+    internal var opcodeRawValue: UInt16 {
+        get { UInt16(littleEndian: UInt16(bytes: (data[4], data[5]))) }
         set {
-            let bytes = newValue.rawValue.littleEndian.bytes
+            let bytes = newValue.littleEndian.bytes
             data[4] = bytes.0
             data[5] = bytes.1
         }
@@ -95,7 +108,7 @@ public extension Packet {
 extension Packet: CustomStringConvertible, CustomDebugStringConvertible {
     
     public var description: String {
-        "Packet(size: \(size), id: \(id), command: \(command), parameters: \(parametersSize) bytes)"
+        "Packet(size: \(size), id: \(id), opcode: \(opcode), parameters: \(parametersSize) bytes)"
     }
     
     public var debugDescription: String {
@@ -109,7 +122,7 @@ extension Packet: CustomStringConvertible, CustomDebugStringConvertible {
 public protocol GunBoundPacket {
     
     /// GunBound command type
-    static var command: Command { get }
+    static var opcode: Opcode { get }
 }
 
 internal protocol GunBoundPacketEncodable: GunBoundPacket, Encodable {

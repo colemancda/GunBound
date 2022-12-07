@@ -213,7 +213,7 @@ internal extension GunBoundServer {
             do {
                 // read packet
                 let request = try await read()
-                self.server.log?("[\(address.address)] Recieved packet \(request.command) ID \(request.id)")
+                self.server.log?("[\(address.address)] Recieved packet \(request.opcode) ID \(request.id)")
                 // respond
                 let response = await self.server.response(address, request)
                 try await respond(response)
@@ -245,7 +245,7 @@ internal extension GunBoundServer {
         
         private func respond(_ response: Packet) async throws {
             try await self.write(response.data)
-            self.server.log?("[\(address.address)] Response Command \(response.command) ID \(response.id) (\(response.data.count) bytes)")
+            self.server.log?("[\(address.address)] Response Command \(response.opcode) ID \(response.id) (\(response.data.count) bytes)")
         }
     }
 }

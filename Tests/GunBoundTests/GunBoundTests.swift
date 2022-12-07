@@ -30,7 +30,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 10)
         XCTAssertEqual(packet.data.count, 10)
-        XCTAssertEqual(packet.command, .serverDirectoryRequest)
+        XCTAssertEqual(packet.opcode, .serverDirectoryRequest)
         XCTAssertEqual(packet.id, 0x46A5)
         XCTAssertEqual(packet.parametersSize, 4)
         XCTAssertEqual(packet.parameters, Data([0x00, 0x00, 0x00, 0x00]))
@@ -67,7 +67,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(packet.data.count, 72)
             XCTAssertEqual(packet.id, .init(serverPacketLength: packet.data.count))
             XCTAssertEqual(packet.id, 0xCB2B)
-            XCTAssertEqual(packet.command, .serverDirectoryResponse)
+            XCTAssertEqual(packet.opcode, .serverDirectoryResponse)
             XCTAssertEqual(packet.parametersSize, packet.data.count - 6)
             
             XCTAssertEqual(serverDirectory.count, 1)
@@ -160,7 +160,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(packet.data.count, 280)
             XCTAssertEqual(packet.id, .init(serverPacketLength: 280))
             XCTAssertEqual(packet.id, 0x08BB)
-            XCTAssertEqual(packet.command, .serverDirectoryResponse)
+            XCTAssertEqual(packet.opcode, .serverDirectoryResponse)
             XCTAssertEqual(packet.parametersSize, 280 - 6)
             
             XCTAssertEqual(serverDirectory.count, 5)
@@ -179,7 +179,7 @@ final class GunBoundTests: XCTestCase {
             return
         }
         XCTAssertEqual(packet.data, data)
-        XCTAssertEqual(packet.command, .nonceRequest)
+        XCTAssertEqual(packet.opcode, .nonceRequest)
         XCTAssertEqual(packet.size, numericCast(Packet.minSize))
         XCTAssertEqual(packet.data.count, numericCast(Packet.minSize))
         XCTAssertEqual(packet.id, 0x36B1)

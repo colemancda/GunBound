@@ -122,9 +122,27 @@ internal actor Connection <Socket: GunBoundSocket> {
     /// Performs the actual IO for sending data.
     @discardableResult
     internal func write() async throws -> Bool {
-        fatalError()
+        guard let sendOperation = pickNextSendOpcode()
+            else { return false }
+        try await socket.send(sendOperation.data)
+        let opcode = sendOperation.opcode
+        /*
+        switch opcode.type {
+        case .request:
+            pendingRequest = sendOperation
+        case .indication:
+            pendingRequest = sendOperation
+        case .response:
+            // Set `incomingRequest` to false to indicate that no request is pending
+            incomingRequest = false
+        case .command,
+             .notification,
+             .confirmation:
+            break
+        }
+        */
+        return true
     }
-    
     
     // write all pending PDUs
     private func writePending() {
@@ -186,7 +204,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         return nil
     }
     
-    private func handle(notify data: Data, opcode: Command) async throws {
+    private func handle(notify data: Data, opcode: Opcode) async throws {
         
         var foundPDU: GunBoundPacket?
         
@@ -194,7 +212,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         for notify in oldList {
             
             // try next
-            if type(of: notify).packetType.command != opcode { continue }
+            if type(of: notify).packetType.opcode != opcode { continue }
             
             // attempt to deserialize
             guard let PDU = foundPDU ?? (try? type(of: notify).packetType.init(data: data, decoder: decoder))
@@ -225,14 +243,14 @@ internal final class SendOperation {
     let data: Data
     
     /// The sent opcode
-    let opcode: Command
+    let opcode: Opcode
     
     /// The response callback.
     let response: (callback: (GunBoundPacket) -> (), responseType: GunBoundPacket.Type)?
     
     fileprivate init(
         id: UInt,
-        opcode: Command,
+        opcode: Opcode,
         data: Data,
         response: (callback: (GunBoundPacket) -> (),
                    responseType: GunBoundPacket.Type)? = nil

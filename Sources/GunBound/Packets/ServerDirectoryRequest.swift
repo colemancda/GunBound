@@ -9,7 +9,7 @@ import Foundation
 
 public struct ServerDirectoryRequest: GunBoundPacket, Equatable, Hashable, Codable {
     
-    public static var command: Command { .serverDirectoryRequest }
+    public static var opcode: Opcode { .serverDirectoryRequest }
     
     let padding: UInt32 // 0x0000 by default
     
