@@ -10,4 +10,6 @@ import Foundation
 public enum GunBoundError: Error {
     
     case invalidData(Data)
+    
+    case unexpectedResponse(Data)
 }
