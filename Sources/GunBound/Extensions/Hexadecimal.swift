@@ -28,3 +28,10 @@ internal extension Collection where Element: FixedWidthInteger {
         return string
     }
 }
+
+internal extension Sequence where Element == UInt8 {
+    
+    var hexString: String {
+        return "[" + reduce("", { $0 + ($0.isEmpty ? "" : ", ") + "0x" + $1.toHexadecimal().uppercased() }) + "]"
+    }
+}
