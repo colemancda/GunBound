@@ -47,6 +47,38 @@ public extension Opcode {
         case .serverDirectoryResponse:              return .response
         }
     }
+    
+    
+    /// Get the equivalent request for the current response opcode (if applicable).
+    var request: Opcode? {
+        return Opcode.requestsByResponse[self]
+    }
+    
+    /// Get the equivalent response for the current request opcode (if applicable).
+    var response: Opcode? {
+        return Opcode.responsesByRequest[self]
+    }
+}
+
+private extension Opcode {
+    
+    static let requestResponseMap: [(request: Opcode,  response: Opcode)] = [
+        (nonceRequest,                  nonceResponse),
+        (authenticationRequest,         authenticationResponse),
+        (serverDirectoryRequest,        serverDirectoryResponse),
+    ]
+    
+    static let responsesByRequest: [Opcode: Opcode] = {
+        var dictionary = [Opcode: Opcode](minimumCapacity: requestResponseMap.count)
+        requestResponseMap.forEach { dictionary[$0.request] = $0.response }
+        return dictionary
+    }()
+    
+    static let requestsByResponse: [Opcode: Opcode] = {
+        var dictionary = [Opcode: Opcode](minimumCapacity: requestResponseMap.count)
+        requestResponseMap.forEach { dictionary[$0.response] = $0.request }
+        return dictionary
+    }()
 }
 
 // MARK: - Supporting Types
