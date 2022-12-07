@@ -7,8 +7,28 @@
 
 import Foundation
 
+/// GunBound Packet Decoder
 public struct GunBoundDecoder {
     
+    // MARK: - Properties
     
+    /// Any contextual information set by the user for encoding.
+    public var userInfo = [CodingUserInfoKey : Any]()
+    
+    /// Logger handler
+    public var log: ((String) -> ())?
+    
+    // MARK: - Initialization
+    
+    public init() { }
+    
+    // MARK: - Methods
+    
+    public func decode<T>(_ type: T.Type, from data: Data) throws -> T where T: Decodable, T: GunBoundPacket {
+        let command = T.command
+        log?("Will decode \(command) packet")
+        
+        fatalError()
+    }
 }
 
