@@ -21,15 +21,17 @@ final class CryptoTests: XCTestCase {
         XCTAssertEqual(String(data: decrypted, encoding: .ascii), username)
     }
     
-    func decryptPassword() {
+    func testDecryptPassword() {
         
         let username = "testusername"
         let password = "testpassword"
-        let nonce: Nonce = 0x37C654B2
-        let encrypted = Data(hexString: "EB9EADFF3DBC5704CA0A8510222E052D8438E4A7C3E3A7579542C3D9B3D41D3F5B431ED5DE835F3B40738A8CBF424C20")
-        let decrypted = Data(hexString: "7465737470617373776F7264000000000000000018010000010AD3370320AB1F0080D80A")
+        let nonce: Nonce = 0x00010203
+        let key = Key(username: username, password: password, nonce: nonce)
+        let encrypted = Data(hexString: "855F4B1102A6670C211C615FD886DFA72B0AB1164CC75A3DA8EBE5CBD3856EB75B47E9A28C2CA0A3A0ED467A12CBE942")!
+        let decrypted = Data(hexString: "7465737470617373776F7264000000000000000018010000010AD3370320AB0000000000")!
         
-        
+        //XCTAssertEqual(try Crypto.AES.decrypt(encrypted, key: key, opcode: .authenticationRequest), decrypted)
+        XCTAssertEqual(String(data: decrypted.prefix(0xC), encoding: .utf8), password)
     }
     
     func testGenerateDynamicKey() {

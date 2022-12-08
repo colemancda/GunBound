@@ -14,4 +14,6 @@ public enum GunBoundError: Error {
     case invalidData(Data)
     
     case unexpectedResponse(Data)
+    
+    case checksumMismatch(UInt32, UInt32)
 }

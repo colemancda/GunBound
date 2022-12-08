@@ -22,8 +22,15 @@ extension AuthenticationRequest: GunBoundDecodable {
         // decode username
         self.username = try container.decode(length: 0x10) {
             let decryptedData = try Crypto.AES.decrypt($0, key: .login)
-            return String(data: decryptedData, encoding: .ascii)
+            return decryptedData.withUnsafeBytes {
+                $0.baseAddress?.withMemoryRebound(to: Int8.self, capacity: decryptedData.count) {
+                    return String(cString: $0, encoding: .ascii)
+                }
+            }
         }
+        // decode rest
+        
+        
         // TODO: Decode
         self.clientVersion = 280
     }
