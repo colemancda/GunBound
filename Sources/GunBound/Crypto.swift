@@ -26,11 +26,54 @@ public extension Key {
     static var commandLine: Key { Key([0xFA, 0xEE, 0x85, 0xF2, 0x40, 0x73, 0xD9, 0x16, 0x13, 0x90, 0x19, 0x7F, 0x6E, 0x56, 0x2A, 0x67]) }
 }
 
+public extension Key {
+    
+    /// Create session key.
+    init(username: String, password: String, nonce: Nonce) {
+        let plainText = Key.plainText(
+            username: username,
+            password: password,
+            nonce: nonce
+        )
+        self.data = Crypto.SHA0.process(plainText)
+    }
+    
+    internal static func plainText(username: String, password: String, nonce: Nonce) -> Data {
+        var bytes = Data()
+        bytes += username.data(using: .ascii) ?? Data()
+        bytes += password.data(using: .ascii) ?? Data()
+        let nonceBytes = nonce.rawValue.bigEndian.bytes
+        bytes += nonceBytes.0
+        bytes += nonceBytes.1
+        bytes += nonceBytes.2
+        bytes += nonceBytes.3
+        let bitLength = UInt16(8 * bytes.count)
+        bytes += [0x80]
+        bytes += [UInt8](repeating: 0x00, count: 62 - bytes.count)
+        let lengthBytes = bitLength.bigEndian.bytes
+        bytes += [lengthBytes.0, lengthBytes.1]
+        return bytes
+    }
+}
+
+// MARK: - CustomStringConvertible
+
+extension Key: CustomStringConvertible, CustomDebugStringConvertible {
+    
+    public var description: String {
+        data.toHexadecimal()
+    }
+    
+    public var debugDescription: String {
+        description
+    }
+}
+
 // MARK: - Encryption
 
 internal struct Crypto {
     
-    struct AES {
+    enum AES {
         
         static func decrypt(_ data: Data, key: Key) throws -> Data {
             let aes = try CryptoSwift.AES(key: .init(key.data), blockMode: ECB(), padding: .zeroPadding)
@@ -39,7 +82,7 @@ internal struct Crypto {
         }
     }
     
-    struct SHA0 {
+    enum SHA0 {
         
         static func process(_ block: Data) -> Data {
             /*

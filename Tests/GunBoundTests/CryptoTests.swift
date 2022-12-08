@@ -36,14 +36,22 @@ final class CryptoTests: XCTestCase {
         
         let username = "testusername"
         let password = "testpassword"
-        let nonce: Nonce = 0x37C654B2
+        let nonce: Nonce = 0x00010203
         
+        //let key = Key(username: username, password: password, nonce: nonce)
+        //XCTAssertEqual(key.description, "47E32B0B96C29B7E0B57880C2FA99A16")
         
+        do {
+            let rawKey = Key.plainText(username: username, password: password, nonce: nonce)
+            XCTAssertEqual(rawKey.toHexadecimal(), "74657374757365726E616D657465737470617373776F7264000102038000000000000000000000000000000000000000000000000000000000000000000000E0")
+        }
     }
     
     func testSHA0() {
         
         let plainText = Data(hexString: "74657374757365726E616D657465737470617373776F7264000102038000000000000000000000000000000000000000000000000000000000000000000000E0")!
+        let output = Data(hexString: "47E32B0B96C29B7E0B57880C2FA99A16")!
+        XCTAssertEqual(Crypto.SHA0.process(plainText), output)
         
         do {
             let data = [UInt8](plainText)
@@ -61,8 +69,5 @@ final class CryptoTests: XCTestCase {
             let sha_h = Crypto.SHA0.sha0_process_block(data)
             XCTAssertEqual(sha_h, [187425607, 2124137110, 210261771, 379234607, 2440093899])
         }
-        
-        let output = Data(hexString: "47E32B0B96C29B7E0B57880C2FA99A16")!
-        XCTAssertEqual(Crypto.SHA0.process(plainText), output)
     }
 }
