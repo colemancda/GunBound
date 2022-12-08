@@ -192,6 +192,8 @@ internal extension GunBoundServer {
             await connection.register { [weak self] in await self?.serverDirectory($0) }
             // nonce
             await connection.register { [weak self] in await self?.nonce($0) }
+            // login
+            await connection.register { [weak self] in await self?.login($0) }
         }
         
         /// Respond to a client-initiated PDU message.
@@ -205,14 +207,20 @@ internal extension GunBoundServer {
             log("Server Directory Request")
             let directory = await self.server.dataSource.serverDirectory
             let response = ServerDirectoryResponse(directory: directory)
-            await self.respond(response)
+            await respond(response)
         }
         
         private func nonce(_ packet: NonceRequest) async {
             log("Nonce Request")
             self.nonce = Nonce() // now random nonce
             let response = NonceResponse(nonce: nonce)
-            await self.respond(response)
+            await respond(response)
+        }
+        
+        private func login(_ packet: AuthenticationRequest) async {
+            log("Authentication Request")
+            let response = AuthenticationResponse(status: .success, profile: nil)
+            await respond(response)
         }
     }
 }
