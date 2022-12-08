@@ -168,6 +168,11 @@ internal actor Connection <Socket: GunBoundSocket> {
         // write data to socket
         try await socket.send(packet.data)
         
+        log?("Sent packet \(packet.opcode) ID \(packet.id)")
+        #if DEBUG
+        log?("\(packet.data.hexString)")
+        #endif
+        
         // wait for pending response
         switch packet.opcode.type {
         case .request:
