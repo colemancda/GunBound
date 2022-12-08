@@ -91,7 +91,7 @@ internal struct Crypto {
             for i in 0 ..< data.count {
                 let internal128BitIndex = i % 16
                 if internal128BitIndex < 4 {
-                    currentBlockCommand |= UInt32(decrypted[i]) << internal128BitIndex * 8
+                    currentBlockCommand |= UInt32(decrypted[i]) << (internal128BitIndex * 8)
                     if internal128BitIndex == 3 {
                         if currentBlockCommand != checksum {
                             // command checksum mismatch

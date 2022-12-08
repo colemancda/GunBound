@@ -30,7 +30,7 @@ final class CryptoTests: XCTestCase {
         let encrypted = Data(hexString: "855F4B1102A6670C211C615FD886DFA72B0AB1164CC75A3DA8EBE5CBD3856EB75B47E9A28C2CA0A3A0ED467A12CBE942")!
         let decrypted = Data(hexString: "7465737470617373776F7264000000000000000018010000010AD3370320AB0000000000")!
         
-        //XCTAssertEqual(try Crypto.AES.decrypt(encrypted, key: key, opcode: .authenticationRequest), decrypted)
+        XCTAssertEqual(try Crypto.AES.decrypt(encrypted, key: key, opcode: .authenticationRequest), decrypted)
         XCTAssertEqual(String(data: decrypted.prefix(0xC), encoding: .utf8), password)
     }
     
