@@ -24,7 +24,7 @@ public struct GunBoundDecoder {
     
     // MARK: - Methods
     
-    public func decode<T>(_ type: T.Type, from data: Data) throws -> T where T: Decodable, T: GunBoundPacket {
+    public func decodePacket<T>(_ type: T.Type, from data: Data) throws -> T where T: Decodable, T: GunBoundPacket {
         
         guard let packet = Packet(data: data) else {
             throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Could not decode packet"))
@@ -45,6 +45,25 @@ public struct GunBoundDecoder {
             userInfo: userInfo,
             log: log,
             data: packet.data
+        )
+        decoder.offset = 6
+        
+        if let decodableType = type as? GunBoundDecodable.Type {
+            let container = GunBoundDecodingContainer(referencing: decoder)
+            return try decodableType.init(from: container) as! T
+        } else {
+            return try T.init(from: decoder)
+        }
+    }
+    
+    public func decode<T>(_ type: T.Type, from data: Data) throws -> T where T: Decodable {
+        
+        log?("Will decode \(T.self)")
+        
+        let decoder = Decoder(
+            userInfo: userInfo,
+            log: log,
+            data: data
         )
         
         if let decodableType = type as? GunBoundDecodable.Type {
@@ -73,7 +92,7 @@ internal extension GunBoundDecoder {
         
         let data: Data
         
-        fileprivate(set) var offset: Int = 6
+        fileprivate(set) var offset: Int = 0
         
         // MARK: - Initialization
         
@@ -414,6 +433,10 @@ public struct GunBoundDecodingContainer {
     
     /// The path of coding keys taken to get to this point in decoding.
     public let codingPath: [CodingKey]
+    
+    public var remainingBytes: Int {
+        decoder.data.count - decoder.offset
+    }
     
     // MARK: Initialization
     

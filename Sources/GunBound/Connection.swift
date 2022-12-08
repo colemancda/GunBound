@@ -118,7 +118,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         self.recievedBytes += recievedData.count
         
         // parse packet
-        guard let packet = Packet(data: recievedData, validateOpcode: false) else {
+        guard let packet = Packet(data: recievedData, validateLength: true, validateOpcode: false) else {
             throw GunBoundError.invalidData(recievedData)
         }
         

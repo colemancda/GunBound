@@ -31,7 +31,7 @@ final class CryptoTests: XCTestCase {
         let decrypted = Data(hexString: "7465737470617373776F7264000000000000000018010000010AD3370320AB0000000000")!
         
         XCTAssertEqual(try Crypto.AES.decrypt(encrypted, key: key, opcode: .authenticationRequest), decrypted)
-        XCTAssertEqual(String(data: decrypted.prefix(0xC), encoding: .utf8), password)
+        XCTAssertEqual(String(data: decrypted.prefix(0xC), encoding: .ascii), password)
     }
     
     func testGenerateDynamicKey() {

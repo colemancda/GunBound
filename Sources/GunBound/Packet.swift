@@ -13,19 +13,21 @@ public struct Packet: Equatable, Hashable, Identifiable {
     public internal(set) var data: Data
     
     public init?(data: Data) {
-        self.init(data: data, validateOpcode: true)
+        self.init(data: data, validateLength: true, validateOpcode: true)
     }
     
-    internal init?(data: Data, validateOpcode: Bool) {
+    internal init?(data: Data, validateLength: Bool, validateOpcode: Bool) {
         // validate size
         guard data.count >= Packet.minSize,
               data.count <= Packet.maxSize else {
             return nil
         }
         // validate length
-        let length = UInt16(littleEndian: UInt16(bytes: (data[0], data[1])))
-        guard data.count == Int(length) else {
-            return nil
+        if validateLength {
+            let length = UInt16(littleEndian: UInt16(bytes: (data[0], data[1])))
+            guard data.count == Int(length) else {
+                return nil
+            }
         }
         self.data = data
         // validate opcode

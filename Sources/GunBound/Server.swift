@@ -218,7 +218,7 @@ internal extension GunBoundServer {
         }
         
         private func login(_ packet: AuthenticationRequest) async {
-            log("Authentication Request")
+            log("Authentication Request - \(packet.username)")
             let response = AuthenticationResponse(status: .success, profile: nil)
             await respond(response)
         }
