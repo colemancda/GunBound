@@ -41,8 +41,106 @@ internal struct Crypto {
     
     struct SHA0 {
         
-        func process(_ block: Data) {
-            
+        static func process(_ block: Data) -> Data {
+            /*
+             the final hash value is computed by adding the values of the five 32-bit words in the sha_h array to the corresponding words in the sha_h array. The resulting array is then converted into a byte array by converting each 32-bit word into a 4-byte big-endian representation. Finally, the first four bytes are removed from the resulting byte array, and the endianness of each 4-byte block is reversed. This transforms the SHA-0 hash into a "gunbound-sha" hash.
+             */
+            return Data(compute_gunbound_sha(.init(block)))
         }
+        
+        private static func sha0_process_block(_ chunk: [UInt8]) -> [UInt32] {
+            
+            func left_rotate(_ n: UInt32, _ b: UInt32) -> UInt32 {
+                return (n << b) | (n >> (32 - b)) & 0xffffffff
+            }
+            
+            var w = [UInt32]()
+
+            // break 64-byte chunk to 16 big-endian DWORDs
+            for i in 0..<16 {
+                let chunk_byte1 = UInt32(chunk[i * 4 + 3]) << (0 * 8)
+                let chunk_byte2 = UInt32(chunk[i * 4 + 2]) << (1 * 8)
+                let chunk_byte3 = UInt32(chunk[i * 4 + 1]) << (2 * 8)
+                let chunk_byte4 = UInt32(chunk[i * 4 + 0]) << (3 * 8)
+                w.append(chunk_byte1 | chunk_byte2 | chunk_byte3 | chunk_byte4)
+            }
+
+            // expand the 16 DWORDs into 80 DWORDs
+            for i in 16..<80 {
+                // left rotate 0 for SHA-0, left rotate 1 for SHA-1
+                w.append(left_rotate(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 0))
+            }
+
+            // actually mangle the data
+            let sha_h: [UInt32] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0]
+
+            var a = sha_h[0]
+            var b = sha_h[1]
+            var c = sha_h[2]
+            var d = sha_h[3]
+            var e = sha_h[4]
+
+            for i: UInt32 in 0 ..< 80 {
+                var k: UInt32 = 0
+                var f: UInt32 = 0
+
+                if 0 <= i && i <= 19 {
+                    // BODY_16_19
+                    f = d ^ (b & (c ^ d))
+                    k = 0x5A827999
+                } else if 20 <= i && i <= 39 {
+                    // BODY_20_31, BODY_32_39
+                    f = b ^ c ^ d
+                    k = 0x6ED9EBA1
+                } else if 40 <= i && i <= 59 {
+                    // BODY_40_59
+                    f = (b & c) | (b & d) | (c & d)
+                    k = 0x8F1BBCDC
+                } else if 60 <= i && i <= 79 {
+                    // BODY_60_79
+                    f = b ^ c ^ d
+                    k = 0xCA62C1D6
+                }
+                
+                //(a, b, c, d, e) = (left_rotate(a, 5) + f + e + k + w[i]) & 0xffffffff, b, left_rotate(c, 30), d, e, a)
+                e = d
+                d = c
+                c = left_rotate(b, 30)
+                b = a
+                var tmpA = left_rotate(a, 5)
+                tmpA += f + e + k + w[Int(i)]
+                tmpA = tmpA & 0xffffffff
+                a = tmpA
+            }
+            
+            return [a, b, c, d, e]
+        }
+        
+        private static func compute_gunbound_sha(_ chunk: [UInt8]) -> [UInt8] {
+            /*
+             This implementation first calls the sha0_process_block function to compute the SHA-0 hash of the input chunk. It then adds the values of the five words in the sha_h array to the corresponding words in the sha_h array. The resulting array is converted into a byte array by reversing the endianness of each 4-byte block and appending it to the result array. The first four bytes are not included in the final result array,
+             */
+            
+            // Process the chunk and compute the SHA-0 hash
+            var sha_h = sha0_process_block(chunk)
+
+            // Add this chunk's hash to result
+            sha_h[0] = (sha_h[0] + sha_h[0]) & 0xffffffff
+            sha_h[1] = (sha_h[1] + sha_h[1]) & 0xffffffff
+            sha_h[2] = (sha_h[2] + sha_h[2]) & 0xffffffff
+            sha_h[3] = (sha_h[3] + sha_h[3]) & 0xffffffff
+            sha_h[4] = (sha_h[4] + sha_h[4]) & 0xffffffff
+            
+            // changes a typical SHA-0 into "gunbound-sha" by removing 4 bytes and swapping the DWORD endian
+            var result = [UInt8]()
+            for block_index in 0..<4 {
+                //let bytes = int_to_bytes(sha_h[block_index], 4)
+                let bytes = sha_h[block_index].bytes
+                result.append(contentsOf: [bytes.0, bytes.1, bytes.2, bytes.3].reversed())
+            }
+
+            return result
+        }
+
     }
 }
