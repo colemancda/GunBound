@@ -87,16 +87,36 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
 ///
 public protocol GunBoundServerDataSource: AnyObject {
     
-    ///
-    var serverDirectory: ServerDirectory { get async }
+    /// get the list of servers
+    var serverDirectory: ServerDirectory { get async throws }
+    
+    /// get the credentials for a user
+    func password(for username: String) async throws -> String?
+    
+    func checkUserExists(_ username: String) async throws -> Bool
+    
+    func userBanned(_ username: String) async throws -> Bool
 }
 
 public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     
-    public init() { }
+    /// Initializer
+    public init(
+        stateChanged: ((State) -> ())? = nil
+    ) {
+        self.stateChanged = stateChanged
+    }
     
     ///
-    private var state = State()
+    public private(set) var state = State() {
+        didSet {
+            if let stateChanged = self.stateChanged, state != oldValue {
+                stateChanged(state)
+            }
+        }
+    }
+    
+    internal let stateChanged: ((State) -> ())?
     
     public func update(_ body: (inout State) -> ()) {
         body(&state)
@@ -106,6 +126,19 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     public var serverDirectory: ServerDirectory {
         state.serverDirectory
     }
+    
+    public func password(for username: String) async throws -> String? {
+        return state.users[username]
+    }
+    
+    public func checkUserExists(_ username: String) async throws -> Bool {
+        state.users[username] != nil
+    }
+    
+    public func userBanned(_ username: String) async throws -> Bool {
+        // TODO: User banning
+        return false
+    }
 }
 
 public extension InMemoryGunBoundServerDataSource {
@@ -113,6 +146,8 @@ public extension InMemoryGunBoundServerDataSource {
     struct State: Equatable, Hashable, Codable {
         
         public var serverDirectory: ServerDirectory = []
+        
+        public var users = [String: String]()
     }
 }
 
@@ -189,11 +224,26 @@ internal extension GunBoundServer {
         
         private func registerHandlers() async {
             // server directory
-            await connection.register { [weak self] in await self?.serverDirectory($0) }
+            await register { [unowned self] in try await self.serverDirectory($0) }
             // nonce
-            await connection.register { [weak self] in await self?.nonce($0) }
+            await register { [unowned self] in try await self.nonce($0) }
             // login
-            await connection.register { [weak self] in await self?.login($0) }
+            await register { [unowned self] in try await self.login($0) }
+        }
+        
+        @discardableResult
+        private func register <Request, Response> (
+            _ callback: @escaping (Request) async throws -> (Response)
+        ) async -> UInt where Request: GunBoundPacket, Request: Decodable, Response: GunBoundPacket, Response: Encodable {
+            await self.connection.register { [unowned self] request in
+                do {
+                    let response = try await callback(request)
+                    await self.respond(response)
+                }
+                catch {
+                    await self.close(error)
+                }
+            }
         }
         
         /// Respond to a client-initiated PDU message.
@@ -203,24 +253,61 @@ internal extension GunBoundServer {
                 else { fatalError("Could not add PDU to queue: \(response)") }
         }
         
-        private func serverDirectory(_ packet: ServerDirectoryRequest) async {
+        private func close(_ error: Error) async {
+            log("Error: \(error)")
+            await self.connection.socket.close()
+        }
+        
+        // MARK: - Requests
+        
+        private func serverDirectory(_ packet: ServerDirectoryRequest) async throws -> ServerDirectoryResponse {
             log("Server Directory Request")
-            let directory = await self.server.dataSource.serverDirectory
-            let response = ServerDirectoryResponse(directory: directory)
-            await respond(response)
+            let directory = try await self.server.dataSource.serverDirectory
+            return ServerDirectoryResponse(directory: directory)
         }
         
-        private func nonce(_ packet: NonceRequest) async {
+        private func nonce(_ packet: NonceRequest) async throws -> NonceResponse {
             log("Nonce Request")
-            self.nonce = Nonce() // now random nonce
-            let response = NonceResponse(nonce: nonce)
-            await respond(response)
+            self.nonce = Nonce() // refresh random nonce
+            return NonceResponse(nonce: nonce)
         }
         
-        private func login(_ packet: AuthenticationRequest) async {
-            log("Authentication Request - \(packet.username)")
-            let response = AuthenticationResponse(status: .success, profile: nil)
-            await respond(response)
+        private func login(_ request: AuthenticationRequest) async throws -> AuthenticationResponse {
+            log("Authentication Request - \(request.username)")
+            
+            // check if user exists
+            guard try await self.server.dataSource.checkUserExists(request.username) else {
+                return AuthenticationResponse(status: .badUsername, profile: nil)
+            }
+            
+            // check if user exists
+            guard let password = try await self.server.dataSource.password(for: request.username) else {
+                return AuthenticationResponse(status: .badUsername, profile: nil)
+            }
+            
+            // check if banned
+            guard try await self.server.dataSource.userBanned(request.username) else {
+                return AuthenticationResponse(status: .bannedUser, profile: nil)
+            }
+            
+            // decode encrypted data
+            let key = Key(
+                username: request.username,
+                password: request.username,
+                nonce: self.nonce
+            )
+            let decryptedData = try Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode)
+            let decryptedValue = try connection.decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
+            
+            #if DEBUG
+            log("Login attempt for \(request.username) with password \"\(decryptedValue.password)\" client version \(decryptedValue.clientVersion))")
+            #endif
+            
+            guard password == decryptedValue.password else {
+                return AuthenticationResponse(status: .badPassword, profile: nil)
+            }
+            
+            return AuthenticationResponse(status: .success, profile: nil)
         }
     }
 }
