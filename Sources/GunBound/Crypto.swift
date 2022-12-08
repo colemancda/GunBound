@@ -54,21 +54,13 @@ internal struct Crypto {
              */
             
             // Process the chunk and compute the SHA-0 hash
-            var sha_h = sha0_process_block(chunk)
-
-            // Add this chunk's hash to result
-            sha_h[0] = (sha_h[0] + sha_h[0]) & 0xffffffff
-            sha_h[1] = (sha_h[1] + sha_h[1]) & 0xffffffff
-            sha_h[2] = (sha_h[2] + sha_h[2]) & 0xffffffff
-            sha_h[3] = (sha_h[3] + sha_h[3]) & 0xffffffff
-            sha_h[4] = (sha_h[4] + sha_h[4]) & 0xffffffff
+            let sha_h = sha0_process_block(chunk)
             
             // changes a typical SHA-0 into "gunbound-sha" by removing 4 bytes and swapping the DWORD endian
             var result = [UInt8]()
             for block_index in 0..<4 {
-                //let bytes = int_to_bytes(sha_h[block_index], 4)
-                let bytes = sha_h[block_index].bytes
-                result.append(contentsOf: [bytes.0, bytes.1, bytes.2, bytes.3].reversed())
+                let bytes = sha_h[block_index].bigEndian.bytes
+                result += [bytes.0, bytes.1, bytes.2, bytes.3]
             }
 
             return result
@@ -86,7 +78,7 @@ internal struct Crypto {
             sha0_process_block_2(chunk, w: &w)
 
             // actually mangle the data
-            let sha_h: [UInt32] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0]
+            var sha_h: [UInt32] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0]
 
             var a = sha_h[0]
             var b = sha_h[1]
@@ -117,8 +109,6 @@ internal struct Crypto {
                 }
                 
                 let tmp = (a: a, b: b, c: c, d: d, e: e)
-                //(a, b, c, d, e) = (left_rotate(a, 5) + f + e + k + w[i]) & 0xffffffff, b, left_rotate(c, 30), d, e, a)
-                
                 var tmpA = UInt64(left_rotate(tmp.a, 5))
                 tmpA += UInt64(f)
                 tmpA += UInt64(tmp.e)
@@ -132,7 +122,14 @@ internal struct Crypto {
                 e = tmp.d
             }
             
-            return [a, b, c, d, e]
+            // Add this chunk's hash to result
+            sha_h[0] = UInt32( (UInt64(sha_h[0]) + UInt64(a)) & 0xffffffff )
+            sha_h[1] = UInt32( (UInt64(sha_h[1]) + UInt64(b)) & 0xffffffff )
+            sha_h[2] = UInt32( (UInt64(sha_h[2]) + UInt64(c)) & 0xffffffff )
+            sha_h[3] = UInt32( (UInt64(sha_h[3]) + UInt64(d)) & 0xffffffff )
+            sha_h[4] = UInt32( (UInt64(sha_h[4]) + UInt64(e)) & 0xffffffff )
+            
+            return sha_h
         }
         
         static func sha0_process_block_0(

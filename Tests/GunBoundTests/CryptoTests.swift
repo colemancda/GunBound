@@ -59,10 +59,10 @@ final class CryptoTests: XCTestCase {
         do {
             let data = [UInt8](plainText)
             let sha_h = Crypto.SHA0.sha0_process_block(data)
-            //XCTAssertEqual(sha_h, [1732584193, 4023233417, 2562383102, 271733878, 3285377520])
+            XCTAssertEqual(sha_h, [187425607, 2124137110, 210261771, 379234607, 2440093899])
         }
         
-        let output = Data(hexString: "19F4932EBE0CAE3ACB0D03F464FCAE06")!
+        let output = Data(hexString: "B2BE3477E9BC296C88570B169AA92F9170E0CB")!
         
         //XCTAssertEqual(Crypto.SHA0.process(plainText).toHexadecimal(), output.toHexadecimal())
     }
