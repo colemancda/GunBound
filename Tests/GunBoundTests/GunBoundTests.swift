@@ -194,7 +194,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEncode(value, id: 0x53E5, data)
     }
     
-    func testLogin() {
+    func testLoginRequest() {
                 
         let data = Data([0x56, 0x00, 0xAF, 0x0D, 0x10, 0x10, 0x15, 0xE9, 0xA2, 0x89, 0x21, 0x09, 0x36, 0x86, 0x8C, 0xB9, 0xFA, 0xDA, 0x26, 0xCB, 0x0C, 0x0B, 0xF0, 0xFB, 0xE3, 0x8B, 0x91, 0xEE, 0xC1, 0x2D, 0xFB, 0xC0, 0x46, 0xBB, 0x1E, 0xB6, 0x0F, 0xBB, 0x7C, 0x25, 0x8B, 0xF6, 0x63, 0xF0, 0x80, 0x4F, 0x2B, 0x24, 0x73, 0x8E, 0x40, 0xB0, 0xA5, 0x33, 0xB6, 0x8A, 0x73, 0xBE, 0x22, 0x0A, 0x0C, 0xAD, 0x33, 0x12, 0x64, 0xB7, 0xB5, 0xAC, 0xF6, 0x4D, 0x31, 0xF0, 0xA2, 0x0D, 0x82, 0xD3, 0x36, 0x7E, 0x2A, 0x08, 0x30, 0xEF, 0xBD, 0x21, 0xDB, 0x9D])
         
@@ -210,14 +210,46 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.opcode, .authenticationRequest)
         
         let value = AuthenticationRequest(
-            username: "testusername"
+            username: "testusername",
+            clientVersion: 280
         )
         
         XCTAssertDecode(value, packet.data)
     }
+    
+    func testLoginResponse() {
+        
+        let username = "testusername"
+        let password = "testpassword"
+        let nonce: Nonce = 0x37C654B2
+        
+        let data = Data(hexString: "A301FC9A12100000545D800974657374757365726E616D650100000001000300746573740000000014001400050D3905000039050000040D00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038900D0038900D003F420F00000000000000000000000000000000000000000400")!
+        
+        
+    }
 }
 
 // MARK: - Extensions
+
+extension Data {
+    
+    init?(hexString: String) {
+      let len = hexString.count / 2
+      var data = Data(capacity: len)
+      var i = hexString.startIndex
+      for _ in 0..<len {
+        let j = hexString.index(i, offsetBy: 2)
+        let bytes = hexString[i..<j]
+        if var num = UInt8(bytes, radix: 16) {
+          data.append(&num, count: 1)
+        } else {
+          return nil
+        }
+        i = j
+      }
+      self = data
+    }
+}
 
 func XCTAssertEncode<T>(
     _ value: T,
