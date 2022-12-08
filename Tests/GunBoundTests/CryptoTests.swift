@@ -62,8 +62,7 @@ final class CryptoTests: XCTestCase {
             XCTAssertEqual(sha_h, [187425607, 2124137110, 210261771, 379234607, 2440093899])
         }
         
-        let output = Data(hexString: "B2BE3477E9BC296C88570B169AA92F9170E0CB")!
-        
-        //XCTAssertEqual(Crypto.SHA0.process(plainText).toHexadecimal(), output.toHexadecimal())
+        let output = Data(hexString: "47E32B0B96C29B7E0B57880C2FA99A16")!
+        XCTAssertEqual(Crypto.SHA0.process(plainText), output)
     }
 }

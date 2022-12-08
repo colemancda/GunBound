@@ -59,7 +59,7 @@ internal struct Crypto {
             // changes a typical SHA-0 into "gunbound-sha" by removing 4 bytes and swapping the DWORD endian
             var result = [UInt8]()
             for block_index in 0..<4 {
-                let bytes = sha_h[block_index].bigEndian.bytes
+                let bytes = sha_h[block_index].littleEndian.bytes
                 result += [bytes.0, bytes.1, bytes.2, bytes.3]
             }
 
