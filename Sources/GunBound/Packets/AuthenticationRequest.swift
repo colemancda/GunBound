@@ -12,6 +12,8 @@ public struct AuthenticationRequest: GunBoundPacket, Equatable, Hashable, Decoda
     public static var opcode: Opcode { .authenticationRequest }
     
     public let username: String
+    
+    public let clientVersion: ClientVersion
 }
 
 extension AuthenticationRequest: GunBoundDecodable {
@@ -22,5 +24,7 @@ extension AuthenticationRequest: GunBoundDecodable {
             let decryptedData = try Crypto.AES.decrypt($0, key: .login)
             return String(data: decryptedData, encoding: .ascii)
         }
+        // TODO: Decode
+        self.clientVersion = 280
     }
 }
