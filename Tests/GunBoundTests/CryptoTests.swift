@@ -38,8 +38,8 @@ final class CryptoTests: XCTestCase {
         let password = "testpassword"
         let nonce: Nonce = 0x00010203
         
-        //let key = Key(username: username, password: password, nonce: nonce)
-        //XCTAssertEqual(key.description, "47E32B0B96C29B7E0B57880C2FA99A16")
+        let key = Key(username: username, password: password, nonce: nonce)
+        XCTAssertEqual(key.description, "47E32B0B96C29B7E0B57880C2FA99A16")
         
         do {
             let rawKey = Key.plainText(username: username, password: password, nonce: nonce)
