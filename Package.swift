@@ -31,10 +31,6 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-argument-parser",
             from: "1.2.0"
-        ),
-        .package(
-            url: "https://github.com/apple/swift-algorithms.git",
-            from: "1.0.0"
         )
     ],
     targets: [
@@ -42,11 +38,7 @@ let package = Package(
             name: "GunBound",
             dependencies: [
                 "Socket",
-                "CryptoSwift",
-                .product(
-                    name: "Algorithms",
-                    package: "swift-algorithms"
-                )
+                "CryptoSwift"
             ]
         ),
         .executableTarget(
