@@ -213,6 +213,8 @@ internal extension GunBoundServer {
         
         var nonce: Nonce = 0x0000
         
+        var session: UInt32 = .random(in: .min ..< .max)
+        
         var key: Key?
         
         // MARK: - Initialization
@@ -327,7 +329,25 @@ internal extension GunBoundServer {
             
             // store computed key
             self.key = key
-            return try AuthenticationResponse(user: user, key: key, encoder: connection.encoder)
+            
+            return AuthenticationResponse(userData:
+                AuthenticationResponse.UserData(
+                    session: session,
+                    username: request.username,
+                    avatarEquipped: user.avatarEquipped,
+                    guild: user.guild,
+                    rankCurrent: user.rankCurrent,
+                    rankSeason: user.rankSeason,
+                    guildMemberCount: user.guildMemberCount,
+                    rankPositionCurrent: user.rankPositionCurrent,
+                    rankPositionSeason: user.rankPositionSeason,
+                    guildRank: user.guildRank,
+                    gpCurrent: user.gpCurrent,
+                    gpSeason: user.gpSeason,
+                    gold: user.gold,
+                    funcRestrict: [] // TODO: funcRestrict
+                )
+            )
         }
     }
 }
