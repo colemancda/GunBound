@@ -12,6 +12,11 @@ public struct Packet: Equatable, Hashable, Identifiable {
     
     public internal(set) var data: Data
     
+    internal init(_ data: Data) {
+        self.data = data
+        assert(data.count >= Packet.minSize)
+    }
+    
     public init?(data: Data) {
         self.init(data: data, validateLength: true, validateOpcode: true)
     }
@@ -40,7 +45,7 @@ public struct Packet: Equatable, Hashable, Identifiable {
     }
     
     internal init(opcode: Opcode) {
-        self.data = Data(count: Packet.minSize)
+        self.init(Data(count: Packet.minSize))
         self.size = numericCast(Packet.minSize)
         self.opcodeRawValue = opcode.rawValue
         assert(self.opcode == opcode)

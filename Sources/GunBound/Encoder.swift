@@ -25,11 +25,11 @@ public struct GunBoundEncoder {
     
     // MARK: - Methods
     
-    public func encode<T>(_ value: T, id: Packet.ID? = nil) throws -> Packet where T: Encodable, T: GunBoundPacket {
+    public func encode<T>(_ value: T, id: Packet.ID) throws -> Packet where T: Encodable, T: GunBoundPacket {
         let opcode = T.opcode
         log?("Will encode \(opcode) packet")
         // initialize encoder
-        let encoder = Encoder(
+        let encoder = PacketEncoder(
             userInfo: userInfo,
             log: log,
             opcode: opcode
@@ -44,25 +44,42 @@ public struct GunBoundEncoder {
         } else {
             try value.encode(to: encoder)
         }
-        
         // set size
         encoder.packet.size = numericCast(encoder.packet.data.count)
         // set packet ID / sequence number (might be based on length)
-        encoder.packet.id = id ?? .init(serverPacketLength: Int(encoder.packet.size))
+        encoder.packet.id = id
         // return value
         return encoder.packet
     }
     
-    public func encode(_ opcode: Opcode, id: Packet.ID? = nil) -> Packet {
+    public func encode(_ opcode: Opcode, id: Packet.ID) -> Packet {
         var packet = Packet(opcode: opcode)
-        packet.id = id ?? .init(serverPacketLength: Int(packet.size))
+        packet.id = id
         return packet
+    }
+    
+    public func encode<T>(_ value: T) throws -> Data where T: Encodable {
+        log?("Will encode \(T.self)")
+        // initialize encoder
+        let encoder = Encoder(
+            userInfo: userInfo,
+            log: log,
+            data: Data()
+        )
+        // encode value
+        if let _ = value as? GunBoundEncodable {
+            try encoder.writeEncodable(value)
+        } else {
+            try value.encode(to: encoder)
+        }
+        // return value
+        return encoder.data
     }
 }
 
 internal extension GunBoundEncoder {
     
-    final class Encoder: Swift.Encoder {
+    class Encoder: Swift.Encoder {
         
         // MARK: - Properties
         
@@ -75,7 +92,7 @@ internal extension GunBoundEncoder {
         /// Logger
         let log: ((String) -> ())?
         
-        fileprivate(set) var packet: Packet
+        fileprivate(set) var data: Data
         
         // MARK: - Initialization
         
@@ -83,12 +100,12 @@ internal extension GunBoundEncoder {
             codingPath: [CodingKey] = [],
             userInfo: [CodingUserInfoKey : Any],
             log: ((String) -> ())?,
-            opcode: Opcode
+            data: Data
         ) {
             self.codingPath = codingPath
             self.userInfo = userInfo
             self.log = log
-            self.packet = Packet(opcode: opcode)
+            self.data = data
         }
         
         // MARK: - Encoder
@@ -109,13 +126,40 @@ internal extension GunBoundEncoder {
             return GunBoundSingleValueEncodingContainer(referencing: self)
         }
     }
+    
+    final class PacketEncoder: GunBoundEncoder.Encoder {
+        
+        // MARK: - Properties
+        
+        fileprivate(set) var packet: Packet {
+            get { Packet(data) }
+            set { data = newValue.data }
+        }
+        
+        // MARK: - Initialization
+        
+        fileprivate init(
+            codingPath: [CodingKey] = [],
+            userInfo: [CodingUserInfoKey : Any],
+            log: ((String) -> ())?,
+            opcode: Opcode
+        ) {
+            let packet = Packet(opcode: opcode)
+            super.init(
+                codingPath: codingPath,
+                userInfo: userInfo,
+                log: log,
+                data: packet.data
+            )
+        }
+    }
 }
 
 internal extension GunBoundEncoder.Encoder {
     
     func write<C>(_ data: C) where C: Collection, C.Element == UInt8 {
-        self.packet.data.reserveCapacity(self.packet.data.count + data.count)
-        self.packet.data.append(contentsOf: data)
+        self.data.reserveCapacity(self.data.count + data.count)
+        self.data.append(contentsOf: data)
     }
     
     func box <T: GunBoundRawEncodable> (_ value: T) -> Data {
@@ -341,7 +385,6 @@ public struct GunBoundEncodingContainer {
     // MARK: - Initialization
     
     fileprivate init(referencing encoder: GunBoundEncoder.Encoder) {
-        
         self.encoder = encoder
         self.codingPath = encoder.codingPath
     }
@@ -410,6 +453,19 @@ public struct GunBoundEncodingContainer {
     
     public func encode<C>(_ data: C) throws where C: Collection, C.Element == UInt8 {
         try setValue(data, data: data)
+    }
+    
+    public func encode(_ string: String, fixedLength: UInt) throws {
+        let length = Int(fixedLength)
+        var data = Data()
+        data.reserveCapacity(Int(fixedLength))
+        data += string.prefix(length - 1).data(using: .ascii) ?? Data() // null terminated
+        // add padding or truncate
+        if data.count < length {
+            let padding = length - data.count
+            data += [UInt8](repeating: 0x00, count: padding)
+        }
+        try setValue(string, data: data)
     }
     
     private func encodeNumeric <T: GunBoundRawEncodable & FixedWidthInteger> (_ value: T, isLittleEndian: Bool = true) throws {
@@ -525,14 +581,14 @@ internal final class GunBoundUnkeyedEncodingContainer: UnkeyedEncodingContainer 
     
     deinit {
         // update count byte
-        self.countOffset.flatMap { self.encoder.packet.data[$0] = UInt8(self.count) }
+        self.countOffset.flatMap { self.encoder.data[$0] = UInt8(self.count) }
     }
     
     init(referencing encoder: GunBoundEncoder.Encoder) {
         self.encoder = encoder
         self.codingPath = encoder.codingPath
         // write count byte
-        self.countOffset = self.encoder.packet.data.count
+        self.countOffset = self.encoder.data.count
         self.encoder.write(Data([0]))
     }
     
