@@ -189,36 +189,64 @@ final class GunBoundTests: XCTestCase {
     
     func testNonceResponse() {
         
-        let data = Data([0x0A, 0x00, 0xE5, 0x53, 0x01, 0x10, 0x2A, 0x0C, 0x11, 0x0A])
-        let value = NonceResponse(nonce: 0x0A110C2A)
+        let data = Data(hexString: "0A00E553011000010203")!
+        let value = NonceResponse(nonce: 0x00010203)
         XCTAssertEncode(value, id: 0x53E5, data)
     }
     
     func testLoginRequest() throws {
         
-        let data = Data(hexString: "5600AF0D101015E9A289210936868CB9FADA26CB0C0B6932CC16C212E1E782457DDCD75E6542855F4B1102A6670C211C615FD886DFA72B0AB1164CC75A3DA8EBE5CBD3856EB75B47E9A28C2CA0A3A0ED467A12CBE942")!
-        
-        guard let packet = Packet(data: data) else {
-            XCTFail()
-            return
-        }
-        XCTAssertEqual(packet.data, data)
-        XCTAssertEqual(packet.size, 86)
-        XCTAssertEqual(packet.size, numericCast(packet.data.count))
-        XCTAssertEqual(packet.opcode, .authenticationRequest)
-        
         var decoder = GunBoundDecoder()
         decoder.log = { print("Decoder:", $0) }
         
-        let decodedValue = try decoder.decodePacket(AuthenticationRequest.self, from: data)
-        XCTAssertEqual(decodedValue.username, "testusername")
+        do {
+            let data = Data(hexString: "5600AF0D101015E9A289210936868CB9FADA26CB0C0BAAE7BFEBC24041E8BDB5D88036C22C22B714950242A6420520009FB4D5982F206B95BFE48F126A515F6E33136935548222053C9135FFCB7742D8DFBD0AE23082")!
+            
+            guard let packet = Packet(data: data) else {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(packet.data, data)
+            XCTAssertEqual(packet.size, 86)
+            XCTAssertEqual(packet.size, numericCast(packet.data.count))
+            XCTAssertEqual(packet.opcode, .authenticationRequest)
+            XCTAssertEqual(packet.id, 0x0DAF)
+            
+            let decodedValue = try decoder.decodePacket(AuthenticationRequest.self, from: data)
+            XCTAssertEqual(decodedValue.username, "testusername")
+            
+            let key = Key(username: decodedValue.username, password: "testpassword", nonce: 0xEA7B8AE3)
+            let decryptedData = try Crypto.AES.decrypt(decodedValue.encryptedData, key: key, opcode: type(of: decodedValue).opcode)
+            let decryptedValue = try decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
+            
+            XCTAssertEqual(decryptedValue.password, "testpassword")
+            XCTAssertEqual(decryptedValue.clientVersion, 280)
+        }
         
-        let key = Key(username: decodedValue.username, password: "testpassword", nonce: 0x00010203)
-        let decryptedData = try Crypto.AES.decrypt(decodedValue.encryptedData, key: key, opcode: type(of: decodedValue).opcode)
-        let decryptedValue = try decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
-        
-        XCTAssertEqual(decryptedValue.password, "testpassword")
-        XCTAssertEqual(decryptedValue.clientVersion, 280)
+        do {
+            let data = Data(hexString: "5600AF0D101015E9A289210936868CB9FADA26CB0C0B6932CC16C212E1E782457DDCD75E6542855F4B1102A6670C211C615FD886DFA72B0AB1164CC75A3DA8EBE5CBD3856EB75B47E9A28C2CA0A3A0ED467A12CBE942")!
+
+            print(data.hexString)
+            
+            guard let packet = Packet(data: data) else {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(packet.data, data)
+            XCTAssertEqual(packet.size, 86)
+            XCTAssertEqual(packet.size, numericCast(packet.data.count))
+            XCTAssertEqual(packet.opcode, .authenticationRequest)
+            
+            let decodedValue = try decoder.decodePacket(AuthenticationRequest.self, from: data)
+            XCTAssertEqual(decodedValue.username, "testusername")
+            
+            let key = Key(username: decodedValue.username, password: "testpassword", nonce: 0x00010203)
+            let decryptedData = try Crypto.AES.decrypt(decodedValue.encryptedData, key: key, opcode: type(of: decodedValue).opcode)
+            let decryptedValue = try decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
+            
+            XCTAssertEqual(decryptedValue.password, "testpassword")
+            XCTAssertEqual(decryptedValue.clientVersion, 280)
+        }
     }
     
     func testLoginResponse() {

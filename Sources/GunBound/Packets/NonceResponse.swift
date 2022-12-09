@@ -17,3 +17,10 @@ public struct NonceResponse: GunBoundPacket, Equatable, Hashable, Codable {
         self.nonce = nonce
     }
 }
+
+extension NonceResponse: GunBoundEncodable {
+    
+    public func encode(to container: GunBoundEncodingContainer) throws {
+        try container.encode(nonce.rawValue, isLittleEndian: false)
+    }
+}
