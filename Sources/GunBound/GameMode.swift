@@ -63,13 +63,12 @@ extension GameMode: CustomStringConvertible, CustomDebugStringConvertible {
 public extension GameMode {
     
     /// Intro splash
-    static var introSplash: GameMode { 1 }
-    
-    static var  worldSelect: GameMode     { 2 }
-    static var  channel: GameMode         { 3 }
-    static var  init3d: GameMode          { 5 }
-    static var  avatarShop: GameMode      { 7 }
-    static var  room: GameMode            { 9 }
-    static var  inGameSession: GameMode   { 11 }
-    static var  exitToDesktop: GameMode   { 15 }
+    static var introSplash: GameMode     { 1 }
+    static var worldSelect: GameMode     { 2 }
+    static var channel: GameMode         { 3 }
+    static var init3d: GameMode          { 5 }
+    static var avatarShop: GameMode      { 7 }
+    static var room: GameMode            { 9 }
+    static var inGameSession: GameMode   { 11 }
+    static var exitToDesktop: GameMode   { 15 }
 }
