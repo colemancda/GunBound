@@ -73,7 +73,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(serverDirectory.count, 1)
             XCTAssertEqual(serverDirectory[0].name, "JG Test Broker")
             XCTAssertEqual(serverDirectory[0].descriptionText, #"Broker description\n goes here"#)
-            XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), data)
+            XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), id: 0xCB2B, data)
         }
         
         do {
@@ -166,7 +166,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(serverDirectory.count, 5)
             XCTAssertEqual(serverDirectory[0].name, "JG Test Broker")
             XCTAssertEqual(serverDirectory[0].descriptionText, #"Broker description\n goes here"#)
-            XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), data)
+            XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), id: 0x08BB, data)
         }
     }
     
@@ -225,8 +225,6 @@ final class GunBoundTests: XCTestCase {
         
         do {
             let data = Data(hexString: "5600AF0D101015E9A289210936868CB9FADA26CB0C0B6932CC16C212E1E782457DDCD75E6542855F4B1102A6670C211C615FD886DFA72B0AB1164CC75A3DA8EBE5CBD3856EB75B47E9A28C2CA0A3A0ED467A12CBE942")!
-
-            print(data.hexString)
             
             guard let packet = Packet(data: data) else {
                 XCTFail()
@@ -249,15 +247,42 @@ final class GunBoundTests: XCTestCase {
         }
     }
     
-    func testLoginResponse() {
+    func testLoginResponse() throws {
         
-        let username = "testusername"
-        let password = "testpassword"
-        let nonce: Nonce = 0x37C654B2
+        var encoder = GunBoundEncoder()
+        encoder.log = { print("Encoder:", $0) }
         
-        let data = Data(hexString: "A301FC9A12100000545D800974657374757365726E616D650100000001000300746573740000000014001400050D3905000039050000040D00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038900D0038900D003F420F00000000000000000000000000000000000000000400")!
+        let data = Data(hexString: "A301FC9A12100000698C621461646D696E0000000000000000800080008000007669727475616C0014001400050D3905000039050000040D00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038900D0038900D003F420F00000000000000000000000000000000000000000400")!
         
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 419)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .authenticationResponse)
         
+        let value = AuthenticationResponse(userData:
+            AuthenticationResponse.UserData(
+                session: 0x698C6214,
+                username: "admin",
+                avatarEquipped: UInt64(0x0080008000800000).bigEndian,
+                guild: "virtual",
+                rankCurrent: 20,
+                rankSeason: 20,
+                guildMemberCount: 3333,
+                rankPositionCurrent: 1337,
+                rankPositionSeason: 1337,
+                guildRank: 3332,
+                gpCurrent: 888888,
+                gpSeason: 888888,
+                gold: 99_9999,
+                funcRestrict: [.effectMoon]
+            )
+        )
+        
+        XCTAssertEncode(value, id: packet.id, data)
     }
 }
 
@@ -285,7 +310,7 @@ extension Data {
 
 func XCTAssertEncode<T>(
     _ value: T,
-    id: Packet.ID? = nil,
+    id: Packet.ID,
     _ data: Data,
     file: StaticString = #file,
     line: UInt = #line

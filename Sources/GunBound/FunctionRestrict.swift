@@ -6,11 +6,11 @@
 //
 
 /// GunBound Function Restrict
-public struct FunctionRestrict: OptionSet {
+public struct FunctionRestrict: OptionSet, Codable, Equatable, Hashable {
     
-    public var rawValue: Int32
+    public var rawValue: UInt32
     
-    public init(rawValue: Int32) {
+    public init(rawValue: UInt32) {
         self.rawValue = rawValue
     }
 }
@@ -19,7 +19,7 @@ public struct FunctionRestrict: OptionSet {
 
 extension FunctionRestrict: ExpressibleByIntegerLiteral {
     
-    public init(integerLiteral value: Int32) {
+    public init(integerLiteral value: UInt32) {
         self.rawValue = value
     }
 }
