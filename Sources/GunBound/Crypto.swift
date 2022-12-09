@@ -83,6 +83,12 @@ internal struct Crypto {
             return Data(decrypted)
         }
         
+        static func encrypt(_ data: Data, key: Key) throws -> Data {
+            let aes = try CryptoSwift.AES(key: .init(key.data), blockMode: ECB(), padding: .noPadding)
+            let encrypted = try aes.encrypt(.init(data))
+            return Data(encrypted)
+        }
+        
         static func decrypt(_ data: Data, key: Key, opcode: Opcode) throws -> Data {
             let checksum = 0x8631607E + UInt32(opcode.rawValue)
             let decrypted = try decrypt(data, key: key)
@@ -106,29 +112,29 @@ internal struct Crypto {
             return processed
         }
         
-        /*
-        func gunboundDynamicEncrypt(plainBytes: [UInt8], username: String, password: String, authToken: String, command: UInt32) -> [UInt8] {
-            if plainBytes.count % 12 != 0 {
-                print("gunbound_dynamic_encrypt: bytes are not aligned to 12-byte boundary")
-                return [0xDE, 0xAD, 0xBE, 0xEF]
+        static func encrypt(_ data: Data, key: Key, opcode: Opcode) throws -> Data {
+            var data = data
+            while data.count % 12 != 0 {
+                let padding = (12 - (data.count % 12))
+                data += [UInt8](repeating: 0x00, count: padding)
             }
-            let packetCommand = 0x8631607E + command  // originally command - 0x79CE9F82, but inverted to avoid negative ops
-            var packetCommandBytes = [UInt8]()
-            packetCommandBytes.append(UInt8((packetCommand >> 0) & 0xFF))
-            packetCommandBytes.append(UInt8((packetCommand >> 8) & 0xFF))
-            packetCommandBytes.append(UInt8((packetCommand >> 16) & 0xFF))
-            packetCommandBytes.append(UInt8((packetCommand >> 24) & 0xFF))
-            var processed = [UInt8]()
-            for i in 0..<plainBytes.count {
+            assert(data.count % 12 == 0, "Needs padding")
+            let checksum = 0x8631607E + UInt32(opcode.rawValue)
+            var packetCommandBytes = Data()
+            packetCommandBytes.reserveCapacity(4)
+            packetCommandBytes.append(UInt8((checksum >> 0) & 0xFF))
+            packetCommandBytes.append(UInt8((checksum >> 8) & 0xFF))
+            packetCommandBytes.append(UInt8((checksum >> 16) & 0xFF))
+            packetCommandBytes.append(UInt8((checksum >> 24) & 0xFF))
+            var processed = Data()
+            for i in 0 ..< data.count {
                 if i % 12 == 0 {
                     processed.append(contentsOf: packetCommandBytes)
                 }
-                processed.append(plainBytes[i])
+                processed.append(data[i])
             }
-            let encryptedBytes = gunboundDynamicEncryptRaw(processed: processed, username: username, password: password, authToken: authToken)
-            return encryptedBytes
+            return try encrypt(processed, key: key)
         }
-        */
     }
     
     enum SHA0 {

@@ -34,6 +34,19 @@ final class CryptoTests: XCTestCase {
         XCTAssertEqual(String(data: decrypted.prefix(0xC), encoding: .ascii), password)
     }
     
+    func testEncryptCash() {
+        
+        let plainText = Data(hexString: "3F420F00")!
+        let encrypted = Data(hexString: "A791BE6CECA91C106A641B509550A630")!
+        let key = Key(
+            username: "admin",
+            password: "1234",
+            nonce: 0x00010203
+        )
+        
+        XCTAssertEqual(try Crypto.AES.encrypt(plainText, key: key, opcode: .cashUpdate), encrypted)
+    }
+    
     func testGenerateDynamicKey() {
         
         let username = "testusername"
