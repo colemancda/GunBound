@@ -296,7 +296,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 22)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
-        XCTAssertEqual(packet.opcode, .cashUpdate)
+        XCTAssertEqual(packet.opcode, .cashUpdateNotification)
         
         let value = CashUpdate(cash: 99_9999)
         

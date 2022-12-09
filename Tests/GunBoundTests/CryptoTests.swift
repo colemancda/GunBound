@@ -44,7 +44,7 @@ final class CryptoTests: XCTestCase {
             nonce: 0x00010203
         )
         
-        XCTAssertEqual(try Crypto.AES.encrypt(plainText, key: key, opcode: .cashUpdate), encrypted)
+        XCTAssertEqual(try Crypto.AES.encrypt(plainText, key: key, opcode: .cashUpdateNotification), encrypted)
     }
     
     func testGenerateDynamicKey() {

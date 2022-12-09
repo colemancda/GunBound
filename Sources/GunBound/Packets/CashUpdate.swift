@@ -10,7 +10,7 @@ import Foundation
 /// Cash Update
 public struct CashUpdate: GunBoundPacket, Encodable, Hashable {
     
-    public static var opcode: Opcode { .cashUpdate }
+    public static var opcode: Opcode { .cashUpdateNotification }
     
     public static var isEncrypted: Bool { true }
     

@@ -30,9 +30,7 @@ public enum Opcode: UInt16, Codable {
     
     /// User Response
     case userResponse               = 0x1021
-    
-    case joinChannelCommand         = 0x2000
-    
+        
     /// Server Directory Request
     case serverDirectoryRequest     = 0x1100
     
@@ -40,7 +38,108 @@ public enum Opcode: UInt16, Codable {
     case serverDirectoryResponse    = 0x1102
     
     /// Cash update
-    case cashUpdate                 = 0x1032
+    case cashUpdateNotification     = 0x1032
+    
+    /// Join Channel Request
+    case joinChannelRequest         = 0x2000
+    
+    /// Join Channel Request
+    case joinChannelResponse        = 0x2001
+    
+    /// Join Channel Notification
+    case joinChannelNotification    = 0x200E
+    
+    case roomListRequest            = 0x2100
+    
+    case roomListResponse           = 0x2103
+    
+    case roomDetailRequest          = 0x2104
+    
+    case roomDetailResponse         = 0x2105
+    
+    case joinRoomRequest            = 0x2110
+    
+    case joinRoomResponse           = 0x2111
+    
+    case joinRoomNotification       = 0x3010
+    
+    case channelChatCommand         = 0x2010
+    
+    case channelChatBroadcast       = 0x201F
+    
+    case createRoomRequest          = 0x2120
+    
+    case createRoomResponse         = 0x2121
+    
+    case roomChangeUseItemCommand   = 0x3102
+    
+    case roomChangeCapacity         = 0x3103
+    
+    case roomSetTitleCommand        = 0x3104
+        
+    case roomUpdateNotification     = 0x3105
+    
+    case roomSelectTeamRequest      = 0x3210
+    
+    case roomSelectTeamResponse     = 0x3211
+    
+    case roomSelectTankRequest      = 0x3200
+    
+    case roomSelectTankResponse     = 0x3201
+    
+    case roomUserReadyRequest       = 0x3230
+    
+    case roomUserReadyResponse      = 0x3231
+    
+    case roomReturnResultRequest    = 0x3232
+    
+    case roomReturnResultResponse   = 0x3233
+    
+    case startGameCommand           = 0x3430
+    
+    case startGameNotification      = 0x3432
+    
+    case close                      = 0x3FFF
+    
+    case endGameJewelCommand        = 0x4200
+    
+    case userDeadRequest            = 0x4100
+    
+    case userDeadResponse           = 0x4101
+    
+    case playResultCommand          = 0x4412
+    
+    case playResultNotification     = 0x4413
+    
+    case clientCommand              = 0x5100
+    
+    case printClient                = 0x5101
+    
+    case rebroadcast                = 0x4410
+    
+    case tunnel                     = 0x4500
+    
+    case getAvatarRequest           = 0x6000
+    
+    case getAvatarResponse          = 0x6001
+    
+    case setAvatarRequest           = 0x6004
+    
+    case setAvatarResponse          = 0x6005
+    
+    case buyGoldRequest             = 0x6010
+    
+    case buyCashRequest             = 0x6011
+    
+    case buyResponse                = 0x6017
+    
+    case sellRequest                = 0x6020
+    
+    case sellResponse               = 0x6027
+    
+    case giftRequest                = 0x6030
+    
+    case giftResponse               = 0x6037
 }
 
 public extension Opcode {
@@ -58,14 +157,18 @@ public extension Opcode {
         case .serverDirectoryResponse:              return .response
         case .userRequest:                          return .request
         case .userResponse:                         return .response
-        case .joinChannelCommand:                   return .command
-        case .cashUpdate:                           return .notification
+        case .cashUpdateNotification:               return .notification
+        case .joinChannelRequest:                   return .request
+        case .joinChannelResponse:                  return .response
+        case .joinChannelNotification:              return .notification
+        default:
+            fatalError(self.rawValue.toHexadecimal())
         }
     }
     
     var isEncrypted: Bool {
         switch self {
-        case .cashUpdate:
+        case .cashUpdateNotification:
             return true
         default:
             return false
