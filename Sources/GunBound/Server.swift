@@ -96,7 +96,8 @@ public protocol GunBoundServerDataSource: AnyObject {
     /// check user exists
     func userExists(_ username: String) async throws -> Bool
     
-    func userBanned(_ username: String) async throws -> Bool
+    /// User data
+    func user(_ username: String) async throws -> User
 }
 
 public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
@@ -139,8 +140,11 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         state.users[username] != nil
     }
     
-    public func userBanned(_ username: String) async throws -> Bool {
-        state.users[username]?.isBanned ?? false
+    public func user(_ username: String) async throws -> User {
+        guard let user = state.users[username] else {
+            throw GunBoundError.unknownUser(username)
+        }
+        return user
     }
 }
 
@@ -208,6 +212,8 @@ internal extension GunBoundServer {
         private let log: (String) -> ()
         
         var nonce: Nonce = 0x0000
+        
+        var key: Key?
         
         // MARK: - Initialization
         
@@ -282,12 +288,15 @@ internal extension GunBoundServer {
             
             // check if user exists
             guard try await self.server.dataSource.userExists(request.username) else {
-                return AuthenticationResponse(status: .badUsername, profile: nil)
+                return .badUsername
             }
             
+            // get user profile
+            let user = try await self.server.dataSource.user(request.username)
+            
             // check if banned
-            guard try await self.server.dataSource.userBanned(request.username) == false else {
-                return AuthenticationResponse(status: .bannedUser, profile: nil)
+            guard user.isBanned == false else {
+                return .bannedUser
             }
             
             // decode encrypted data
@@ -297,9 +306,15 @@ internal extension GunBoundServer {
                 password: password,
                 nonce: self.nonce
             )
-            guard let decryptedData = try? Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode) else {
-                return AuthenticationResponse(status: .badPassword, profile: nil)
+            let decryptedData: Data
+            do {
+                decryptedData = try Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode)
             }
+            catch {
+                log("Error: \(error)")
+                return .badPassword
+            }
+            
             let decryptedValue = try connection.decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
             
             #if DEBUG
@@ -307,10 +322,12 @@ internal extension GunBoundServer {
             #endif
             
             guard password == decryptedValue.password else {
-                return AuthenticationResponse(status: .badPassword, profile: nil)
+                return .badPassword
             }
             
-            return AuthenticationResponse(status: .success, profile: nil)
+            // store computed key
+            self.key = key
+            return try AuthenticationResponse(user: user, key: key, encoder: connection.encoder)
         }
     }
 }
