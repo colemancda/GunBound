@@ -1,74 +1,22 @@
 //
-//  GameMode.swift
+//  RoomPlayMode.swift
 //  
 //
-//  Created by Alsey Coleman Miller on 12/6/22.
+//  Created by Alsey Coleman Miller on 12/7/22.
 //
 
-import Foundation
-
-/// Client state
-public struct GameMode: RawRepresentable, Equatable, Hashable, Codable {
+/// GunBound Game Mode (Room Play Mode)
+public enum GameMode: UInt8, Codable {
     
-    public let rawValue: UInt8
+    /// Solo
+    case solo       = 0x00
     
-    public init(rawValue: UInt8) {
-        self.rawValue = rawValue
-    }
-}
-
-// MARK: - ExpressibleByIntegerLiteral
-
-extension GameMode: ExpressibleByIntegerLiteral {
+    /// Score
+    case score      = 0x44
     
-    public init(integerLiteral value: RawValue) {
-        self.init(rawValue: value)
-    }
-}
-
-// MARK: - CustomStringConvertible
-
-extension GameMode: CustomStringConvertible, CustomDebugStringConvertible {
+    /// Tag
+    case tag        = 0x08
     
-    public var description: String {
-        switch self {
-        case .introSplash:
-            return "Intro Splash"
-        case .worldSelect:
-            return "World Select"
-        case .channel:
-            return "Channel"
-        case .init3d:
-            return "Init3D/Evangelion failed"
-        case .avatarShop:
-            return "Avatar Shop"
-        case .room:
-            return "Room"
-        case .inGameSession:
-            return "In Game Session"
-        case .exitToDesktop:
-            return "Exit to Desktop"
-        default:
-            return "0x" + rawValue.toHexadecimal()
-        }
-    }
-    
-    public var debugDescription: String {
-        description
-    }
-}
-
-// MARK: - Definitions
-
-public extension GameMode {
-    
-    /// Intro splash
-    static var introSplash: GameMode     { 1 }
-    static var worldSelect: GameMode     { 2 }
-    static var channel: GameMode         { 3 }
-    static var init3d: GameMode          { 5 }
-    static var avatarShop: GameMode      { 7 }
-    static var room: GameMode            { 9 }
-    static var inGameSession: GameMode   { 11 }
-    static var exitToDesktop: GameMode   { 15 }
+    /// Jewel
+    case jewel      = 0x0C
 }
