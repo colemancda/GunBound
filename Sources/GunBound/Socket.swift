@@ -9,7 +9,7 @@ import Foundation
 import Socket
 
 /// GunBound Socket protocol
-public protocol GunBoundSocket {
+public protocol GunBoundSocketTCP {
     
     /// Socket address
     var address: GunBoundAddress { get }
@@ -40,6 +40,24 @@ public protocol GunBoundSocket {
     ) async throws -> Self
 }
 
+public protocol GunBoundSocketUDP {
+    
+    /// Initialize with address
+    init(address: GunBoundAddress) async throws
+    
+    /// Socket address
+    var address: GunBoundAddress { get }
+    
+    /// Event stream
+    var event: GunBoundSocketEventStream { get }
+    
+    /// Write to the socket.
+    func send(_ data: Data, to destination: GunBoundAddress) async throws
+    
+    /// Reads from the socket.
+    func recieve(_ bufferSize: Int) async throws -> (Data, GunBoundAddress)
+}
+
 /// GunBound Socket Event
 public enum GunBoundSocketEvent {
     
@@ -53,7 +71,7 @@ public typealias GunBoundSocketEventStream = AsyncStream<GunBoundSocketEvent>
 
 // MARK: - Implementation
 
-public final class GunBoundTCPSocket: GunBoundSocket {
+public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP {
     
     // MARK: - Properties
     
@@ -161,6 +179,54 @@ public final class GunBoundTCPSocket: GunBoundSocket {
     }
 }
 
+public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP {
+    
+    // MARK: - Properties
+    
+    public let address: GunBoundAddress
+    
+    @usableFromInline
+    internal let socket: Socket
+    
+    public var event: GunBoundSocketEventStream {
+        let stream = self.socket.event
+        var iterator = stream.makeAsyncIterator()
+        return GunBoundSocketEventStream(unfolding: {
+            await iterator
+                .next()
+                .map { .init($0) }
+        })
+    }
+    
+    // MARK: - Initialization
+    
+    deinit {
+        Task(priority: .high) {
+            await socket.close()
+        }
+    }
+    
+    public init(address: GunBoundAddress) async throws {
+        let fileDescriptor = try SocketDescriptor.udp(address)
+        try fileDescriptor.closeIfThrows {
+            try fileDescriptor.setNonblocking()
+        }
+        self.address = address
+        self.socket = await Socket(fileDescriptor: fileDescriptor)
+    }
+    
+    // MARK: - Methods
+    
+    public func send(_ data: Data, to destination: GunBoundAddress) async throws {
+        try await socket.sendMessage(data, to: IPv4SocketAddress(destination))
+    }
+    
+    public func recieve(_ bufferSize: Int) async throws -> (Data, GunBoundAddress) {
+        let (data, address) = try await socket.receiveMessage(bufferSize, fromAddressOf: IPv4SocketAddress.self)
+        return (data, GunBoundAddress(ipAddress: address.address, port: address.port))
+    }
+}
+
 internal extension GunBoundSocketEvent {
     
     init(_ event: Socket.Event) {
@@ -185,6 +251,16 @@ internal extension SocketDescriptor {
         _ address: GunBoundAddress
     ) throws -> SocketDescriptor {
         let socketProtocol = IPv4Protocol.tcp
+        let socketAddress = IPv4SocketAddress(address)
+        return try self.init(socketProtocol, bind: socketAddress)
+    }
+    
+    /// Creates a UDP socket binded to the specified address.
+    @usableFromInline
+    static func udp(
+        _ address: GunBoundAddress
+    ) throws -> SocketDescriptor {
+        let socketProtocol = IPv4Protocol.udp
         let socketAddress = IPv4SocketAddress(address)
         return try self.init(socketProtocol, bind: socketAddress)
     }

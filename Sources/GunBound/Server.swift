@@ -1,9 +1,7 @@
 import Foundation
-import Socket
-import Algorithms
 
 /// GunBound Classic Server
-public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundServerDataSource> {
+public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunBoundSocketUDP, DataSource: GunBoundServerDataSource> {
     
     // MARK: - Properties
     
@@ -13,9 +11,13 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
     
     internal let log: ((String) -> ())?
     
-    internal let socket: Socket
+    internal let tcpSocket: TCPSocket
     
-    private var task: Task<(), Never>?
+    internal let udpSocket: UDPSocket
+    
+    private var tcpListenTask: Task<(), Never>?
+    
+    private var udpListenTask: Task<(), Never>?
     
     let storage = Storage()
     
@@ -29,7 +31,7 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
         configuration: GunBoundServerConfiguration,
         log: ((String) -> ())? = nil,
         dataSource: DataSource,
-        socket: Socket.Type
+        socket: (TCPSocket.Type, UDPSocket.Type)
     ) async throws {
         #if DEBUG
         let log = log ?? {
@@ -40,7 +42,11 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
         self.log = log
         self.dataSource = dataSource
         // create listening socket
-        self.socket = try await Socket.server(address: configuration.address, backlog: configuration.backlog)
+        self.tcpSocket = try await TCPSocket.server(
+            address: configuration.address,
+            backlog: configuration.backlog
+        )
+        self.udpSocket = try await UDPSocket(address: configuration.address)
         // start running server
         start()
     }
@@ -48,12 +54,12 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
     // MARK: - Methods
     
     private func start() {
-        assert(task == nil)
+        assert(tcpListenTask == nil)
+        log?("Started GunBound Server")
         // listening run loop
-        self.task = Task.detached(priority: .high) { [weak self] in
-            self?.log?("Started GunBound Server")
+        self.tcpListenTask = Task.detached(priority: .high) { [weak self] in
             do {
-                while let socket = self?.socket {
+                while let socket = self?.tcpSocket {
                     // wait for incoming sockets
                     let newSocket = try await socket.accept()
                     if let self = self {
@@ -65,16 +71,33 @@ public final class GunBoundServer <Socket: GunBoundSocket, DataSource: GunBoundS
             }
             catch _ as CancellationError { }
             catch {
-                self?.log?("Error waiting for new connection: \(error)")
+                self?.log?("Error waiting for new TCP connection: \(error)")
+            }
+        }
+        self.udpListenTask = Task.detached(priority: .high) { [weak self] in
+            do {
+                while let socket = self?.udpSocket {
+                    // wait for incoming sockets
+                    let (recievedData, address) = try await socket.recieve(Packet.maxSize)
+                    self?.log?("[\(address.address)] Recieved \(recievedData.count) bytes")
+                    try await socket.send(recievedData, to: address)
+                    self?.log?("[\(address.address)] Echoed data")
+                }
+            }
+            catch _ as CancellationError { }
+            catch {
+                self?.log?("Error waiting for new UDP connection: \(error)")
             }
         }
     }
     
     public func stop() {
-        assert(task != nil)
+        assert(tcpListenTask != nil)
         let storage = self.storage
-        self.task?.cancel()
-        self.task = nil
+        self.tcpListenTask?.cancel()
+        self.tcpListenTask = nil
+        self.udpListenTask?.cancel()
+        self.udpListenTask = nil
         self.log?("Stopped Server")
         Task {
             await storage.removeAllConnections()
@@ -205,7 +228,7 @@ internal extension GunBoundServer {
         
         let address: GunBoundAddress
         
-        private let connection: GunBound.Connection<Socket>
+        private let connection: GunBound.Connection<TCPSocket>
         
         private unowned var server: GunBoundServer
         
@@ -214,7 +237,7 @@ internal extension GunBoundServer {
         // MARK: - Initialization
         
         init(
-            socket: Socket,
+            socket: TCPSocket,
             server: GunBoundServer
         ) async {
             let address = socket.address

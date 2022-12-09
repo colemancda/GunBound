@@ -9,7 +9,7 @@ import Foundation
 import Socket
 
 /// GunBound Connection
-internal actor Connection <Socket: GunBoundSocket> {
+internal actor Connection <Socket: GunBoundSocketTCP> {
     
     let socket: Socket
     

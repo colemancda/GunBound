@@ -59,7 +59,7 @@ struct World: AsyncParsableCommand {
         let server = try await GunBoundServer(
             configuration: configuration,
             dataSource: dataSource,
-            socket: GunBoundTCPSocket.self
+            socket: (GunBoundSocketIPv4TCP.self, GunBoundSocketIPv4UDP.self)
         )
         
         // run indefinitely
