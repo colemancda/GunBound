@@ -16,4 +16,6 @@ public enum GunBoundError: Error {
     case unexpectedResponse(Data)
     
     case checksumMismatch(UInt32, UInt32)
+    
+    case unknownUser(String)
 }

@@ -91,9 +91,10 @@ public protocol GunBoundServerDataSource: AnyObject {
     var serverDirectory: ServerDirectory { get async throws }
     
     /// get the credentials for a user
-    func password(for username: String) async throws -> String?
+    func password(for username: String) async throws -> String
     
-    func checkUserExists(_ username: String) async throws -> Bool
+    /// check user exists
+    func userExists(_ username: String) async throws -> Bool
     
     func userBanned(_ username: String) async throws -> Bool
 }
@@ -118,8 +119,8 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     
     internal let stateChanged: ((State) -> ())?
     
-    public func update(_ body: (inout State) -> ()) {
-        body(&state)
+    public func update(_ body: (inout State) throws -> ()) rethrows {
+        try body(&state)
     }
     
     ///
@@ -127,17 +128,19 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         state.serverDirectory
     }
     
-    public func password(for username: String) async throws -> String? {
-        return state.users[username]
+    public func password(for username: String) async throws -> String {
+        guard let password = state.passwords[username] else {
+            throw GunBoundError.unknownUser(username)
+        }
+        return password
     }
     
-    public func checkUserExists(_ username: String) async throws -> Bool {
+    public func userExists(_ username: String) async throws -> Bool {
         state.users[username] != nil
     }
     
     public func userBanned(_ username: String) async throws -> Bool {
-        // TODO: User banning
-        return false
+        state.users[username]?.isBanned ?? false
     }
 }
 
@@ -147,7 +150,9 @@ public extension InMemoryGunBoundServerDataSource {
         
         public var serverDirectory: ServerDirectory = []
         
-        public var users = [String: String]()
+        public var users = [String: User]()
+        
+        public var passwords = [String: String]()
     }
 }
 
@@ -276,27 +281,25 @@ internal extension GunBoundServer {
             log("Authentication Request - \(request.username)")
             
             // check if user exists
-            guard try await self.server.dataSource.checkUserExists(request.username) else {
-                return AuthenticationResponse(status: .badUsername, profile: nil)
-            }
-            
-            // check if user exists
-            guard let password = try await self.server.dataSource.password(for: request.username) else {
+            guard try await self.server.dataSource.userExists(request.username) else {
                 return AuthenticationResponse(status: .badUsername, profile: nil)
             }
             
             // check if banned
-            guard try await self.server.dataSource.userBanned(request.username) else {
+            guard try await self.server.dataSource.userBanned(request.username) == false else {
                 return AuthenticationResponse(status: .bannedUser, profile: nil)
             }
             
             // decode encrypted data
+            let password = try await self.server.dataSource.password(for: request.username)
             let key = Key(
                 username: request.username,
-                password: request.username,
+                password: password,
                 nonce: self.nonce
             )
-            let decryptedData = try Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode)
+            guard let decryptedData = try? Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode) else {
+                return AuthenticationResponse(status: .badPassword, profile: nil)
+            }
             let decryptedValue = try connection.decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
             
             #if DEBUG
