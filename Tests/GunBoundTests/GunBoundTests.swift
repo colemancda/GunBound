@@ -284,6 +284,30 @@ final class GunBoundTests: XCTestCase {
         
         XCTAssertEncode(value, id: packet.id, data)
     }
+    
+    func testCashUpdate() {
+        
+        let data = Data(hexString: "1600BA723210A791BE6CECA91C106A641B509550A630")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 22)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .cashUpdate)
+        
+        let value = CashUpdate(cash: 99_9999)
+        
+        let key = Key(
+            username: "admin",
+            password: "1234",
+            nonce: 0x00010203
+        )
+                
+        XCTAssertEncode(value, id: packet.id, key: key, data)
+    }
 }
 
 // MARK: - Extensions
@@ -311,6 +335,7 @@ extension Data {
 func XCTAssertEncode<T>(
     _ value: T,
     id: Packet.ID,
+    key: Key? = nil,
     _ data: Data,
     file: StaticString = #file,
     line: UInt = #line
@@ -320,8 +345,16 @@ func XCTAssertEncode<T>(
     encoder.log = { print("Encoder:", $0) }
     
     do {
-        let packet = try encoder.encode(value, id: id)
+        var packet = try encoder.encode(value, id: id)
         XCTAssertFalse(packet.data.isEmpty, file: file, line: line)
+        if T.opcode.isEncrypted {
+            guard let key = key else {
+                throw GunBoundError.notAuthenticated
+            }
+            let plainText = packet.parameters
+            let parameters = try Crypto.AES.encrypt(plainText, key: key, opcode: T.opcode)
+            packet = Packet(opcode: T.opcode, id: id, parameters: parameters)
+        }
         XCTAssertEqual(packet.data, data, "\(packet.data.hexString) is not equal to \(data.hexString)", file: file, line: line)
     } catch {
         XCTFail(error.localizedDescription, file: file, line: line)

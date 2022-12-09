@@ -38,6 +38,9 @@ public enum Opcode: UInt16, Codable {
     
     /// Server Directory Response
     case serverDirectoryResponse    = 0x1102
+    
+    /// Cash update
+    case cashUpdate                 = 0x1032
 }
 
 public extension Opcode {
@@ -56,6 +59,16 @@ public extension Opcode {
         case .userRequest:                          return .request
         case .userResponse:                         return .response
         case .joinChannelCommand:                   return .command
+        case .cashUpdate:                           return .notification
+        }
+    }
+    
+    var isEncrypted: Bool {
+        switch self {
+        case .cashUpdate:
+            return true
+        default:
+            return false
         }
     }
     

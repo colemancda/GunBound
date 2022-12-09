@@ -18,4 +18,6 @@ public enum GunBoundError: Error {
     case checksumMismatch(UInt32, UInt32)
     
     case unknownUser(String)
+    
+    case notAuthenticated
 }

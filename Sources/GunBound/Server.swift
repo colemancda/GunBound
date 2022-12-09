@@ -211,12 +211,6 @@ internal extension GunBoundServer {
         
         private let log: (String) -> ()
         
-        var nonce: Nonce = 0x0000
-        
-        var session: UInt32 = .random(in: .min ..< .max)
-        
-        var key: Key?
-        
         // MARK: - Initialization
         
         init(
@@ -260,10 +254,19 @@ internal extension GunBoundServer {
         }
         
         /// Respond to a client-initiated PDU message.
-        private func respond <T> (_ response: T) async where T: GunBoundPacket, T:Encodable {
+        private func respond <T> (_ response: T) async where T: GunBoundPacket, T: Encodable {
             log("Response: \(response)")
+            assert(T.opcode.type == .response)
             guard let _ = await connection.queue(response)
                 else { fatalError("Could not add PDU to queue: \(response)") }
+        }
+        
+        /// Send a server-initiated PDU message.
+        private func send <T> (_ notification: T) async where T: GunBoundPacket, T: Encodable  {
+            log("Notification: \(notification)")
+            assert(T.opcode.type == .notification)
+            guard let _ = await connection.queue(notification)
+                else { fatalError("Could not add PDU to queue: \(notification)") }
         }
         
         private func close(_ error: Error) async {
@@ -281,7 +284,7 @@ internal extension GunBoundServer {
         
         private func nonce(_ packet: NonceRequest) async throws -> NonceResponse {
             log("Nonce Request")
-            self.nonce = Nonce() // refresh random nonce
+            let nonce = await self.connection.refreshNonce()
             return NonceResponse(nonce: nonce)
         }
         
@@ -303,11 +306,7 @@ internal extension GunBoundServer {
             
             // decode encrypted data
             let password = try await self.server.dataSource.password(for: request.username)
-            let key = Key(
-                username: request.username,
-                password: password,
-                nonce: self.nonce
-            )
+            let key = await self.connection.authenticate(username: request.username, password: password)
             let decryptedData: Data
             do {
                 decryptedData = try Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode)
@@ -320,15 +319,22 @@ internal extension GunBoundServer {
             let decryptedValue = try connection.decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
             
             #if DEBUG
-            log("Login attempt for \(request.username) with password \"\(decryptedValue.password)\" client version \(decryptedValue.clientVersion))")
+            log("Login attempt for \"\(request.username)\" with password \"\(decryptedValue.password)\" client version \(decryptedValue.clientVersion))")
             #endif
             
             guard password == decryptedValue.password else {
                 return .badPassword
             }
             
-            // store computed key
-            self.key = key
+            // send cash update right after notification
+            defer {
+                Task {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    await self.cashUpdate()
+                }
+            }
+            
+            let session = await self.connection.session
             
             return AuthenticationResponse(userData:
                 AuthenticationResponse.UserData(
@@ -348,6 +354,22 @@ internal extension GunBoundServer {
                     funcRestrict: [] // TODO: funcRestrict
                 )
             )
+        }
+        
+        private func cashUpdate() async {
+            guard let username = await self.connection.username else {
+                assertionFailure("Not authenticated")
+                return
+            }
+            // get user profile
+            let user: User
+            do { user = try await self.server.dataSource.user(username) }
+            catch {
+                await self.close(error)
+                return
+            }
+            let notification = CashUpdate(cash: user.cash)
+            await self.send(notification)
         }
     }
 }

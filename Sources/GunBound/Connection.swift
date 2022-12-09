@@ -22,7 +22,15 @@ internal actor Connection <Socket: GunBoundSocket> {
     var sentBytes = 0
     
     var recievedBytes = 0
-        
+    
+    var nonce: Nonce = 0x0000
+    
+    var session: UInt32 = .random(in: .min ..< .max)
+    
+    var key: Key?
+    
+    var username: String?
+    
     let encoder = GunBoundEncoder()
     
     let decoder = GunBoundDecoder()
@@ -67,6 +75,20 @@ internal actor Connection <Socket: GunBoundSocket> {
     }
     
     // MARK: - Methods
+    
+    @discardableResult
+    public func refreshNonce() -> Nonce {
+        let nonce = Nonce()
+        self.nonce = nonce
+        return nonce
+    }
+    
+    @discardableResult
+    public func authenticate(username: String, password: String) -> Key {
+        let key = Key(username: username, password: password, nonce: nonce)
+        self.key = key
+        return key
+    }
     
     private func run() {
         Task.detached(priority: .high) { [weak self] in
@@ -155,7 +177,18 @@ internal actor Connection <Socket: GunBoundSocket> {
             else { return false }
         
         // encode packet
+        let opcode = type(of: sendOperation.packet).opcode
         var packet = try encoder.encode(sendOperation.packet, id: 0x0000)
+        
+        // encrypt packet parameters
+        if opcode.isEncrypted {
+            guard let key = self.key else {
+                throw GunBoundError.notAuthenticated
+            }
+            let plainText = packet.parameters
+            let parameters = try Crypto.AES.encrypt(plainText, key: key, opcode: opcode)
+            packet = Packet(opcode: opcode, parameters: parameters)
+        }
         
         // use special ID for first login
         self.sentBytes += packet.data.count

@@ -44,9 +44,20 @@ public struct Packet: Equatable, Hashable, Identifiable {
         }
     }
     
-    internal init(opcode: Opcode) {
-        self.init(Data(count: Packet.minSize))
-        self.size = numericCast(Packet.minSize)
+    public init(
+        opcode: Opcode,
+        id: ID = 0x00,
+        parameters: Data = Data()
+    ) {
+        let length = Packet.minSize + parameters.count
+        var data = Data(count: Packet.minSize)
+        data.reserveCapacity(length)
+        data += parameters
+        assert(data.count == length)
+        self.init(data)
+        // set header bytes
+        self.size = numericCast(length)
+        self.id = id
         self.opcodeRawValue = opcode.rawValue
         assert(self.opcode == opcode)
     }
