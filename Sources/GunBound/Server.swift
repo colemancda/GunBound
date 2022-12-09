@@ -235,7 +235,7 @@ internal extension GunBoundServer {
             // nonce
             await register { [unowned self] in try await self.nonce($0) }
             // login
-            await register { [unowned self] in try await self.login($0) }
+            await connection.register { [unowned self] in await self.login($0) }
         }
         
         @discardableResult
@@ -288,7 +288,22 @@ internal extension GunBoundServer {
             return NonceResponse(nonce: nonce)
         }
         
-        private func login(_ request: AuthenticationRequest) async throws -> AuthenticationResponse {
+        private func login(_ request: AuthenticationRequest) async {
+            do {
+                // response
+                let response = try await authenticate(request)
+                await self.respond(response)
+                // send cash update right after notification
+                if response.status == .success {
+                    await cashUpdate()
+                }
+            }
+            catch {
+                await self.close(error)
+            }
+        }
+        
+        private func authenticate(_ request: AuthenticationRequest) async throws -> AuthenticationResponse {
             log("Authentication Request - \(request.username)")
             
             // check if user exists
@@ -326,14 +341,6 @@ internal extension GunBoundServer {
                 return .badPassword
             }
             
-            // send cash update right after notification
-            defer {
-                Task {
-                    try? await Task.sleep(for: .milliseconds(100))
-                    await self.cashUpdate()
-                }
-            }
-            
             let session = await self.connection.session
             
             return AuthenticationResponse(userData:
@@ -357,8 +364,8 @@ internal extension GunBoundServer {
         }
         
         private func cashUpdate() async {
+            // must be authenticated
             guard let username = await self.connection.username else {
-                assertionFailure("Not authenticated")
                 return
             }
             // get user profile

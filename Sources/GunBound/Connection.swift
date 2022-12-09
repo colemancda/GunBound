@@ -84,9 +84,13 @@ internal actor Connection <Socket: GunBoundSocket> {
     }
     
     @discardableResult
-    public func authenticate(username: String, password: String) -> Key {
+    public func authenticate(
+        username: String,
+        password: String
+    ) -> Key {
         let key = Key(username: username, password: password, nonce: nonce)
         self.key = key
+        self.username = username
         return key
     }
     
@@ -192,11 +196,7 @@ internal actor Connection <Socket: GunBoundSocket> {
         
         // use special ID for first login
         self.sentBytes += packet.data.count
-        if didAuthenticate == false, type(of: sendOperation.packet).opcode == .authenticationRequest {
-            packet.id = .login
-        } else {
-            packet.id = .init(serverPacketLength: Int(sentBytes))
-        }
+        packet.id = .init(serverPacketLength: Int(sentBytes))
         
         // write data to socket
         try await socket.send(packet.data)
