@@ -53,11 +53,11 @@ public extension AuthenticationResponse {
         
         public let session: UInt32
         
-        public let username: String
+        public let username: Username
         
         public let avatarEquipped: UInt64 // 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00
         
-        public let guild: String?
+        public let guild: Guild
         
         public let rankCurrent: UInt16
         
@@ -86,9 +86,9 @@ extension AuthenticationResponse.UserData: GunBoundEncodable {
     public func encode(to container: GunBoundEncodingContainer) throws {
         //try container.encode(UInt16(0x0000)) // gender?
         try container.encode(session, isLittleEndian: false)//, forKey: CodingKeys.session) // session
-        try container.encode(username, fixedLength: 0xC) // username
+        try container.encode(username, forKey: CodingKeys.username) // username
         try container.encode(avatarEquipped, forKey: CodingKeys.avatarEquipped) // default avatar
-        try container.encode(guild ?? "", fixedLength: 8) // guild
+        try container.encode(guild, forKey: CodingKeys.guild) // guild
         try container.encode(rankCurrent, forKey: CodingKeys.rankCurrent) // rank current
         try container.encode(rankSeason, forKey: CodingKeys.rankSeason) // rank season
         try container.encode(guildMemberCount, forKey: CodingKeys.guildMemberCount)

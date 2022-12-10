@@ -10,7 +10,7 @@ import Foundation
 /// User
 public struct User: Equatable, Hashable, Codable, Identifiable {
     
-    public let id: String
+    public let id: Username
     
     public var isBanned: Bool
     
@@ -26,7 +26,7 @@ public struct User: Equatable, Hashable, Codable, Identifiable {
     
     public var avatarEquipped: UInt64
     
-    public var guild: String?
+    public var guild: Guild
     
     public var rankCurrent: UInt16
     
@@ -45,13 +45,13 @@ public struct User: Equatable, Hashable, Codable, Identifiable {
     public var gpSeason: UInt32
     
     public init(
-        id: String,
+        id: Username,
         isBanned: Bool = false,
         rank: Rank = .chick,
         gold: UInt32 = 0,
         cash: UInt32 = 0,
         avatarEquipped: UInt64 = UInt64(0x0080008000800000).bigEndian,
-        guild: String? = nil,
+        guild: Guild = "",
         rankCurrent: UInt16 = 0,
         rankSeason: UInt16 = 0,
         guildMemberCount: UInt16 = 0,

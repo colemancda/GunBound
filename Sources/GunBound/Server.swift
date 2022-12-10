@@ -408,7 +408,7 @@ internal extension GunBoundServer {
             return AuthenticationResponse(userData:
                 AuthenticationResponse.UserData(
                     session: session,
-                    username: request.username,
+                    username: .init(rawValue: request.username)!,
                     avatarEquipped: user.avatarEquipped,
                     guild: user.guild,
                     rankCurrent: user.rankCurrent,

@@ -42,25 +42,14 @@ public extension JoinChannelResponse {
     
     struct ChannelUser: Equatable, Hashable, Encodable {
                 
-        public let username: String
+        public let username: Username
         
         public let avatarEquipped: UInt64
         
-        public let guild: String?
+        public let guild: Guild
         
         public let rankCurrent: UInt16
         
         public let rankSeason: UInt16
-    }
-}
-
-extension JoinChannelResponse.ChannelUser: GunBoundEncodable {
-    
-    public func encode(to container: GunBoundEncodingContainer) throws {
-        try container.encode(username, fixedLength: 12)
-        try container.encode(avatarEquipped, forKey: CodingKeys.avatarEquipped)
-        try container.encode(guild ?? "", fixedLength: 8)
-        try container.encode(rankCurrent, forKey: CodingKeys.rankCurrent)
-        try container.encode(rankSeason, forKey: CodingKeys.rankSeason)
     }
 }
