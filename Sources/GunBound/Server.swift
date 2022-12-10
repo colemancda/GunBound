@@ -287,6 +287,8 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.createRoom($0) }
             // select mobile
             await register { [unowned self] in try await self.roomSelectTank($0) }
+            // select team
+            await register { [unowned self] in try await self.roomSelectTeam($0) }
         }
         
         @discardableResult
@@ -493,6 +495,12 @@ internal extension GunBoundServer {
             log("Select Mobile - \(request.primary) \(request.secondary)")
             // update client state
             return RoomSelectTankResponse()
+        }
+        
+        private func roomSelectTeam(_ request: RoomSelectTeamRequest) async throws -> RoomSelectTeamResponse {
+            log("Select Team - \(request.team)")
+            // update client state
+            return RoomSelectTeamResponse()
         }
     }
 }
