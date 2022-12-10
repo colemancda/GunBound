@@ -289,6 +289,10 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.roomSelectTank($0) }
             // select team
             await register { [unowned self] in try await self.roomSelectTeam($0) }
+            // room change stage
+            await connection.register { [unowned self] in await self.roomChangeStage($0) }
+            // room settings
+            await connection.register { [unowned self] in await self.roomChangeOption($0) }
         }
         
         @discardableResult
@@ -482,25 +486,41 @@ internal extension GunBoundServer {
         }
         
         private func joinRoom() {
-            //log("Join Room - \(request.channel)")
+            log("Join Room ")
         }
         
         private func createRoom(_ request: CreateRoomRequest) async throws -> CreateRoomResponse {
             log("Create Room - \(request.name)")
-            
+            // TODO: Create rooom
             return CreateRoomResponse(room: 1, message: "Room 1")
         }
         
+        private func updateRoom() async {
+            log("Room Update")
+            let notification = RoomUpdateNotification()
+            await send(notification)
+        }
+        
         private func roomSelectTank(_ request: RoomSelectTankRequest) async throws -> RoomSelectTankResponse {
-            log("Select Mobile - \(request.primary) \(request.secondary)")
+            log("Select Room Mobile - \(request.primary) \(request.secondary)")
             // update client state
             return RoomSelectTankResponse()
         }
         
         private func roomSelectTeam(_ request: RoomSelectTeamRequest) async throws -> RoomSelectTeamResponse {
-            log("Select Team - \(request.team)")
+            log("Select Room Team - \(request.team)")
             // update client state
             return RoomSelectTeamResponse()
+        }
+        
+        private func roomChangeStage(_ command: RoomChangeStageCommand) async {
+            log("Change Room Stage - \(command.map)")
+            await updateRoom()
+        }
+        
+        private func roomChangeOption(_ command: RoomChangeOptionCommand) async {
+            log("Change Room Options - \(command.settings.toHexadecimal())")
+            await updateRoom()
         }
     }
 }

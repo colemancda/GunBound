@@ -85,7 +85,7 @@ struct World: AsyncParsableCommand {
         }
         let encoder = JSONEncoder()
         #if DEBUG
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.outputFormatting = [.prettyPrinted]
         #endif
         do { try encoder.encode(state).write(to: URL(fileURLWithPath: path), options: [.atomic]) }
         catch {

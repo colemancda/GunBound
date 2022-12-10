@@ -73,6 +73,10 @@ public enum Opcode: UInt16, Codable {
     
     case createRoomResponse         = 0x2121
     
+    case roomChangeStageCommand     = 0x3100
+    
+    case roomChangeOptionCommand    = 0x3101
+    
     case roomChangeUseItemCommand   = 0x3102
     
     case roomChangeCapacity         = 0x3103
@@ -173,6 +177,9 @@ public extension Opcode {
         case .roomSelectTankResponse:               return .response
         case .roomSelectTeamRequest:                return .request
         case .roomSelectTeamResponse:               return .response
+        case .roomChangeStageCommand:               return .command
+        case .roomChangeOptionCommand:              return .command
+        case .roomUpdateNotification:               return .notification
         default:
             return .request
         }

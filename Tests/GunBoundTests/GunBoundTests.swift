@@ -573,11 +573,86 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 7)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
-        XCTAssertEqual(packet.opcode, .roomSelectTankResponse)
+        XCTAssertEqual(packet.opcode, .roomSelectTeamRequest)
         XCTAssertEqual(packet.id, 0x70D4)
         
-        let value = RoomSelectTankResponse()
+        let value = RoomSelectTeamRequest(team: .b)
         XCTAssertEncode(value, id: packet.id, data)
+    }
+    
+    func testRoomChangeStageCommand() {
+        
+        let data = Data([0x07, 0x00, 0x07, 0xED, 0x00, 0x31, 0x01])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 7)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomChangeStageCommand)
+        XCTAssertEqual(packet.id, 0xED07)
+        
+        let value = RoomChangeStageCommand(map: .miramoTown)
+        XCTAssertEncode(value, id: packet.id, data)
+    }
+    
+    func testRoomChangeOptionCommand() {
+        
+        // Change Room Options - 004462B2
+        let data = Data([0x0A, 0x00, 0x10, 0x21, 0x01, 0x31, 0xB2, 0x62, 0x44, 0x00])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 10)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomChangeOptionCommand)
+        XCTAssertEqual(packet.id, 0x2110)
+        
+        let value = RoomChangeOptionCommand(settings: 0x004462B2)
+        XCTAssertEncode(value, id: packet.id, data)
+    }
+    
+    func testRoomChangeCapacity() {
+        
+        // Recieved packet roomChangeCapacity ID 0x792E
+        let data = Data([0x07, 0x00, 0x2E, 0x79, 0x03, 0x31, 0x02])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 7)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomChangeCapacity)
+        XCTAssertEqual(packet.id, 0x792E)
+        
+        //let value =
+        //XCTAssertEncode(value, id: packet.id, data)
+    }
+    
+    func testRoomSetTitleCommand() {
+        
+        // Recieved packet roomSetTitleCommand ID 0x77AE
+        let data = Data([0x0B, 0x00, 0xAE, 0x77, 0x04, 0x31, 0x68, 0x69, 0x31, 0x32, 0x33])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 11)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomSetTitleCommand)
+        XCTAssertEqual(packet.id, 0x77AE)
+        
+        //let value =
+        //XCTAssertEncode(value, id: packet.id, data)
     }
 }
 
