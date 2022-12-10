@@ -167,6 +167,7 @@ public extension Opcode {
         case .joinChannelRequest:                   return .request
         case .joinChannelResponse:                  return .response
         case .joinChannelNotification:              return .notification
+        case .joinRoomNotificationSelf:             return .notification
         case .roomListRequest:                      return .request
         case .roomListResponse:                     return .response
         case .joinRoomRequest:                      return .request
