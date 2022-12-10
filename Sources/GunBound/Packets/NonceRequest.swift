@@ -7,7 +7,10 @@
 
 import Foundation
 
+/// Nonce Request
 public struct NonceRequest: GunBoundPacket, Equatable, Hashable, Codable {
     
     static public var opcode: Opcode { .nonceRequest }
+    
+    public init() { }
 }

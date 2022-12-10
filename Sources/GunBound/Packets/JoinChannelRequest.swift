@@ -12,5 +12,9 @@ public struct JoinChannelRequest: GunBoundPacket, Equatable, Hashable, Codable {
     
     public static var opcode: Opcode { .joinChannelRequest }
         
-    public let channel: Channel.ID
+    public var channel: Channel.ID
+    
+    public init(channel: Channel.ID) {
+        self.channel = channel
+    }
 }

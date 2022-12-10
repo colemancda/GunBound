@@ -15,4 +15,8 @@ public struct CashUpdate: GunBoundPacket, Encodable, Hashable {
     public static var isEncrypted: Bool { true }
     
     public let cash: UInt32
+    
+    public init(cash: UInt32 = 0) {
+        self.cash = cash
+    }
 }

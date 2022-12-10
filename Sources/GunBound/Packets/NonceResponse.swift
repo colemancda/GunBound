@@ -7,11 +7,12 @@
 
 import Foundation
 
+/// Nonce response
 public struct NonceResponse: GunBoundPacket, Equatable, Hashable, Codable {
     
     public static var opcode: Opcode { .nonceResponse }
     
-    public let nonce: Nonce
+    public var nonce: Nonce
     
     public init(nonce: Nonce = Nonce()) {
         self.nonce = nonce
