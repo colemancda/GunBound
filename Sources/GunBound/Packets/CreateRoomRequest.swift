@@ -17,5 +17,5 @@ public struct CreateRoomRequest: GunBoundPacket, Equatable, Hashable, Decodable 
     
     public var password: RoomPassword
     
-    public var capacity: UInt8
+    public var capacity: RoomCapacity
 }

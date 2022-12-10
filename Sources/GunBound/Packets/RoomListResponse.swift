@@ -55,7 +55,7 @@ public extension RoomListResponse {
         
         public let playerCount: UInt8
         
-        public let playerCapacity: UInt8
+        public let capacity: RoomCapacity
         
         public let isPlaying: Bool
         

@@ -482,7 +482,7 @@ internal extension GunBoundServer {
                     map: .random,
                     settings: UInt32(0xB2620C00).bigEndian,
                     playerCount: 1,
-                    playerCapacity: 2,
+                    capacity: 2,
                     isPlaying: false,
                     isLocked: false
                 )
