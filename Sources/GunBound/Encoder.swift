@@ -620,9 +620,7 @@ internal final class GunBoundUnkeyedEncodingContainer: UnkeyedEncodingContainer 
     
     func encode(_ value: UInt8) throws { append(encoder.box(value)) }
     
-    func encode(_ value: UInt16) throws {
-        append(encoder.boxInteger(value))
-    }
+    func encode(_ value: UInt16) throws { append(encoder.boxInteger(value)) }
     
     func encode(_ value: UInt32) throws { append(encoder.boxInteger(value)) }
     
@@ -630,6 +628,7 @@ internal final class GunBoundUnkeyedEncodingContainer: UnkeyedEncodingContainer 
     
     func encode <T: Encodable> (_ value: T) throws {
         assert(count < Int(UInt8.max), "Cannot encode more than \(UInt8.max) elements")
+        encoder.write([UInt8(count)])
         try encoder.writeEncodable(value)
         count += 1
     }
@@ -650,6 +649,7 @@ internal final class GunBoundUnkeyedEncodingContainer: UnkeyedEncodingContainer 
     
     private func append(_ data: Data) {
         assert(count < Int(UInt8.max), "Cannot encode more than \(UInt8.max) elements")
+        encoder.write([UInt8(count)])
         // write element data
         encoder.write(data)
         count += 1

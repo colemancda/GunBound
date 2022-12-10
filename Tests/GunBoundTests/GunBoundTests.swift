@@ -332,20 +332,37 @@ final class GunBoundTests: XCTestCase {
     
     func testJoinChannelResponse() {
         
-        let data = Data(hexString: "E800021001200000000003040075730000000000000000000000800080008000007669727475616C0013001300016A670000000000000000000000800080008000007669727475616C000C000C000261646D696E0000000000000000800080008000007669727475616C00140014000361646D696E0000000000000000800080008000007669727475616C0014001400244368616E6E656C204D4F54440D0A52657175657374696E67205356435F4348414E4E454C5F4A4F494E203020617420323032322D31322D30382032313A34303A34380D0A436C69656E742056657273696F6E3A20323830")!
+        let data = Data(hexString: "3100277601200000000000010061646D696E0000000000000000800080008000007669727475616C00140014006D6F7464")!
         
         guard let packet = Packet(data: data) else {
             XCTFail()
             return
         }
         XCTAssertEqual(packet.data, data)
-        XCTAssertEqual(packet.size, 232)
+        XCTAssertEqual(packet.size, 49)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
         XCTAssertEqual(packet.opcode, .joinChannelResponse)
-        XCTAssertEqual(packet.id, 0x1002)
+        XCTAssertEqual(packet.id, 0x7627)
         
+        let value = JoinChannelResponse(
+            status: 0x0000,
+            channel: 0,
+            maxPosition: 0,
+            users: [
+                JoinChannelResponse.ChannelUser(
+                    username: "admin",
+                    avatarEquipped: UInt64(0x0080008000800000).bigEndian,
+                    guild: "virtual",
+                    rankCurrent: 20,
+                    rankSeason: 20
+                )
+            ],
+            channelMotd: "motd" //"$Channel MOTD\r\nRequesting SVC_CHANNEL_JOIN 0 at 2022-12-09 17:36:27\r\nClient Version: 280"
+        )
         
+        XCTAssertEncode(value, id: packet.id, data)
     }
+    
 }
 
 // MARK: - Extensions
