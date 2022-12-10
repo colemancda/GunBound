@@ -24,18 +24,3 @@ public struct JoinRoomRequest: GunBoundPacket, Codable, Equatable, Hashable {
         self.password = password
     }
 }
-
-// MARK: - GunBoundCodable
-
-extension JoinRoomRequest: GunBoundCodable {
-    
-    public init(from container: GunBoundDecodingContainer) throws {
-        self.room = try container.decode(Room.ID.self, forKey: CodingKeys.room)
-        self.password = try container.decode(RoomPassword.self, forKey: CodingKeys.password)
-    }
-    
-    public func encode(to container: GunBoundEncodingContainer) throws {
-        try container.encode(room, forKey: CodingKeys.room)
-        try container.encode(password, forKey: CodingKeys.password)
-    }
-}

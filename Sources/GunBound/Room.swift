@@ -14,11 +14,13 @@ public struct Room: Equatable, Hashable, Encodable, Identifiable {
     
     public var name: String
     
+    public var password: RoomPassword
+    
     public var map: GameMap
     
     public var settings: UInt32
     
-    public var playerCount: UInt8
+    public var players: Set<String>
     
     public var playerCapacity: RoomCapacity
     
