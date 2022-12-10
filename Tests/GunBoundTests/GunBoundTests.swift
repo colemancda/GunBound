@@ -543,6 +543,24 @@ final class GunBoundTests: XCTestCase {
         
         XCTAssertEncode(value, id: packet.id, data)
     }
+    
+    func testRoomSelectTankResponse() {
+        
+        let data = Data([0x08, 0x00, 0xC3, 0xA3, 0x01, 0x32, 0x00, 0x00])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 8)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomSelectTankResponse)
+        XCTAssertEqual(packet.id, 0xA3C3)
+        
+        let value = RoomSelectTankResponse()
+        XCTAssertEncode(value, id: packet.id, data)
+    }
 }
 
 // MARK: - Extensions

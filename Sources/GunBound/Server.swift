@@ -281,6 +281,12 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.login($0) }
             // join channel
             await register { [unowned self] in try await self.joinChannel($0) }
+            // room list
+            await register { [unowned self] in try await self.roomList($0) }
+            // create room
+            await register { [unowned self] in try await self.createRoom($0) }
+            // select mobile
+            await register { [unowned self] in try await self.roomSelectTank($0) }
         }
         
         @discardableResult
@@ -414,6 +420,7 @@ internal extension GunBoundServer {
             guard let username = await self.connection.username else {
                 return
             }
+            log("Cash Update")
             // get user profile
             let user: User
             do { user = try await self.server.dataSource.user(for: username) }
@@ -454,6 +461,38 @@ internal extension GunBoundServer {
                 users: users,
                 channelMotd: channel.message
             )
+        }
+        
+        private func roomList(_ request: RoomListRequest) async throws -> RoomListResponse {
+            log("Room List - Filter \(request.filter)")
+            return [
+                RoomListResponse.Room(
+                    id: 0,
+                    name: "test",
+                    map: .random,
+                    settings: UInt32(0xB2620C00).bigEndian,
+                    playerCount: 1,
+                    playerCapacity: 2,
+                    isPlaying: false,
+                    isLocked: false
+                )
+            ]
+        }
+        
+        private func joinRoom() {
+            //log("Join Room - \(request.channel)")
+        }
+        
+        private func createRoom(_ request: CreateRoomRequest) async throws -> CreateRoomResponse {
+            log("Create Room - \(request.name)")
+            
+            return CreateRoomResponse(room: 1, message: "Room 1")
+        }
+        
+        private func roomSelectTank(_ request: RoomSelectTankRequest) async throws -> RoomSelectTankResponse {
+            log("Select Mobile - \(request.primary) \(request.secondary)")
+            // update client state
+            return RoomSelectTankResponse()
         }
     }
 }
