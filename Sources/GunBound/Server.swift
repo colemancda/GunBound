@@ -293,6 +293,10 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.roomChangeStage($0) }
             // room settings
             await connection.register { [unowned self] in await self.roomChangeOption($0) }
+            // room set title
+            await connection.register { [unowned self] in await self.roomSetTitle($0) }
+            // room change capacity
+            await connection.register { [unowned self] in await self.roomChangeCapacity($0) }
         }
         
         @discardableResult
@@ -520,6 +524,16 @@ internal extension GunBoundServer {
         
         private func roomChangeOption(_ command: RoomChangeOptionCommand) async {
             log("Change Room Options - \(command.settings.toHexadecimal())")
+            await updateRoom()
+        }
+        
+        private func roomChangeCapacity(_ command: RoomChangeCapacityCommand) async {
+            log("Change Room Capacity - \(command.capacity)")
+            await updateRoom()
+        }
+        
+        private func roomSetTitle(_ command: RoomSetTitleCommand) async {
+            log("Set Room Title - \(command.title)")
             await updateRoom()
         }
     }
