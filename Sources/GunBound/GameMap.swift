@@ -41,3 +41,39 @@ public enum GameMap: UInt8, Codable {
     /// Meta Mine
     case metaMine           = 10
 }
+
+// MARK: - CustomStringConvertible
+
+extension GameMap: CustomStringConvertible, CustomDebugStringConvertible {
+    
+    public var description: String {
+        switch self {
+        case .random:
+            return "Random"
+        case .miramoTown:
+            return "Miramo Town"
+        case .nirvana:
+            return "Nirvana"
+        case .metropolis:
+            return "Metropolis"
+        case .seaHero:
+            return "Sea Hero"
+        case .adiumroot:
+            return "Adiumroot"
+        case .dragon:
+            return "Dragon"
+        case .cozytower:
+            return "Cozytower"
+        case .dummySlope:
+            return "Dummy Slope"
+        case .stardust:
+            return "Stardust"
+        case .metaMine:
+            return "Meta Mine"
+        }
+    }
+    
+    public var debugDescription: String {
+        description
+    }
+}
