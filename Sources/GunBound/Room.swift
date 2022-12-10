@@ -20,7 +20,7 @@ public struct Room: Equatable, Hashable, Encodable, Identifiable {
     
     public var playerCount: UInt8
     
-    public var playerCapacity: UInt8
+    public var playerCapacity: RoomCapacity
     
     public var isPlaying: Bool
     
