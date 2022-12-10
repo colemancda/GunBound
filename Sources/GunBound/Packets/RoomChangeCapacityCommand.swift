@@ -12,5 +12,5 @@ public struct RoomChangeCapacityCommand: GunBoundPacket, Codable, Equatable, Has
     
     public static var opcode: Opcode { .roomChangeCapacityCommand }
     
-    public var capacity: UInt8
+    public var capacity: RoomCapacity
 }
