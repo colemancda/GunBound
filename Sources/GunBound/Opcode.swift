@@ -155,6 +155,7 @@ public extension Opcode {
         
         switch self {
         case .keepAlive:                            return .command
+        case .tunnel:                               return .command
         case .nonceRequest:                         return .request
         case .nonceResponse:                        return .response
         case .authenticationRequest:                return .request

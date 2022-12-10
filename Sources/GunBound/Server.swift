@@ -283,6 +283,8 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.joinChannel($0) }
             // room list
             await register { [unowned self] in try await self.roomList($0) }
+            // join room
+            await connection.register { [unowned self] in await self.joinRoom($0) }
             // create room
             await register { [unowned self] in try await self.createRoom($0) }
             // select mobile
@@ -489,8 +491,65 @@ internal extension GunBoundServer {
             ]
         }
         
-        private func joinRoom() {
-            log("Join Room ")
+        private func joinRoom(_ request: JoinRoomRequest) async {
+            log("Join Room - \(request.room)")
+            do {
+                let selfNotification = JoinRoomNotificationSelf()
+                await send(selfNotification)
+                // fetch room and players
+                let response = JoinRoomResponse(
+                    rtc: 0x0000,
+                    value0: 0x0100,
+                    room: 0,
+                    name: "yest",
+                    map: .random,
+                    settings: UInt32(0xB2620000).bigEndian,
+                    value1: 0xFFFFFFFFFFFFFFFF,
+                    capacity: 8,
+                    players: [
+                        JoinRoomResponse.PlayerSession(
+                            id: 0x01,
+                            username: "admin",
+                            ipAddress: UInt32(0xC0A80177).bigEndian,
+                            port: UInt16(8363).bigEndian,
+                            ipAddress2: UInt32(0xC0A80177).bigEndian,
+                            port2: UInt16(8363).bigEndian,
+                            primaryTank: .random,
+                            secondary: .random,
+                            team: .a,
+                            value0: 0x01,
+                            avatarEquipped: UInt64(0x0080008000800000).bigEndian,
+                            guild: "virtual",
+                            rankCurrent: 20,
+                            rankSeason: 20
+                        ),
+                        JoinRoomResponse.PlayerSession(
+                            id: 0x01,
+                            username: "admin",
+                            ipAddress: UInt32(0xC0A80177).bigEndian,
+                            port: UInt16(8363).bigEndian,
+                            ipAddress2: UInt32(0xC0A80177).bigEndian,
+                            port2: UInt16(8363).bigEndian,
+                            primaryTank: .random,
+                            secondary: .random,
+                            team: .b,
+                            value0: 0x01,
+                            avatarEquipped: UInt64(0x0080008000800000).bigEndian,
+                            guild: "virtual",
+                            rankCurrent: 20,
+                            rankSeason: 20
+                        )
+                    ],
+                    message: "$Room MOTD"
+                )
+                try? await Task.sleep(for: .milliseconds(100))
+                await respond(response)
+                // inform other users
+                
+            }
+            catch {
+                await close(error)
+            }
         }
         
         private func createRoom(_ request: CreateRoomRequest) async throws -> CreateRoomResponse {

@@ -474,7 +474,7 @@ final class GunBoundTests: XCTestCase {
     
     func testJoinRoomResponse() {
         
-        let data = Data(hexString: "8C0072C31121000000010200047465737400B2620C00FFFFFFFFFFFFFFFF02020061646D696E00000000000000C0A8017720ABC0A8017720ABFFFF000101000000010003007669727475616C00140014000161646D696E00000000000000C0A801C020ABC0A801C020ABFFFF010101000000010003007669727475616C001400140024526F6F6D204D4F5444")!
+        let data = Data([0x8C, 0x00, 0xCF, 0x93, 0x11, 0x21, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x04, 0x79, 0x65, 0x73, 0x74, 0x00, 0xB2, 0x62, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x08, 0x02, 0x01, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xFF, 0xFF, 0x00, 0x01, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6C, 0x00, 0x14, 0x00, 0x14, 0x00, 0x01, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xFF, 0xFF, 0x01, 0x01, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6C, 0x00, 0x14, 0x00, 0x14, 0x00, 0x24, 0x52, 0x6F, 0x6F, 0x6D, 0x20, 0x4D, 0x4F, 0x54, 0x44])
         
         guard let packet = Packet(data: data) else {
             XCTFail()
@@ -484,7 +484,57 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.size, 140)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
         XCTAssertEqual(packet.opcode, .joinRoomResponse)
-        XCTAssertEqual(packet.id, 0xC372)
+        XCTAssertEqual(packet.id, 0x93CF)
+        
+        
+        //JoinRoomResponse(rtc: 0, value0: 256, room: 0, name: "yest", map: Random, settings: 25266, value1: 18446744073709551615, capacity: 4:4, players: [GunBound.JoinRoomResponse.PlayerSession(id: 1, username: admin, ipAddress: 1996597440, port: 43808, ipAddress2: 1996597440, port2: 43808, primaryTank: Random, secondary: Random, team: A, value0: 1, avatarEquipped: 140739635871744, guild: virtual, rankCurrent: 20, rankSeason: 20), GunBound.JoinRoomResponse.PlayerSession(id: 1, username: admin, ipAddress: 1996597440, port: 43808, ipAddress2: 1996597440, port2: 43808, primaryTank: Random, secondary: Random, team: B, value0: 1, avatarEquipped: 140739635871744, guild: virtual, rankCurrent: 20, rankSeason: 20)], message: "$Room MOTD")
+        let value = JoinRoomResponse(
+            rtc: 0x0000,
+            value0: 0x0100,
+            room: 0,
+            name: "yest",
+            map: .random,
+            settings: UInt32(0xB2620000).bigEndian,
+            value1: 0xFFFFFFFFFFFFFFFF,
+            capacity: 8,
+            players: [
+                JoinRoomResponse.PlayerSession(
+                    id: 0x01,
+                    username: "admin",
+                    ipAddress: UInt32(0xC0A80177).bigEndian,
+                    port: UInt16(8363).bigEndian,
+                    ipAddress2: UInt32(0xC0A80177).bigEndian,
+                    port2: UInt16(8363).bigEndian,
+                    primaryTank: .random,
+                    secondary: .random,
+                    team: .a,
+                    value0: 0x01,
+                    avatarEquipped: 140739635871744,
+                    guild: "virtual",
+                    rankCurrent: 20,
+                    rankSeason: 20
+                ),
+                JoinRoomResponse.PlayerSession(
+                    id: 0x01,
+                    username: "admin",
+                    ipAddress: UInt32(0xC0A80177).bigEndian,
+                    port: UInt16(8363).bigEndian,
+                    ipAddress2: UInt32(0xC0A80177).bigEndian,
+                    port2: UInt16(8363).bigEndian,
+                    primaryTank: .random,
+                    secondary: .random,
+                    team: .b,
+                    value0: 0x01,
+                    avatarEquipped: 140739635871744,
+                    guild: "virtual",
+                    rankCurrent: 20,
+                    rankSeason: 20
+                )
+            ],
+            message: "$Room MOTD"
+        )
+        
+        XCTAssertEncode(value, id: packet.id, data)
     }
     
     func testJoinRoomNotification() {
@@ -706,6 +756,38 @@ final class GunBoundTests: XCTestCase {
         
         let value = RoomSetTitleCommand(title: "hi123")
         XCTAssertDecodePacket(value, data)
+    }
+    
+    func testUserReadyRequest() {
+        
+        // SVC_ROOM_USER_READY 1
+        let data = Data(hexString: "07009C09303201")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 7)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomUserReadyRequest)
+        XCTAssertEqual(packet.id, 0x099C)
+    }
+    
+    func testUserReadyResponse() {
+        
+        //
+        let data = Data(hexString: "08005AE331320000")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 8)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .roomUserReadyResponse)
+        XCTAssertEqual(packet.id, 0xE35A)
     }
 }
 
