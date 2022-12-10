@@ -167,6 +167,10 @@ public extension Opcode {
         case .roomListResponse:                     return .response
         case .joinRoomRequest:                      return .request
         case .joinRoomResponse:                     return .response
+        case .createRoomRequest:                    return .request
+        case .createRoomResponse:                   return .response
+        case .roomSelectTankRequest:                return .request
+        case .roomSelectTankResponse:               return .response
         default:
             return .request
         }
@@ -202,7 +206,8 @@ private extension Opcode {
         (.userRequest,                   .userResponse),
         (.joinChannelRequest,            .joinChannelResponse),
         (.joinRoomRequest,               .joinRoomResponse),
-        
+        (.createRoomRequest,             .createRoomResponse),
+        (.roomSelectTankRequest,         .roomSelectTankResponse)
     ]
     
     static let responsesByRequest: [Opcode: Opcode] = {
