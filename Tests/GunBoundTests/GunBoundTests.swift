@@ -537,7 +537,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x792E)
         
         let value = RoomSelectTankRequest(
-            primary: .bigfoot,
+            primary: .bigFoot,
             secondary: .random
         )
         

@@ -506,7 +506,7 @@ internal extension GunBoundServer {
         }
         
         private func roomSelectTank(_ request: RoomSelectTankRequest) async throws -> RoomSelectTankResponse {
-            log("Select Room Mobile - \(request.primary) \(request.secondary)")
+            log("Select Room Mobile - 1.\(request.primary) 2.\(request.secondary)")
             // update client state
             return RoomSelectTankResponse()
         }

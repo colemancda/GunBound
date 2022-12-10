@@ -20,8 +20,8 @@ public enum Mobile: UInt8, Codable, CaseIterable {
     /// Trico
     case trico      = 0x03
     
-    /// Bigfoot
-    case bigfoot    = 0x04
+    /// Big Foot
+    case bigFoot    = 0x04
     
     /// Boomer
     case boomer     = 0x05
@@ -69,19 +69,19 @@ extension Mobile: CustomStringConvertible, CustomDebugStringConvertible {
         case .random:
             return "Random"
         case .armor:
-            return "Armor"
+            return "Armor Mobile"
         case .mage:
             return "Mage"
         case .nak:
-            return "Nak"
+            return "Nakmachine"
         case .trico:
             return "Trico"
-        case .bigfoot:
-            return "Bigfoot"
+        case .bigFoot:
+            return "Big Foot"
         case .boomer:
             return "Boomer"
         case .raon:
-            return "Raon"
+            return "Raon Launcher"
         case .lightning:
             return "Lighting"
         case .jd:
