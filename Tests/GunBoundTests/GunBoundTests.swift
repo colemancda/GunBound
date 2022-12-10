@@ -308,6 +308,44 @@ final class GunBoundTests: XCTestCase {
                 
         XCTAssertEncode(value, id: packet.id, key: key, data)
     }
+    
+    func testJoinChannelRequest() {
+        
+        let data = Data([0x08, 0x00, 0x97, 0x2D, 0x00, 0x20, 0xFF, 0xFF])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 8)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .joinChannelRequest)
+        XCTAssertEqual(packet.id, 0x2D97)
+        
+        let value = JoinChannelRequest(
+            channel: 0xFFFF
+        )
+        
+        XCTAssertDecodePacket(value, data)
+    }
+    
+    func testJoinChannelResponse() {
+        
+        let data = Data(hexString: "E800021001200000000003040075730000000000000000000000800080008000007669727475616C0013001300016A670000000000000000000000800080008000007669727475616C000C000C000261646D696E0000000000000000800080008000007669727475616C00140014000361646D696E0000000000000000800080008000007669727475616C0014001400244368616E6E656C204D4F54440D0A52657175657374696E67205356435F4348414E4E454C5F4A4F494E203020617420323032322D31322D30382032313A34303A34380D0A436C69656E742056657273696F6E3A20323830")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 232)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .joinChannelResponse)
+        XCTAssertEqual(packet.id, 0x1002)
+        
+        
+    }
 }
 
 // MARK: - Extensions
