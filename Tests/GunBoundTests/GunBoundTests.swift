@@ -365,21 +365,105 @@ final class GunBoundTests: XCTestCase {
     
     func testRoomListRequest() {
         
-        let data = Data([0x0A, 0x00, 0x79, 0xD5, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+        do {
+            let data = Data([0x0A, 0x00, 0x79, 0xD5, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+            
+            guard let packet = Packet(data: data) else {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(packet.data, data)
+            XCTAssertEqual(packet.size, 10)
+            XCTAssertEqual(packet.size, numericCast(packet.data.count))
+            XCTAssertEqual(packet.opcode, .roomListRequest)
+            XCTAssertEqual(packet.id, 0xD579)
+            
+            let value = RoomListRequest(filter: .waiting)
+            
+            XCTAssertDecodePacket(value, data)
+        }
+                
+        do {
+            let data = Data(hexString: "0A002BBD002101000000")!
+            
+            guard let packet = Packet(data: data) else {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(packet.data, data)
+            XCTAssertEqual(packet.size, 10)
+            XCTAssertEqual(packet.size, numericCast(packet.data.count))
+            XCTAssertEqual(packet.opcode, .roomListRequest)
+            XCTAssertEqual(packet.id, 0xBD2B)
+            
+            let value = RoomListRequest(filter: .all)
+            
+            XCTAssertDecodePacket(value, data)
+        }
+    }
+    
+    func testRoomListResponse() {
+        
+        do {
+            let data = Data(hexString: "0A00D1B9032100000000")!
+            
+            guard let packet = Packet(data: data) else {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(packet.data, data)
+            XCTAssertEqual(packet.size, 10)
+            XCTAssertEqual(packet.size, numericCast(packet.data.count))
+            XCTAssertEqual(packet.opcode, .roomListResponse)
+            XCTAssertEqual(packet.id, 0xB9D1)
+            
+            let value: RoomListResponse = []
+            XCTAssertEncode(value, id: packet.id, data)
+        }
+        
+        do {
+            let data = Data(hexString: "23005FD403210000010000000D61646D696E207669727475616C00B2620C0001020000")!
+            
+            guard let packet = Packet(data: data) else {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(packet.data, data)
+            XCTAssertEqual(packet.size, 35)
+            XCTAssertEqual(packet.size, numericCast(packet.data.count))
+            XCTAssertEqual(packet.opcode, .roomListResponse)
+            XCTAssertEqual(packet.id, 0xD45F)
+            
+            let value: RoomListResponse = [
+                RoomListResponse.Room(
+                    id: 0,
+                    name: "admin virtual",
+                    map: .random,
+                    settings: UInt32(0xB2620C00).bigEndian,
+                    playerCount: 1,
+                    playerCapacity: 2,
+                    isPlaying: false,
+                    isLocked: false
+                )
+            ]
+            XCTAssertEncode(value, id: packet.id, data)
+        }
+    }
+    
+    func testJoinRoomRequest() {
+        
+        let data = Data(hexString: "0C0055051021000000000000")!
         
         guard let packet = Packet(data: data) else {
             XCTFail()
             return
         }
         XCTAssertEqual(packet.data, data)
-        XCTAssertEqual(packet.size, 10)
+        XCTAssertEqual(packet.size, 12)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
-        XCTAssertEqual(packet.opcode, .roomListRequest)
-        XCTAssertEqual(packet.id, 0xD579)
+        XCTAssertEqual(packet.opcode, .joinRoomRequest)
+        XCTAssertEqual(packet.id, 0x0555)
         
-        let value = RoomListRequest(filter: .waiting)
-        
-        XCTAssertDecodePacket(value, data)
     }
 }
 
