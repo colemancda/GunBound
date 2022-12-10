@@ -474,7 +474,52 @@ final class GunBoundTests: XCTestCase {
     
     func testJoinRoomResponse() {
         
+        let data = Data(hexString: "8C0072C31121000000010200047465737400B2620C00FFFFFFFFFFFFFFFF02020061646D696E00000000000000C0A8017720ABC0A8017720ABFFFF000101000000010003007669727475616C00140014000161646D696E00000000000000C0A801C020ABC0A801C020ABFFFF010101000000010003007669727475616C001400140024526F6F6D204D4F5444")!
         
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 140)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .joinRoomResponse)
+        XCTAssertEqual(packet.id, 0xC372)
+    }
+    
+    func testJoinRoomNotification() {
+        
+        let data = Data(hexString: "36006C5710300161646D696E00000000000000C0A801C020ABC0A801C020ABFFFF0101000000010003007669727475616C0014001400")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 54)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .joinRoomNotification)
+        XCTAssertEqual(packet.id, 0x576C)
+        
+        //XCTAssertEncode(value, id: packet.id, data)
+    }
+    
+    func testJoinRoomNotificationSelf() {
+        
+        let data = Data(hexString: "09001695F521000003")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 9)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .joinRoomNotificationSelf)
+        XCTAssertEqual(packet.id, 0x9516)
+        
+        let value = JoinRoomNotificationSelf()
+        XCTAssertEncode(value, id: packet.id, data)
     }
     
     func testCreateRoomRequest() {
