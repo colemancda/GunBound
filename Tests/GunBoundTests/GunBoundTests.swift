@@ -469,6 +469,41 @@ final class GunBoundTests: XCTestCase {
         XCTAssertDecodePacket(value, data)
         XCTAssertEncode(value, id: packet.id, data)
     }
+    
+    func testJoinRoomResponse() {
+        
+        
+    }
+    
+    func testCreateRoomRequest() {
+        
+        let data = Data(hexString: "14003D2520210474657374B26200003132333408")!
+        
+        // Creating room test with password 1234 playing SOLO for 8 players.
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 20)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .createRoomRequest)
+        XCTAssertEqual(packet.id, 0x253D)
+        
+        let value = CreateRoomRequest(
+            name: "test",
+            settings: 25266,
+            password: "1234",
+            capacity: 8
+        )
+        
+        XCTAssertDecodePacket(value, data)
+    }
+    
+    func testCreateRoomResponse() {
+        
+        let data = Data(hexString: "150020682121000000010024526F6F6D204D4F5444")!
+    }
 }
 
 // MARK: - Extensions
