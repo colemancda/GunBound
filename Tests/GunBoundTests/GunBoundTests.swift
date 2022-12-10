@@ -479,7 +479,6 @@ final class GunBoundTests: XCTestCase {
         
         let data = Data(hexString: "14003D2520210474657374B26200003132333408")!
         
-        // Creating room test with password 1234 playing SOLO for 8 players.
         guard let packet = Packet(data: data) else {
             XCTFail()
             return
@@ -490,6 +489,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.opcode, .createRoomRequest)
         XCTAssertEqual(packet.id, 0x253D)
         
+        // Creating room test with password 1234 playing SOLO for 8 players.
         let value = CreateRoomRequest(
             name: "test",
             settings: 25266,
@@ -503,6 +503,23 @@ final class GunBoundTests: XCTestCase {
     func testCreateRoomResponse() {
         
         let data = Data(hexString: "150020682121000000010024526F6F6D204D4F5444")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 21)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .createRoomResponse)
+        XCTAssertEqual(packet.id, 0x6820)
+        
+        let value = CreateRoomResponse(
+            room: 1,
+            message: "$Room MOTD"
+        )
+        
+        XCTAssertEncode(value, id: packet.id, data)
     }
 }
 
