@@ -452,7 +452,7 @@ final class GunBoundTests: XCTestCase {
     
     func testJoinRoomRequest() {
         
-        let data = Data(hexString: "0C0055051021000000000000")!
+        let data = Data([0x0C, 0x00, 0x55, 0x05, 0x10, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
         
         guard let packet = Packet(data: data) else {
             XCTFail()
@@ -464,6 +464,10 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.opcode, .joinRoomRequest)
         XCTAssertEqual(packet.id, 0x0555)
         
+        let value = JoinRoomRequest(room: 0)
+        
+        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, id: packet.id, data)
     }
 }
 
