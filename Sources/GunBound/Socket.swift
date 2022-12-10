@@ -123,6 +123,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP {
     ) async throws -> Self {
         let fileDescriptor = try SocketDescriptor.tcp(localAddress) // [.closeOnExec, .nonBlocking])
         try await fileDescriptor.closeIfThrows {
+            try fileDescriptor.setSocketOption(GenericSocketOption.ReuseAddress(true))
             try fileDescriptor.setNonblocking()
             try await fileDescriptor.connect(to: IPv4SocketAddress(destinationAddress), sleep: 100_000_000)
         }
