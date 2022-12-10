@@ -8,33 +8,11 @@
 import Foundation
 
 /// GunBound Channel
-public struct Channel: OptionSet, Codable, Equatable, Hashable {
+public struct Channel: Codable, Equatable, Hashable, Identifiable {
     
-    public var rawValue: UInt16
+    public let id: ID
     
-    public init(rawValue: UInt16) {
-        self.rawValue = rawValue
-    }
-}
-
-// MARK: - ExpressibleByIntegerLiteral
-
-extension Channel: ExpressibleByIntegerLiteral {
+    public var users: Set<String>
     
-    public init(integerLiteral value: UInt16) {
-        self.rawValue = value
-    }
-}
-
-// MARK: - CustomStringConvertible
-
-extension Channel: CustomStringConvertible, CustomDebugStringConvertible {
-    
-    public var description: String {
-        rawValue.description
-    }
-    
-    public var debugDescription: String {
-        description
-    }
+    public var message: String
 }

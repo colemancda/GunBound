@@ -117,10 +117,14 @@ public protocol GunBoundServerDataSource: AnyObject {
     func password(for username: String) async throws -> String
     
     /// check user exists
-    func userExists(_ username: String) async throws -> Bool
+    func userExists(for username: String) async throws -> Bool
     
     /// User data
-    func user(_ username: String) async throws -> User
+    func user(for username: String) async throws -> User
+    
+    func users(for usernames: Set<String>) async throws -> [User]
+    
+    func join(channel: Channel.ID, for username: String) async throws -> Channel
 }
 
 public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
@@ -152,22 +156,36 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         state.serverDirectory
     }
     
-    public func password(for username: String) async throws -> String {
+    public func password(for username: String) throws -> String {
         guard let password = state.passwords[username] else {
             throw GunBoundError.unknownUser(username)
         }
         return password
     }
     
-    public func userExists(_ username: String) async throws -> Bool {
+    public func userExists(for username: String) throws -> Bool {
         state.users[username] != nil
     }
     
-    public func user(_ username: String) async throws -> User {
+    public func user(for username: String) throws -> User {
         guard let user = state.users[username] else {
             throw GunBoundError.unknownUser(username)
         }
         return user
+    }
+    
+    public func users(for usernames: Set<String>) -> [User] {
+        return usernames.compactMap { state.users[$0] }
+    }
+    
+    public func join(channel: Channel.ID, for username: String) -> Channel {
+        let newChannel = Channel(
+            id: channel,
+            users: [],
+            message: "$Welcome to channel \(channel.rawValue + 1)\r\nEnjoy!"
+        )
+        state.channels[channel, default: newChannel].users.insert(username)
+        return state.channels[channel, default: newChannel]
     }
 }
 
@@ -180,6 +198,8 @@ public extension InMemoryGunBoundServerDataSource {
         public var users = [String: User]()
         
         public var passwords = [String: String]()
+        
+        public var channels = [Channel.ID: Channel]()
     }
 }
 
@@ -259,6 +279,8 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.nonce($0) }
             // login
             await connection.register { [unowned self] in await self.login($0) }
+            // join channel
+            await register { [unowned self] in try await self.joinChannel($0) }
         }
         
         @discardableResult
@@ -318,6 +340,7 @@ internal extension GunBoundServer {
                 await self.respond(response)
                 // send cash update right after notification
                 if response.status == .success {
+                    try? await Task.sleep(for: .milliseconds(100))
                     await cashUpdate()
                 }
             }
@@ -330,12 +353,12 @@ internal extension GunBoundServer {
             log("Authentication Request - \(request.username)")
             
             // check if user exists
-            guard try await self.server.dataSource.userExists(request.username) else {
+            guard try await self.server.dataSource.userExists(for: request.username) else {
                 return .badUsername
             }
             
             // get user profile
-            let user = try await self.server.dataSource.user(request.username)
+            let user = try await self.server.dataSource.user(for: request.username)
             
             // check if banned
             guard user.isBanned == false else {
@@ -393,13 +416,44 @@ internal extension GunBoundServer {
             }
             // get user profile
             let user: User
-            do { user = try await self.server.dataSource.user(username) }
+            do { user = try await self.server.dataSource.user(for: username) }
             catch {
                 await self.close(error)
                 return
             }
             let notification = CashUpdate(cash: user.cash)
             await self.send(notification)
+        }
+        
+        private func joinChannel(_ request: JoinChannelRequest) async throws -> JoinChannelResponse {
+            log("Join Channel Request - \(request.channel)")
+            // validate auth
+            guard let username = await self.connection.username else {
+                throw GunBoundError.notAuthenticated
+            }
+            // determine channel to join
+            var targetChannel = request.channel
+            if targetChannel == 0xFFFF {
+                targetChannel = 0
+            }
+            // get users in channel
+            let channel = try await self.server.dataSource.join(channel: targetChannel, for: username)
+            let users = try await self.server.dataSource.users(for: channel.users).map {
+                JoinChannelResponse.ChannelUser(
+                    username: $0.id,
+                    avatarEquipped: $0.avatarEquipped,
+                    guild: $0.guild,
+                    rankCurrent: $0.rankCurrent,
+                    rankSeason: $0.rankSeason
+                )
+            }
+            return JoinChannelResponse(
+                status: 0x00,
+                channel: targetChannel,
+                maxPosition: 0, // TODO: Fix max position
+                users: users,
+                channelMotd: channel.message
+            )
         }
     }
 }

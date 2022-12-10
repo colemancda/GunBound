@@ -161,14 +161,17 @@ public extension Opcode {
         case .joinChannelRequest:                   return .request
         case .joinChannelResponse:                  return .response
         case .joinChannelNotification:              return .notification
+        case .roomListRequest:                      return .request
+        case .roomListResponse:                     return .response
         default:
-            fatalError(self.rawValue.toHexadecimal())
+            return .request
         }
     }
     
     var isEncrypted: Bool {
         switch self {
-        case .cashUpdateNotification:
+        case .cashUpdateNotification,
+            .joinRoomNotification:
             return true
         default:
             return false
@@ -189,10 +192,11 @@ public extension Opcode {
 private extension Opcode {
     
     static let requestResponseMap: [(request: Opcode,  response: Opcode)] = [
-        (nonceRequest,                  nonceResponse),
-        (authenticationRequest,         authenticationResponse),
-        (serverDirectoryRequest,        serverDirectoryResponse),
-        (userRequest,                   userResponse),
+        (.nonceRequest,                  .nonceResponse),
+        (.authenticationRequest,         .authenticationResponse),
+        (.serverDirectoryRequest,        .serverDirectoryResponse),
+        (.userRequest,                   .userResponse),
+        (.joinChannelRequest,            .joinChannelResponse),
         
     ]
     

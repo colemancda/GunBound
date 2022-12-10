@@ -14,10 +14,10 @@ public struct JoinChannelResponse: GunBoundPacket, Equatable, Hashable, Encodabl
     
     internal let status: UInt16
     
-    public let channel: Channel
+    public let channel: Channel.ID
     
     public let maxPosition: UInt8
-        
+    
     public let users: [ChannelUser]
     
     public let channelMotd: String
