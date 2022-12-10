@@ -15,7 +15,7 @@ public struct CreateRoomRequest: GunBoundPacket, Equatable, Hashable, Decodable 
     
     public var settings: UInt32
     
-    public var password: String?
+    public var password: RoomPassword
     
     public var capacity: UInt8
 }
@@ -27,13 +27,7 @@ extension CreateRoomRequest: GunBoundDecodable {
     public init(from container: GunBoundDecodingContainer) throws {
         self.name = try container.decode(String.self, forKey: CodingKeys.name)
         self.settings = try container.decode(UInt32.self, forKey: CodingKeys.settings)
-        self.password = try container.decode(length: 4) { data in
-            data.withUnsafeBytes {
-                $0.baseAddress?.withMemoryRebound(to: Int8.self, capacity: data.count) {
-                    return String(cString: $0, encoding: .ascii)
-                }
-            }
-        }
+        self.password = try container.decode(RoomPassword.self, forKey: CodingKeys.password)
         self.capacity = try container.decode(UInt8.self, forKey: CodingKeys.capacity)
     }
 }

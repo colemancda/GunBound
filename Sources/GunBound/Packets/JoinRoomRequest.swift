@@ -14,11 +14,11 @@ public struct JoinRoomRequest: GunBoundPacket, Codable, Equatable, Hashable {
     
     public var room: Room.ID
     
-    public var password: String?
+    public var password: RoomPassword
     
     public init(
         room: Room.ID,
-        password: String? = nil
+        password: RoomPassword = ""
     ) {
         self.room = room
         self.password = password
@@ -31,23 +31,11 @@ extension JoinRoomRequest: GunBoundCodable {
     
     public init(from container: GunBoundDecodingContainer) throws {
         self.room = try container.decode(Room.ID.self, forKey: CodingKeys.room)
-        if container.remainingBytes > 0 {
-            let data = try container.decode(Data.self, length: container.remainingBytes)
-            guard let string = data.withUnsafeBytes({
-                $0.baseAddress?.withMemoryRebound(to: Int8.self, capacity: data.count) {
-                    return String(cString: $0, encoding: .ascii)
-                }
-            }) else {
-                throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: container.codingPath, debugDescription: "Invalid string bytes"))
-            }
-            self.password = string.isEmpty ? nil : string
-        } else {
-            self.password = nil
-        }
+        self.password = try container.decode(RoomPassword.self, forKey: CodingKeys.password)
     }
     
     public func encode(to container: GunBoundEncodingContainer) throws {
         try container.encode(room, forKey: CodingKeys.room)
-        try container.encode(password ?? "", fixedLength: 4)
+        try container.encode(password, forKey: CodingKeys.password)
     }
 }

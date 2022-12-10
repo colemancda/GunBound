@@ -465,6 +465,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x0555)
         
         let value = JoinRoomRequest(room: 0)
+        XCTAssertEqual(value.password, "")
+        XCTAssertEqual(value.password.rawValue, "")
         
         XCTAssertDecodePacket(value, data)
         XCTAssertEncode(value, id: packet.id, data)
