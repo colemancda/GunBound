@@ -63,6 +63,8 @@ public enum Opcode: UInt16, Codable {
     
     case joinRoomNotification       = 0x3010
     
+    case joinRoomNotificationSelf   = 0x21F5
+    
     case channelChatCommand         = 0x2010
     
     case channelChatBroadcast       = 0x201F
@@ -163,6 +165,8 @@ public extension Opcode {
         case .joinChannelNotification:              return .notification
         case .roomListRequest:                      return .request
         case .roomListResponse:                     return .response
+        case .joinRoomRequest:                      return .request
+        case .joinRoomResponse:                     return .response
         default:
             return .request
         }
@@ -197,6 +201,7 @@ private extension Opcode {
         (.serverDirectoryRequest,        .serverDirectoryResponse),
         (.userRequest,                   .userResponse),
         (.joinChannelRequest,            .joinChannelResponse),
+        (.joinRoomRequest,               .joinRoomResponse),
         
     ]
     
