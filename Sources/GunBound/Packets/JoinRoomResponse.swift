@@ -62,13 +62,9 @@ public extension JoinRoomResponse {
         
         public let username: Username // 0xC length
         
-        public let ipAddress: UInt32 //IPv4Address
-        
-        public let port: UInt16 // 8363
-        
-        public let ipAddress2: UInt32 //IPv4Address
-        
-        public let port2: UInt16 // 8363
+        public let address: GunBoundAddress
+            
+        public let address2: GunBoundAddress
         
         public let primaryTank: Mobile
         

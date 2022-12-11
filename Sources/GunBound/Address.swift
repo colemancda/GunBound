@@ -88,3 +88,46 @@ extension GunBoundAddress: CustomStringConvertible, CustomDebugStringConvertible
         description
     }
 }
+
+// MARK: - GunBoundCodable
+
+extension GunBoundAddress: GunBoundCodable {
+    
+    enum CodingKeys: String, CodingKey {
+        
+        case ipAddress
+        case port
+    }
+    
+    public init(from container: GunBoundDecodingContainer) throws {
+        self.ipAddress = try container.decode(IPv4Address.self, forKey: CodingKeys.ipAddress)
+        self.port = try container.decode(UInt16.self, isLittleEndian: false)
+    }
+    
+    public func encode(to container: GunBoundEncodingContainer) throws {
+        try container.encode(ipAddress, forKey: CodingKeys.ipAddress)
+        try container.encode(port, isLittleEndian: false)
+    }
+}
+
+extension IPv4Address: GunBoundCodable {
+    
+    private var binaryData: Data {
+        return self.withUnsafeBytes {
+            Data(bytes: $0.baseAddress!, count: 4)
+        }
+    }
+    
+    public init(from container: GunBoundDecodingContainer) throws {
+        self = try container.decode(length: 4) {
+            $0.withUnsafeBytes {
+                $0.load(as: IPv4Address.self)
+            }
+        }
+    }
+    
+    public func encode(to container: GunBoundEncodingContainer) throws {
+        try container.encode(binaryData)
+    }
+}
+

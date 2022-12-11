@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Socket
 
 /// Gunbound Packet Encoder
 public struct GunBoundEncoder {
@@ -705,18 +704,5 @@ extension Double: GunBoundRawEncodable {
     
     public var binaryData: Data {
         return bitPattern.binaryData
-    }
-}
-
-extension IPv4Address: GunBoundEncodable {
-    
-    public var binaryData: Data {
-        return self.withUnsafeBytes {
-            Data(bytes: $0.baseAddress!, count: 4)
-        }
-    }
-    
-    public func encode(to container: GunBoundEncodingContainer) throws {
-        try container.encode(binaryData)
     }
 }

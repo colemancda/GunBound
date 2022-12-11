@@ -370,7 +370,7 @@ final class GunBoundTests: XCTestCase {
                     rankSeason: 20
                 )
             ],
-            channelMotd: "motd" //"$Channel MOTD\r\nRequesting SVC_CHANNEL_JOIN 0 at 2022-12-09 17:36:27\r\nClient Version: 280"
+            message: "motd"
         )
         
         XCTAssertEncode(value, packet)
@@ -525,6 +525,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.opcode, .joinRoomResponse)
         XCTAssertEqual(packet.id, 0x93CF)
         
+        let address = GunBoundAddress(rawValue: "192.168.1.119:8363")!
+        
         let value = JoinRoomResponse(
             rtc: 0x0000,
             value0: 0x0100,
@@ -538,10 +540,8 @@ final class GunBoundTests: XCTestCase {
                 JoinRoomResponse.PlayerSession(
                     id: 0x01,
                     username: "admin",
-                    ipAddress: UInt32(0xC0A80177).bigEndian,
-                    port: UInt16(8363).bigEndian,
-                    ipAddress2: UInt32(0xC0A80177).bigEndian,
-                    port2: UInt16(8363).bigEndian,
+                    address: address,
+                    address2: address,
                     primaryTank: .random,
                     secondary: .random,
                     team: .a,
@@ -554,10 +554,8 @@ final class GunBoundTests: XCTestCase {
                 JoinRoomResponse.PlayerSession(
                     id: 0x01,
                     username: "admin",
-                    ipAddress: UInt32(0xC0A80177).bigEndian,
-                    port: UInt16(8363).bigEndian,
-                    ipAddress2: UInt32(0xC0A80177).bigEndian,
-                    port2: UInt16(8363).bigEndian,
+                    address: address,
+                    address2: address,
                     primaryTank: .random,
                     secondary: .random,
                     team: .b,
@@ -591,10 +589,8 @@ final class GunBoundTests: XCTestCase {
         let value = JoinRoomNotification(
             id: 0x01,
             username: "colemancda",
-            ipAddress: 3221334208,
-            port: 43808,
-            ipAddress2: 3221334208,
-            port2: 43808,
+            address: GunBoundAddress(rawValue: "192.168.1.192:8363")!,
+            address2: GunBoundAddress(rawValue: "192.168.1.192:8363")!,
             primaryTank: .random,
             secondary: .random,
             team: .b,
@@ -948,7 +944,7 @@ func XCTAssertEncode<T>(
             let parameters = try Crypto.AES.encrypt(plainText, key: key, opcode: T.opcode)
             encodedPacket = Packet(opcode: T.opcode, id: encodedPacket.id, parameters: parameters)
         }
-        XCTAssertEqual(encodedPacket, packet, "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)", file: file, line: line)
+        XCTAssertEqual(encodedPacket.data, packet.data, "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)", file: file, line: line)
     } catch {
         XCTFail(error.localizedDescription, file: file, line: line)
         dump(error)
