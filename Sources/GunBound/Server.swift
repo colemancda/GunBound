@@ -444,6 +444,8 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.login($0) }
             // join channel
             await register { [unowned self] in try await self.joinChannel($0) }
+            // channel chat
+            await connection.register { [unowned self] in await self.channelChat($0) }
             // room list
             await register { [unowned self] in try await self.roomList($0) }
             // join room
@@ -682,6 +684,30 @@ internal extension GunBoundServer {
             )
         }
         
+        private func channelChat(_ command: ChannelChatCommand) async {
+            log("Channel Chat - \(command.message)")
+            // validate auth
+            guard let username = await self.connection.username else {
+                await close(GunBoundError.notAuthenticated)
+                return
+            }
+            // notification
+            let notification = ChannelChatBroadcast(
+                position: 0x01, // TODO: Position
+                username: username,
+                message: command.message
+            )
+            // current channel
+            let channel = self.state.channel
+            // broadcast message to everyone in channel
+            for connection in await self.server.storage.connections.values {
+                guard await connection.state.channel == channel else {
+                    continue
+                }
+                await connection.send(notification)
+            }
+        }
+        
         private func roomList(_ request: RoomListRequest) async throws -> RoomListResponse {
             log("Room List - Filter \(request.filter)")
             // current channel
@@ -827,7 +853,7 @@ internal extension GunBoundServer {
                     rankCurrent: user.rankCurrent,
                     rankSeason: user.rankSeason
                 )
-                    
+                
                 Task {
                     try? await Task.sleep(for: .seconds(2))
                     for player in otherPlayers {
