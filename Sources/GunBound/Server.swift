@@ -136,6 +136,10 @@ public protocol GunBoundServerDataSource: AnyObject {
         for usernames: [Username]
     ) async throws -> [User]
     
+    func channel(
+        for id: Channel.ID
+    ) async throws -> Channel
+    
     func join(
         channel: Channel.ID,
         for username: Username
@@ -237,6 +241,17 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         }
     }
     
+    public func channel(
+        for id: Channel.ID
+    ) -> Channel {
+        let newChannel = Channel(
+            id: id,
+            users: [],
+            message: "$Welcome to channel \(id.rawValue + 1)\r\nEnjoy!"
+        )
+        return state.channels[id, default: newChannel]
+    }
+    
     public func join(
         channel: Channel.ID,
         for username: Username
@@ -257,8 +272,12 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         }
         // remove from rooms
         for id in state.rooms.keys {
-            if let index = state.rooms[id]?.players.firstIndex(where: { $0.username == username }) {
-                state.rooms[id]?.players.remove(at: index)
+            if let playerIndex = state.rooms[id]?.players.firstIndex(where: { $0.username == username }) {
+                state.rooms[id]?.players.remove(at: playerIndex)
+            }
+            // remove room if empty
+            if let players = state.rooms[id]?.players, players.isEmpty {
+                state.rooms[id] = nil
             }
         }
         return state.channels[channel, default: newChannel]
@@ -273,8 +292,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         admin username: Username,
         address: GunBoundAddress
     ) throws -> Room {
-        let id = self.state.lastRoomID
-        self.state.lastRoomID.increment()
+        let id = self.state.rooms.values.nextID
         let message = "$Welcome to room \(name)\r\nEnjoy a \(capacity) game!"
         let room = Room(
             id: id,
@@ -288,7 +306,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             players: [
                 // creator
                 .init(
-                    id: 0x01,
+                    id: 0x00,
                     username: username,
                     address: address,
                     primaryTank: .random,
@@ -652,7 +670,6 @@ internal extension GunBoundServer {
                     rankSeason: $0.rankSeason
                 )
             }
-            let maxPosition: UInt8 = 0x00 // TODO: Fix max position
             // send notifications
             if let user = users.enumerated().first(where: { $0.element.username == username }) {
                 let notification = JoinChannelNotification(
@@ -678,33 +695,40 @@ internal extension GunBoundServer {
             return JoinChannelResponse(
                 status: 0x00, // hardcoded
                 channel: targetChannel,
-                maxPosition: maxPosition,
+                maxPosition: 0x00,
                 users: users,
-                channelMotd: channel.message
+                message: channel.message
             )
         }
         
         private func channelChat(_ command: ChannelChatCommand) async {
             log("Channel Chat - \(command.message)")
-            // validate auth
-            guard let username = await self.connection.username else {
-                await close(GunBoundError.notAuthenticated)
-                return
-            }
-            // notification
-            let notification = ChannelChatBroadcast(
-                position: 0x01, // TODO: Position
-                username: username,
-                message: command.message
-            )
-            // current channel
-            let channel = self.state.channel
-            // broadcast message to everyone in channel
-            for connection in await self.server.storage.connections.values {
-                guard await connection.state.channel == channel else {
-                    continue
+            do {
+                // validate auth
+                guard let username = await self.connection.username else {
+                    throw GunBoundError.notAuthenticated
                 }
-                await connection.send(notification)
+                // get users in channel
+                let channel = try await self.server.dataSource.channel(for: self.state.channel)
+                assert(channel.id == self.state.channel)
+                // get users
+                let usernames = channel.users.sorted() // sort users
+                // notification
+                let notification = ChannelChatBroadcast(
+                    position: UInt8((usernames.firstIndex(of: username) ?? 0) + 1),
+                    username: username,
+                    message: command.message
+                )
+                // broadcast message to everyone in channel
+                for connection in await self.server.storage.connections.values {
+                    guard await connection.state.channel == channel.id, await connection.connection.username != nil else {
+                        continue
+                    }
+                    await connection.send(notification)
+                }
+            }
+            catch {
+                await close(error)
             }
         }
         
@@ -777,12 +801,12 @@ internal extension GunBoundServer {
                 // new player session in room
                 let (room, player) = try await self.server.dataSource.update(room: request.room) { room in
                     let player = Room.PlayerSession(
-                        id: numericCast(room.players.count + 1),
+                        id: room.nextID ?? 255,
                         username: username,
                         address: address,
                         primaryTank: .random,
                         secondaryTank: .random,
-                        team: .b, // TODO: join A or B team
+                        team: room.nextTeam,
                         isReady: false,
                         isAdmin: false
                     )
