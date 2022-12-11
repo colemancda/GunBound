@@ -34,8 +34,9 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x46A5)
         XCTAssertEqual(packet.parametersSize, 4)
         XCTAssertEqual(packet.parameters, Data([0x00, 0x00, 0x00, 0x00]))
-        XCTAssertEncode(ServerDirectoryRequest(), id: 0x46A5, data)
         
+        let value = ServerDirectoryRequest()
+        XCTAssertEncode(value, packet)
     }
     
     func testServerDirectoryResponse() throws {
@@ -73,7 +74,9 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(serverDirectory.count, 1)
             XCTAssertEqual(serverDirectory[0].name, "JG Test Broker")
             XCTAssertEqual(serverDirectory[0].descriptionText, #"Broker description\n goes here"#)
-            XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), id: 0xCB2B, data)
+            
+            let value = ServerDirectoryResponse(directory: serverDirectory)
+            XCTAssertEncode(value, packet)
         }
         
         do {
@@ -166,7 +169,9 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(serverDirectory.count, 5)
             XCTAssertEqual(serverDirectory[0].name, "JG Test Broker")
             XCTAssertEqual(serverDirectory[0].descriptionText, #"Broker description\n goes here"#)
-            XCTAssertEncode(ServerDirectoryResponse(directory: serverDirectory), id: 0x08BB, data)
+            
+            let value = ServerDirectoryResponse(directory: serverDirectory)
+            XCTAssertEncode(value, packet)
         }
     }
     
@@ -183,15 +188,23 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data.count, numericCast(Packet.minSize))
         XCTAssertEqual(packet.id, 0x36B1)
         XCTAssertEqual(packet.parametersSize, 0)
-        
-        XCTAssertDecodePacket(NonceRequest(), data)
+        XCTAssertDecode(NonceRequest(), packet)
     }
     
     func testNonceResponse() {
         
         let data = Data(hexString: "0A00E553011000010203")!
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.opcode, .nonceResponse)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.id, 0x53E5)
+        
         let value = NonceResponse(nonce: 0x00010203)
-        XCTAssertEncode(value, id: 0x53E5, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testLoginRequest() throws {
@@ -282,7 +295,7 @@ final class GunBoundTests: XCTestCase {
             )
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testCashUpdate() {
@@ -306,7 +319,7 @@ final class GunBoundTests: XCTestCase {
             nonce: 0x00010203
         )
                 
-        XCTAssertEncode(value, id: packet.id, key: key, data)
+        XCTAssertEncode(value, packet, key: key)
     }
     
     func testJoinChannelRequest() {
@@ -327,7 +340,7 @@ final class GunBoundTests: XCTestCase {
             channel: 0xFFFF
         )
         
-        XCTAssertDecodePacket(value, data)
+        XCTAssertDecode(value, packet)
     }
     
     func testJoinChannelResponse() {
@@ -360,7 +373,7 @@ final class GunBoundTests: XCTestCase {
             channelMotd: "motd" //"$Channel MOTD\r\nRequesting SVC_CHANNEL_JOIN 0 at 2022-12-09 17:36:27\r\nClient Version: 280"
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testJoinChannelNotification() {
@@ -386,7 +399,7 @@ final class GunBoundTests: XCTestCase {
             rankSeason: 0
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testRoomListRequest() {
@@ -406,7 +419,7 @@ final class GunBoundTests: XCTestCase {
             
             let value = RoomListRequest(filter: .waiting)
             
-            XCTAssertDecodePacket(value, data)
+            XCTAssertDecode(value, packet)
         }
                 
         do {
@@ -424,7 +437,7 @@ final class GunBoundTests: XCTestCase {
             
             let value = RoomListRequest(filter: .all)
             
-            XCTAssertDecodePacket(value, data)
+            XCTAssertDecode(value, packet)
         }
     }
     
@@ -444,7 +457,7 @@ final class GunBoundTests: XCTestCase {
             XCTAssertEqual(packet.id, 0xB9D1)
             
             let value: RoomListResponse = []
-            XCTAssertEncode(value, id: packet.id, data)
+            XCTAssertEncode(value, packet)
         }
         
         do {
@@ -472,7 +485,7 @@ final class GunBoundTests: XCTestCase {
                     isLocked: false
                 )
             ]
-            XCTAssertEncode(value, id: packet.id, data)
+            XCTAssertEncode(value, packet)
         }
     }
     
@@ -494,8 +507,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(value.password, "")
         XCTAssertEqual(value.password.rawValue, "")
         
-        XCTAssertDecodePacket(value, data)
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertDecode(value, packet)
+        XCTAssertEncode(value, packet)
     }
     
     func testJoinRoomResponse() {
@@ -558,7 +571,7 @@ final class GunBoundTests: XCTestCase {
             message: "$Room MOTD"
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testJoinRoomNotification() {
@@ -591,7 +604,7 @@ final class GunBoundTests: XCTestCase {
             rankSeason: 20
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testJoinRoomNotificationSelf() {
@@ -609,7 +622,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x9516)
         
         let value = JoinRoomNotificationSelf()
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testCreateRoomRequest() {
@@ -634,7 +647,7 @@ final class GunBoundTests: XCTestCase {
             capacity: 8
         )
         
-        XCTAssertDecodePacket(value, data)
+        XCTAssertDecode(value, packet)
     }
     
     func testCreateRoomResponse() {
@@ -656,7 +669,7 @@ final class GunBoundTests: XCTestCase {
             message: "$Room MOTD"
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
     }
     
     func testRoomSelectTankRequest() {
@@ -678,8 +691,8 @@ final class GunBoundTests: XCTestCase {
             secondary: .random
         )
         
-        XCTAssertEncode(value, id: packet.id, data)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, packet)
+        XCTAssertDecode(value, packet)
     }
     
     func testRoomSelectTankResponse() {
@@ -697,8 +710,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0xA3C3)
         
         let value = RoomSelectTankResponse()
-        XCTAssertEncode(value, id: packet.id, data)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, packet)
+        XCTAssertDecode(value, packet)
     }
     
     func testRoomSelectTeamRequest() {
@@ -716,8 +729,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x70D4)
         
         let value = RoomSelectTeamRequest(team: .b)
-        XCTAssertEncode(value, id: packet.id, data)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, packet)
+        XCTAssertDecode(value, packet)
     }
     
     func testRoomChangeStageCommand() {
@@ -735,8 +748,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0xED07)
         
         let value = RoomChangeStageCommand(map: .miramoTown)
-        XCTAssertEncode(value, id: packet.id, data)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, packet)
+        XCTAssertDecode(value, packet)
     }
     
     func testRoomChangeOptionCommand() {
@@ -755,8 +768,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x2110)
         
         let value = RoomChangeOptionCommand(settings: 0x004462B2)
-        XCTAssertEncode(value, id: packet.id, data)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, packet)
+        XCTAssertDecode(value, packet)
     }
     
     func testRoomChangeCapacityCommand() {
@@ -775,8 +788,8 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x792E)
         
         let value = RoomChangeCapacityCommand(capacity: 2)
-        XCTAssertEncode(value, id: packet.id, data)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertEncode(value, packet)
+        XCTAssertDecode(value, packet)
     }
     
     func testRoomSetTitleCommand() {
@@ -795,7 +808,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x8922)
         
         let value = RoomSetTitleCommand(title: "hi123")
-        XCTAssertDecodePacket(value, data)
+        XCTAssertDecode(value, packet)
     }
     
     func testUserReadyRequest() {
@@ -814,7 +827,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0x0128)
         
         let value = UserReadyRequest(isReady: true)
-        XCTAssertDecodePacket(value, data)
+        XCTAssertDecode(value, packet)
     }
     
     func testUserReadyResponse() {
@@ -833,7 +846,32 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.id, 0xE35A)
         
         let value = UserReadyResponse()
-        XCTAssertEncode(value, id: packet.id, data)
+        XCTAssertEncode(value, packet)
+    }
+    
+    func testChannelChatCommand() {
+        
+        let data = Data(hexString: "160037AD1020B9ED2802B33711762492AE38FF2DD39C")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 22)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .channelChatCommand)
+        XCTAssertEqual(packet.id, 0xAD37)
+        
+        let message = "hi test"
+        let key = Key(
+            username: "colemancda",
+            password: "1234",
+            nonce: 0x00010203
+        )
+        
+        let value = ChannelChatCommand(message: message)
+        XCTAssertDecode(value, packet, key: key)
     }
 }
 
@@ -861,9 +899,8 @@ extension Data {
 
 func XCTAssertEncode<T>(
     _ value: T,
-    id: Packet.ID,
+    _ packet: Packet,
     key: Key? = nil,
-    _ data: Data,
     file: StaticString = #file,
     line: UInt = #line
 ) where T: Equatable, T: Encodable, T: GunBoundPacket {
@@ -872,30 +909,45 @@ func XCTAssertEncode<T>(
     encoder.log = { print("Encoder:", $0) }
     
     do {
-        var packet = try encoder.encode(value, id: id)
-        XCTAssertFalse(packet.data.isEmpty, file: file, line: line)
+        var encodedPacket = try encoder.encode(value, id: packet.id)
+        XCTAssertFalse(encodedPacket.data.isEmpty, file: file, line: line)
         if T.opcode.isEncrypted {
             guard let key = key else {
                 throw GunBoundError.notAuthenticated
             }
-            let plainText = packet.parameters
+            let plainText = encodedPacket.parameters
             let parameters = try Crypto.AES.encrypt(plainText, key: key, opcode: T.opcode)
-            packet = Packet(opcode: T.opcode, id: id, parameters: parameters)
+            encodedPacket = Packet(opcode: T.opcode, id: encodedPacket.id, parameters: parameters)
         }
-        XCTAssertEqual(packet.data, data, "\(packet.data.hexString) is not equal to \(data.hexString)", file: file, line: line)
+        XCTAssertEqual(encodedPacket, packet, "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)", file: file, line: line)
     } catch {
         XCTFail(error.localizedDescription, file: file, line: line)
         dump(error)
     }
 }
 
-func XCTAssertDecodePacket<T>(_ value: T, _ data: Data, file: StaticString = #file, line: UInt = #line) where T: GunBoundPacket, T: Equatable, T: Decodable {
+func XCTAssertDecode<T>(
+    _ value: T,
+    _ packet: Packet,
+    key: Key? = nil,
+    file: StaticString = #file,
+    line: UInt = #line
+) where T: GunBoundPacket, T: Equatable, T: Decodable {
     
     var decoder = GunBoundDecoder()
     decoder.log = { print("Decoder:", $0) }
     
     do {
-        let decodedValue = try decoder.decodePacket(T.self, from: data)
+        var packet = packet
+        if T.opcode.isEncrypted {
+            guard let key = key else {
+                throw GunBoundError.notAuthenticated
+            }
+            let encrypted = packet.parameters
+            let decrypted = try Crypto.AES.decrypt(encrypted, key: key, opcode: T.opcode)
+            packet = Packet(opcode: T.opcode, id: packet.id, parameters: decrypted)
+        }
+        let decodedValue = try decoder.decodePacket(T.self, from: packet.data)
         XCTAssertEqual(decodedValue, value, file: file, line: line)
     } catch {
         XCTFail(error.localizedDescription, file: file, line: line)
