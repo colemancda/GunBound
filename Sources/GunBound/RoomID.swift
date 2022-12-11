@@ -22,12 +22,21 @@ public extension Room {
 
 public extension Room.ID {
     
-    mutating func increment() {
-        if rawValue == .max {
-            rawValue = .min
-        } else {
-            rawValue += 1
-        }
+    static var min: Room.ID { Room.ID(rawValue: .min) }
+    
+    static var max: Room.ID { Room.ID(rawValue: .max) }
+}
+
+// MARK: - Comparable
+
+extension Room.ID: Comparable {
+    
+    public static func < (lhs: Room.ID, rhs: Room.ID) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+    
+    public static func > (lhs: Room.ID, rhs: Room.ID) -> Bool {
+        lhs.rawValue > rhs.rawValue
     }
 }
 
