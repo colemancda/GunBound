@@ -168,11 +168,12 @@ public extension Opcode {
         case .joinChannelRequest:                   return .request
         case .joinChannelResponse:                  return .response
         case .joinChannelNotification:              return .notification
-        case .joinRoomNotificationSelf:             return .notification
         case .roomListRequest:                      return .request
         case .roomListResponse:                     return .response
         case .joinRoomRequest:                      return .request
         case .joinRoomResponse:                     return .response
+        case .joinRoomNotification:                 return .notification
+        case .joinRoomNotificationSelf:             return .notification
         case .createRoomRequest:                    return .request
         case .createRoomResponse:                   return .response
         case .roomSelectTankRequest:                return .request
@@ -187,7 +188,7 @@ public extension Opcode {
         case .roomUserReadyRequest:                 return .request
         case .roomUserReadyResponse:                return .response
         default:
-            assertionFailure()
+            assertionFailure("\(self)")
             return .request
         }
     }
@@ -195,7 +196,10 @@ public extension Opcode {
     var isEncrypted: Bool {
         switch self {
         case .cashUpdateNotification,
-            .joinRoomNotification:
+            .userResponse,
+            .channelChatBroadcast,
+            .endGameJewelCommand,
+            .getAvatarResponse:
             return true
         default:
             return false

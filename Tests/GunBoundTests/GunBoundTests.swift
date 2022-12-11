@@ -512,8 +512,6 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.opcode, .joinRoomResponse)
         XCTAssertEqual(packet.id, 0x93CF)
         
-        
-        //JoinRoomResponse(rtc: 0, value0: 256, room: 0, name: "yest", map: Random, settings: 25266, value1: 18446744073709551615, capacity: 4:4, players: [GunBound.JoinRoomResponse.PlayerSession(id: 1, username: admin, ipAddress: 1996597440, port: 43808, ipAddress2: 1996597440, port2: 43808, primaryTank: Random, secondary: Random, team: A, value0: 1, avatarEquipped: 140739635871744, guild: virtual, rankCurrent: 20, rankSeason: 20), GunBound.JoinRoomResponse.PlayerSession(id: 1, username: admin, ipAddress: 1996597440, port: 43808, ipAddress2: 1996597440, port2: 43808, primaryTank: Random, secondary: Random, team: B, value0: 1, avatarEquipped: 140739635871744, guild: virtual, rankCurrent: 20, rankSeason: 20)], message: "$Room MOTD")
         let value = JoinRoomResponse(
             rtc: 0x0000,
             value0: 0x0100,
@@ -565,7 +563,7 @@ final class GunBoundTests: XCTestCase {
     
     func testJoinRoomNotification() {
         
-        let data = Data(hexString: "36006C5710300161646D696E00000000000000C0A801C020ABC0A801C020ABFFFF0101000000010003007669727475616C0014001400")!
+        let data = Data(hexString: "36007EBF103001636F6C656D616E6364610000C0A801C020ABC0A801C020ABFFFF010000000000000000000000000000000014001400")!
         
         guard let packet = Packet(data: data) else {
             XCTFail()
@@ -575,9 +573,25 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.size, 54)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
         XCTAssertEqual(packet.opcode, .joinRoomNotification)
-        XCTAssertEqual(packet.id, 0x576C)
+        XCTAssertEqual(packet.id, 0xBF7E)
         
-        //XCTAssertEncode(value, id: packet.id, data)
+        let value = JoinRoomNotification(
+            id: 0x01,
+            username: "colemancda",
+            ipAddress: 3221334208,
+            port: 43808,
+            ipAddress2: 3221334208,
+            port2: 43808,
+            primaryTank: .random,
+            secondary: .random,
+            team: .b,
+            avatarEquipped: 0x0000000,
+            guild: "",
+            rankCurrent: 20,
+            rankSeason: 20
+        )
+        
+        XCTAssertEncode(value, id: packet.id, data)
     }
     
     func testJoinRoomNotificationSelf() {
