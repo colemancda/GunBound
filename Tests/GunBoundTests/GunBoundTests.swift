@@ -513,7 +513,7 @@ final class GunBoundTests: XCTestCase {
     
     func testJoinRoomResponse() {
         
-        let data = Data([0x8C, 0x00, 0xCF, 0x93, 0x11, 0x21, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x04, 0x79, 0x65, 0x73, 0x74, 0x00, 0xB2, 0x62, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x08, 0x02, 0x01, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xFF, 0xFF, 0x00, 0x01, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6C, 0x00, 0x14, 0x00, 0x14, 0x00, 0x01, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xC0, 0xA8, 0x01, 0x77, 0x20, 0xAB, 0xFF, 0xFF, 0x01, 0x01, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6C, 0x00, 0x14, 0x00, 0x14, 0x00, 0x24, 0x52, 0x6F, 0x6F, 0x6D, 0x20, 0x4D, 0x4F, 0x54, 0x44])
+        let data = Data(hexString: "8C000EFA1121000000010100047465737400B2620000FFFFFFFFFFFFFFFF08020061646D696E00000000000000C0A8017720ABC0A8017720AB0CFF000101000000010003007669727475616C001400140001636F6C656D616E6364610000C0A801C020ABC0A801C020ABFFFF0101000000000000000000000000000000001400140024526F6F6D204D4F5444")!
         
         guard let packet = Packet(data: data) else {
             XCTFail()
@@ -523,45 +523,57 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.size, 140)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
         XCTAssertEqual(packet.opcode, .joinRoomResponse)
-        XCTAssertEqual(packet.id, 0x93CF)
-        
-        let address = GunBoundAddress(rawValue: "192.168.1.119:8363")!
-        
+        XCTAssertEqual(packet.id, 0xFA0E)
+                
+        /*
+         Room ID 1
+         Room name test
+         Map 0
+         Settings b2b0000
+         Session IP 192.168.1.119
+         Port 20AB
+         Room slot 0
+         Avatar 0100000001000300
+         Session IP 192.168.1.192
+         Port 20AB
+         Room slot 1
+         Avatar 0000000000000000
+         */
         let value = JoinRoomResponse(
             rtc: 0x0000,
             value0: 0x0100,
-            room: 0,
-            name: "yest",
+            room: 1,
+            name: "test",
             map: .random,
             settings: UInt32(0xB2620000).bigEndian,
             value1: 0xFFFFFFFFFFFFFFFF,
             capacity: 8,
             players: [
                 JoinRoomResponse.PlayerSession(
-                    id: 0x01,
+                    id: 0x00,
                     username: "admin",
-                    address: address,
-                    address2: address,
-                    primaryTank: .random,
+                    address: GunBoundAddress(rawValue: "192.168.1.119:8363")!,
+                    address2: GunBoundAddress(rawValue: "192.168.1.119:8363")!,
+                    primaryTank: .grub,
                     secondary: .random,
                     team: .a,
                     value0: 0x01,
-                    avatarEquipped: 140739635871744,
+                    avatarEquipped: UInt64(0x0100000001000300).bigEndian,
                     guild: "virtual",
                     rankCurrent: 20,
                     rankSeason: 20
                 ),
                 JoinRoomResponse.PlayerSession(
                     id: 0x01,
-                    username: "admin",
-                    address: address,
-                    address2: address,
+                    username: "colemancda",
+                    address: GunBoundAddress(rawValue: "192.168.1.192:8363")!,
+                    address2: GunBoundAddress(rawValue: "192.168.1.192:8363")!,
                     primaryTank: .random,
                     secondary: .random,
                     team: .b,
                     value0: 0x01,
-                    avatarEquipped: 140739635871744,
-                    guild: "virtual",
+                    avatarEquipped: 0x0000000000000000,
+                    guild: "",
                     rankCurrent: 20,
                     rankSeason: 20
                 )
