@@ -199,6 +199,7 @@ public extension Opcode {
         switch self {
         case .cashUpdateNotification,
             .userResponse,
+            .channelChatCommand,
             .channelChatBroadcast,
             .endGameJewelCommand,
             .getAvatarResponse:
