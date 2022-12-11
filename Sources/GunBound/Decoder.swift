@@ -575,7 +575,7 @@ public struct GunBoundDecodingContainer {
     private func decodeNumeric <T: GunBoundRawDecodable & FixedWidthInteger> (_ type: T.Type, isLittleEndian: Bool = false) throws -> T {
         
         self.decoder.log?("Will read \(T.self)")
-        return try self.decoder.readNumeric(T.self)
+        return try self.decoder.readNumeric(T.self, isLittleEndian: isLittleEndian)
     }
 }
 
