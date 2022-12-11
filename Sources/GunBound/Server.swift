@@ -237,7 +237,10 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         }
     }
     
-    public func join(channel: Channel.ID, for username: Username) -> Channel {
+    public func join(
+        channel: Channel.ID,
+        for username: Username
+    ) -> Channel {
         let newChannel = Channel(
             id: channel,
             users: [],
@@ -245,6 +248,13 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         )
         // insert user into channel
         state.channels[channel, default: newChannel].users.insert(username)
+        // remove from old channels
+        let otherChannels = state.channels.keys.lazy.filter { $0 != channel }
+        for id in otherChannels {
+            if state.channels[id]?.users.contains(username) ?? false {
+                state.channels[id]?.users.remove(username)
+            }
+        }
         return state.channels[channel, default: newChannel]
     }
     
