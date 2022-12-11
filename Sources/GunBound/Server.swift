@@ -255,6 +255,12 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
                 state.channels[id]?.users.remove(username)
             }
         }
+        // remove from rooms
+        for id in state.rooms.keys {
+            if let index = state.rooms[id]?.players.firstIndex(where: { $0.username == username }) {
+                state.rooms[id]?.players.remove(at: index)
+            }
+        }
         return state.channels[channel, default: newChannel]
     }
     
