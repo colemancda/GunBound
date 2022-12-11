@@ -743,8 +743,8 @@ internal extension GunBoundServer {
                     await send(selfNotification)
                 }
                 // new player session in room
-                let room = try await self.server.dataSource.update(room: request.room) { room in
-                    room.players.append(.init(
+                let (room, player) = try await self.server.dataSource.update(room: request.room) { room in
+                    let player = Room.PlayerSession(
                         id: numericCast(room.players.count + 1),
                         username: username,
                         address: address,
@@ -753,8 +753,9 @@ internal extension GunBoundServer {
                         team: .b, // TODO: join A or B team
                         isReady: false,
                         isAdmin: false
-                    ))
-                    return room
+                    )
+                    room.players.append(player)
+                    return (room, player)
                 }
                 // fetch room and players
                 let usernames = room.players.map { $0.username }
@@ -795,15 +796,38 @@ internal extension GunBoundServer {
                 )
                 // cache current room
                 self.state.room = room.id
+                
                 // wait for notification to send
                 Task {
                     try await Task.sleep(for: .seconds(1))
                     await respond(response)
                 }
+                
                 // inform other users
-                for player in players {
-                    // get connection
+                let otherPlayers = room.players.filter { $0.username == username } // TODO: Send only to room host?
+                let user = try await self.server.dataSource.user(for: username)
+                let notification = JoinRoomNotification(
+                    id: player.id,
+                    username: player.username,
+                    ipAddress: unsafeBitCast(player.address.ipAddress, to: UInt32.self),
+                    port: UInt16(8363).bigEndian,
+                    ipAddress2: unsafeBitCast(player.address.ipAddress, to: UInt32.self),
+                    port2: UInt16(8363).bigEndian,
+                    primaryTank: player.primaryTank,
+                    secondary: player.primaryTank,
+                    team: player.team,
+                    avatarEquipped: user.avatarEquipped,
+                    guild: user.guild,
+                    rankCurrent: user.rankCurrent,
+                    rankSeason: user.rankSeason
+                )
                     
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    for player in otherPlayers {
+                        // send notification
+                        await self.server.storage.connections[player.address]?.send(notification)
+                    }
                 }
             }
             catch {
