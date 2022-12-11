@@ -824,8 +824,8 @@ internal extension GunBoundServer {
                     JoinRoomResponse.PlayerSession(
                         id: player.id,
                         username: player.username,
-                        address: address,
-                        address2: address,
+                        address: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363),
+                        address2: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363),
                         primaryTank: player.primaryTank,
                         secondary: player.primaryTank,
                         team: player.team,
@@ -858,13 +858,13 @@ internal extension GunBoundServer {
                 }
                 
                 // inform other users
-                let otherPlayers = room.players.filter { $0.username == username } // TODO: Send only to room host?
+                let otherPlayers = room.players.filter { $0.username != username }
                 let user = try await self.server.dataSource.user(for: username)
                 let notification = JoinRoomNotification(
                     id: player.id,
                     username: player.username,
-                    address: address,
-                    address2: address,
+                    address: GunBoundAddress(ipAddress: address.ipAddress, port: 8363),
+                    address2: GunBoundAddress(ipAddress: address.ipAddress, port: 8363),
                     primaryTank: player.primaryTank,
                     secondary: player.primaryTank,
                     team: player.team,
