@@ -20,7 +20,7 @@ public struct JoinChannelResponse: GunBoundPacket, Equatable, Hashable, Encodabl
     
     public let users: [ChannelUser]
     
-    public let channelMotd: String
+    public let message: String
 }
 
 // MARK: - GunBoundEncodable
@@ -32,7 +32,7 @@ extension JoinChannelResponse: GunBoundEncodable {
         try container.encode(channel, forKey: CodingKeys.channel)
         try container.encode(maxPosition, forKey: CodingKeys.maxPosition)
         try container.encode(users, forKey: CodingKeys.users)
-        try container.encode(channelMotd.data(using: .ascii) ?? Data())
+        try container.encode(message.data(using: .ascii) ?? Data())
     }
 }
 
