@@ -873,6 +873,35 @@ final class GunBoundTests: XCTestCase {
         let value = ChannelChatCommand(message: message)
         XCTAssertDecode(value, packet, key: key)
     }
+    
+    func testChannelChatBroadcast() {
+        
+        let data = Data(hexString: "2600C65F1F2042896EF758AF8ED739E8B5D10AA5FA588080ACAAA1BBBDF08C561A631B3596E1")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 38)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .channelChatBroadcast)
+        XCTAssertEqual(packet.id, 0x5FC6)
+        
+        let key = Key(
+            username: "colemancda",
+            password: "1234",
+            nonce: 0x00010203
+        )
+        
+        let value = ChannelChatBroadcast(
+            position: 0x01,
+            username: "colemancda",
+            message: "hi test"
+        )
+        
+        XCTAssertEncode(value, packet, key: key)
+    }
 }
 
 // MARK: - Extensions
