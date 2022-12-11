@@ -144,7 +144,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         self.recievedBytes += recievedData.count
         
         // parse packet
-        guard let packet = Packet(data: recievedData, validateLength: false, validateOpcode: false) else {
+        guard var packet = Packet(data: recievedData, validateLength: false, validateOpcode: false) else {
             throw GunBoundError.invalidData(recievedData)
         }
         
@@ -159,6 +159,16 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         #if DEBUG
         log?("\(packet.data.hexString)")
         #endif
+        
+        // decrypt
+        if opcode.isEncrypted {
+            guard let key = key else {
+                throw GunBoundError.notAuthenticated
+            }
+            let encrypted = packet.parameters
+            let decrypted = try Crypto.AES.decrypt(encrypted, key: key, opcode: opcode)
+            packet = Packet(opcode: opcode, id: packet.id, parameters: decrypted)
+        }
         
         // handle packet
         switch opcode.type {
