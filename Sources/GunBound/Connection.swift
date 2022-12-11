@@ -144,7 +144,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         self.recievedBytes += recievedData.count
         
         // parse packet
-        guard let packet = Packet(data: recievedData, validateLength: true, validateOpcode: false) else {
+        guard let packet = Packet(data: recievedData, validateLength: false, validateOpcode: false) else {
             throw GunBoundError.invalidData(recievedData)
         }
         
