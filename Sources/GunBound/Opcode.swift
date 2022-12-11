@@ -187,6 +187,8 @@ public extension Opcode {
         case .roomSetTitleCommand:                  return .command
         case .roomUserReadyRequest:                 return .request
         case .roomUserReadyResponse:                return .response
+        case .channelChatCommand:                   return .command
+        case .channelChatBroadcast:                 return .notification
         default:
             assertionFailure("\(self)")
             return .request
