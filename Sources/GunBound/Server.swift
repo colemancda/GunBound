@@ -631,6 +631,9 @@ internal extension GunBoundServer {
                 channel: targetChannel,
                 for: username
             )
+            // cache current channel
+            self.state.channel = targetChannel
+            // get users
             let usernames = channel.users.sorted() // sort users
             let users = try await self.server.dataSource.users(for: usernames).map {
                 JoinChannelResponse.ChannelUser(
@@ -641,9 +644,7 @@ internal extension GunBoundServer {
                     rankSeason: $0.rankSeason
                 )
             }
-            let maxPosition: UInt8 = .max // TODO: Fix max position
-            // cache current channel
-            self.state.channel = targetChannel
+            let maxPosition: UInt8 = 0x00 // TODO: Fix max position
             // send notifications
             if let user = users.enumerated().first(where: { $0.element.username == username }) {
                 let notification = JoinChannelNotification(
