@@ -29,7 +29,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
     
     var key: Key?
     
-    var username: String?
+    var username: Username?
     
     let encoder = GunBoundEncoder()
     
@@ -85,10 +85,10 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
     
     @discardableResult
     public func authenticate(
-        username: String,
+        username: Username,
         password: String
     ) -> Key {
-        let key = Key(username: username, password: password, nonce: nonce)
+        let key = Key(username: username.rawValue, password: password, nonce: nonce)
         self.key = key
         self.username = username
         return key

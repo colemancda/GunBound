@@ -5,12 +5,12 @@
 //  Created by Alsey Coleman Miller on 12/9/22.
 //
 
-import Foundation
-
 /// GunBound Room
-public struct Room: Equatable, Hashable, Encodable, Identifiable {
+public struct Room: Equatable, Hashable, Codable, Identifiable {
     
     public let id: ID
+    
+    public let channel: Channel.ID
     
     public var name: String
     
@@ -20,11 +20,60 @@ public struct Room: Equatable, Hashable, Encodable, Identifiable {
     
     public var settings: UInt32
     
-    public var players: Set<String>
-    
-    public var playerCapacity: RoomCapacity
+    public var capacity: RoomCapacity
     
     public var isPlaying: Bool
     
-    public var isLocked: Bool
+    public var isLocked: Bool {
+        password.isEmpty == false
+    }
+    
+    public var players: [PlayerSession]
+    
+    public var message: String
+}
+
+// MARK: - Supporting Types
+
+public extension Room {
+    
+    /// Player Session
+    struct PlayerSession: Equatable, Hashable, Codable, Identifiable {
+        
+        public let id: UInt8
+        
+        public let username: Username
+                
+        public let address: GunBoundAddress
+        
+        public var primaryTank: Mobile
+        
+        public var secondaryTank: Mobile
+        
+        public var team: Team
+    }
+}
+
+// MARK: - Extensions
+
+public extension Sequence where Element == Room {
+    
+    func filter(
+        _ filter: RoomFilter = .all,
+        in channel: Channel.ID? = nil
+    ) -> [Room] {
+        return self.filter { room in
+            if let channel = channel {
+                guard room.channel == channel else {
+                    return false
+                }
+            }
+            if filter == .waiting {
+                guard room.isPlaying == false else {
+                    return false
+                }
+            }
+            return true
+        }
+    }
 }

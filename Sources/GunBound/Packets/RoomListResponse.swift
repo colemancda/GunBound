@@ -45,7 +45,7 @@ public extension RoomListResponse {
     
     struct Room: Equatable, Hashable, Encodable, Identifiable {
         
-        public let id: UInt16
+        public let id: GunBound.Room.ID
         
         public let name: String
         

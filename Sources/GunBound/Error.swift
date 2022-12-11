@@ -16,8 +16,14 @@ public enum GunBoundError: Error {
     case unexpectedResponse(Data)
     
     case checksumMismatch(UInt32, UInt32)
+        
+    case notAuthenticated
     
     case unknownUser(String)
     
-    case notAuthenticated
+    case unknownChannel(Channel.ID)
+    
+    case unknownRoom(Room.ID)
+    
+    case invalidPassword
 }

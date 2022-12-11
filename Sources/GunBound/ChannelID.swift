@@ -10,7 +10,7 @@ import Foundation
 public extension Channel {
     
     /// GunBound Channel
-    struct ID: OptionSet, Codable, Equatable, Hashable {
+    struct ID: RawRepresentable, Codable, Equatable, Hashable {
         
         public var rawValue: UInt16
         

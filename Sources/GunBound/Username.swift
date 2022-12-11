@@ -18,7 +18,22 @@ public struct Username: RawRepresentable, Equatable, Hashable, Codable, CustomSt
     }
 }
 
+// MARK: - FixedLengthString
+
 extension Username: FixedLengthString {
     
     public static var length: Int { 0xC }
+}
+
+// MARK: - Comparable
+
+extension Username: Comparable {
+    
+    public static func < (lhs: Username, rhs: Username) -> Bool {
+        return lhs.rawValue < rhs.rawValue
+    }
+    
+    public static func > (lhs: Username, rhs: Username) -> Bool {
+        return lhs.rawValue > rhs.rawValue
+    }
 }

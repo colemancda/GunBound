@@ -12,7 +12,7 @@ public struct Channel: Codable, Equatable, Hashable, Identifiable {
     
     public let id: ID
     
-    public var users: Set<String>
+    public var users: Set<Username>
     
     public var message: String
 }

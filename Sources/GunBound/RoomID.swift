@@ -9,13 +9,24 @@ import Foundation
 
 public extension Room {
     
-    /// GunBound Channel
-    struct ID: OptionSet, Codable, Equatable, Hashable {
+    /// GunBound Room
+    struct ID: RawRepresentable, Codable, Equatable, Hashable {
         
         public var rawValue: UInt16
         
         public init(rawValue: UInt16) {
             self.rawValue = rawValue
+        }
+    }
+}
+
+public extension Room.ID {
+    
+    mutating func increment() {
+        if rawValue == .max {
+            rawValue = .min
+        } else {
+            rawValue += 1
         }
     }
 }
