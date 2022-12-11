@@ -363,6 +363,32 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEncode(value, id: packet.id, data)
     }
     
+    func testJoinChannelNotification() {
+        
+        let data = Data([0x27, 0x00, 0xC2, 0x0A, 0x0E, 0x20, 0x00, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 39)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .joinChannelNotification)
+        XCTAssertEqual(packet.id, 0x0AC2)
+        
+        let value = JoinChannelNotification(
+            channelPosition: 0,
+            username: "admin",
+            avatarEquipped: 140739635871744,
+            guild: "",
+            rankCurrent: 0,
+            rankSeason: 0
+        )
+        
+        XCTAssertEncode(value, id: packet.id, data)
+    }
+    
     func testRoomListRequest() {
         
         do {
