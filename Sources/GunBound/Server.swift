@@ -631,9 +631,30 @@ internal extension GunBoundServer {
                     rankSeason: $0.rankSeason
                 )
             }
-            let maxPosition: UInt8 = 0 // TODO: Fix max position
+            let maxPosition: UInt8 = .max // TODO: Fix max position
             // cache current channel
             self.state.channel = targetChannel
+            // send notifications
+            if let user = users.enumerated().first(where: { $0.element.username == username }) {
+                let notification = JoinChannelNotification(
+                    channelPosition: numericCast(user.offset),
+                    username: user.element.username,
+                    avatarEquipped: user.element.avatarEquipped,
+                    guild: user.element.guild,
+                    rankCurrent: user.element.rankCurrent,
+                    rankSeason: user.element.rankSeason
+                )
+                Task {
+                    // send notifications to all clients in channel
+                    for (address, connection) in await self.server.storage.connections {
+                        // everyone in channel except self
+                        guard await connection.state.channel == targetChannel, address != self.address else {
+                            continue
+                        }
+                        await connection.send(notification)
+                    }
+                }
+            }
             // response
             return JoinChannelResponse(
                 status: 0x00, // hardcoded
@@ -783,6 +804,10 @@ internal extension GunBoundServer {
             log("Room Update")
             let notification = RoomUpdateNotification()
             await send(notification)
+        }
+        
+        private func cleanupRooms() async {
+            
         }
         
         private func roomSelectTank(_ request: RoomSelectTankRequest) async throws -> RoomSelectTankResponse {
