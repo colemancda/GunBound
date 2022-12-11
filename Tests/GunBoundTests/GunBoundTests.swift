@@ -600,6 +600,7 @@ final class GunBoundTests: XCTestCase {
             rankSeason: 20
         )
         
+        XCTAssertDecode(value, packet)
         XCTAssertEncode(value, packet)
     }
     

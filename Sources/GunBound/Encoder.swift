@@ -458,7 +458,7 @@ public struct GunBoundEncodingContainer {
         let length = Int(fixedLength)
         var data = Data()
         data.reserveCapacity(Int(fixedLength))
-        data += string.prefix(length).data(using: .ascii) ?? Data() // null terminated
+        data += string.prefix(length).data(using: .ascii) ?? Data()
         // add padding or truncate
         if data.count < length {
             let padding = length - data.count
