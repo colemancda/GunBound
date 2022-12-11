@@ -51,6 +51,8 @@ public extension Room {
         public var secondaryTank: Mobile
         
         public var team: Team
+        
+        public var isReady: Bool
     }
 }
 

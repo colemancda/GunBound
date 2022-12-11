@@ -184,7 +184,10 @@ public extension Opcode {
         case .roomChangeOptionCommand:              return .command
         case .roomChangeCapacityCommand:            return .command
         case .roomSetTitleCommand:                  return .command
+        case .roomUserReadyRequest:                 return .request
+        case .roomUserReadyResponse:                return .response
         default:
+            assertionFailure()
             return .request
         }
     }
@@ -219,9 +222,11 @@ private extension Opcode {
         (.userRequest,                   .userResponse),
         (.joinChannelRequest,            .joinChannelResponse),
         (.joinRoomRequest,               .joinRoomResponse),
+        (.roomListRequest,               .joinRoomResponse),
         (.createRoomRequest,             .createRoomResponse),
         (.roomSelectTankRequest,         .roomSelectTankResponse),
         (.roomSelectTeamRequest,         .roomSelectTeamResponse),
+        (.roomUserReadyRequest,          .roomUserReadyResponse)
         
     ]
     

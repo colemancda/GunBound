@@ -761,7 +761,7 @@ final class GunBoundTests: XCTestCase {
     func testUserReadyRequest() {
         
         // SVC_ROOM_USER_READY 1
-        let data = Data(hexString: "07009C09303201")!
+        let data = Data([0x07, 0x00, 0x28, 0x01, 0x30, 0x32, 0x01])
         
         guard let packet = Packet(data: data) else {
             XCTFail()
@@ -771,7 +771,10 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.size, 7)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
         XCTAssertEqual(packet.opcode, .roomUserReadyRequest)
-        XCTAssertEqual(packet.id, 0x099C)
+        XCTAssertEqual(packet.id, 0x0128)
+        
+        let value = UserReadyRequest(isReady: true)
+        XCTAssertDecodePacket(value, data)
     }
     
     func testUserReadyResponse() {
@@ -788,6 +791,9 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
         XCTAssertEqual(packet.opcode, .roomUserReadyResponse)
         XCTAssertEqual(packet.id, 0xE35A)
+        
+        let value = UserReadyResponse()
+        XCTAssertEncode(value, id: packet.id, data)
     }
 }
 

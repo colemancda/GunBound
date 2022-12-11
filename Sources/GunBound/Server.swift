@@ -242,8 +242,8 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         settings: UInt32,
         capacity: RoomCapacity
     ) throws -> Room {
-        self.state.lastRoomID.increment()
         let id = self.state.lastRoomID
+        self.state.lastRoomID.increment()
         let message = "$Welcome to room \(name)\r\nEnjoy a \(capacity) game!"
         let room = Room(
             id: id,
@@ -429,6 +429,8 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.roomSetTitle($0) }
             // room change capacity
             await connection.register { [unowned self] in await self.roomChangeCapacity($0) }
+            // user ready
+            await register { [unowned self] in try await self.userReady($0) }
         }
         
         @discardableResult
@@ -848,6 +850,24 @@ internal extension GunBoundServer {
                 return
             }
             await updateRoom()
+        }
+        
+        private func userReady(_ request: UserReadyRequest) async throws -> UserReadyResponse {
+            log("User Ready - \(request.isReady)")
+            // get current room
+            guard let id = self.state.room,
+                let username = await self.connection.username else {
+                return UserReadyResponse()
+            }
+            // update player session state
+            try await self.server.dataSource.update(room: id) { room in
+                assert(room.id == id)
+                guard let index = room.players.firstIndex(where: { player in
+                    player.username == username
+                }) else { return }
+                room.players[index].isReady = request.isReady
+            }
+            return UserReadyResponse()
         }
     }
 }
