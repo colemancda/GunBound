@@ -53,6 +53,8 @@ public extension Room {
         public var team: Team
         
         public var isReady: Bool
+        
+        public var isAdmin: Bool
     }
 }
 

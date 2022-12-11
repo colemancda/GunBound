@@ -146,7 +146,9 @@ public protocol GunBoundServerDataSource: AnyObject {
         in channel: Channel.ID,
         password: RoomPassword,
         settings: UInt32,
-        capacity: RoomCapacity
+        capacity: RoomCapacity,
+        admin username: Username,
+        address: GunBoundAddress
     ) async throws -> Room
     
     func rooms(
@@ -158,10 +160,10 @@ public protocol GunBoundServerDataSource: AnyObject {
         for id: Room.ID
     ) async throws -> Room
     
-    func update(
+    func update<T>(
         room: Room.ID,
-        _ body: (inout Room) -> ()
-    ) async throws
+        _ body: (inout Room) -> (T)
+    ) async throws -> T
 }
 
 public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
@@ -235,12 +237,25 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         }
     }
     
+    public func join(channel: Channel.ID, for username: Username) -> Channel {
+        let newChannel = Channel(
+            id: channel,
+            users: [],
+            message: "$Welcome to channel \(channel.rawValue + 1)\r\nEnjoy!"
+        )
+        // insert user into channel
+        state.channels[channel, default: newChannel].users.insert(username)
+        return state.channels[channel, default: newChannel]
+    }
+    
     public func create(
         room name: String,
         in channel: Channel.ID,
         password: RoomPassword,
         settings: UInt32,
-        capacity: RoomCapacity
+        capacity: RoomCapacity,
+        admin username: Username,
+        address: GunBoundAddress
     ) throws -> Room {
         let id = self.state.lastRoomID
         self.state.lastRoomID.increment()
@@ -256,7 +271,16 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             isPlaying: false,
             players: [
                 // creator
-                //.init(id: 0x01, username: , address: , primaryTank: .random, secondaryTank: .random, team: .a)
+                .init(
+                    id: 0x01,
+                    username: username,
+                    address: address,
+                    primaryTank: .random,
+                    secondaryTank: .random,
+                    team: .a,
+                    isReady: false,
+                    isAdmin: true
+                )
             ],
             message: message
         )
@@ -281,23 +305,16 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         return state.rooms.values.filter(filter, in: channel)
     }
     
-    public func update(room id: Room.ID, _ body: (inout Room) -> ()) throws {
+    public func update<T>(
+        room id: Room.ID,
+        _ body: (inout Room) -> (T)
+    ) throws -> T {
         guard var room = state.rooms[id] else {
             throw GunBoundError.unknownRoom(id)
         }
-        body(&room)
+        let result = body(&room)
         self.state.rooms[id] = room
-    }
-    
-    public func join(channel: Channel.ID, for username: Username) -> Channel {
-        let newChannel = Channel(
-            id: channel,
-            users: [],
-            message: "$Welcome to channel \(channel.rawValue + 1)\r\nEnjoy!"
-        )
-        // insert user into channel
-        state.channels[channel, default: newChannel].users.insert(username)
-        return state.channels[channel, default: newChannel]
+        return result
     }
 }
 
@@ -600,7 +617,10 @@ internal extension GunBoundServer {
                 targetChannel = 0
             }
             // get users in channel
-            let channel = try await self.server.dataSource.join(channel: targetChannel, for: username)
+            let channel = try await self.server.dataSource.join(
+                channel: targetChannel,
+                for: username
+            )
             let usernames = channel.users.sorted() // sort users
             let users = try await self.server.dataSource.users(for: usernames).map {
                 JoinChannelResponse.ChannelUser(
@@ -644,17 +664,65 @@ internal extension GunBoundServer {
             return RoomListResponse(rooms: rooms)
         }
         
+        private func createRoom(_ request: CreateRoomRequest) async throws -> CreateRoomResponse {
+            log("Create Room - \(request.name)")
+            // validate auth
+            guard let username = await self.connection.username else {
+                throw GunBoundError.notAuthenticated
+            }
+            // current channel
+            let channel = self.state.channel
+            // insert room
+            let room = try await self.server.dataSource.create(
+                room: request.name,
+                in: channel,
+                password: request.password,
+                settings: request.settings,
+                capacity: request.capacity,
+                admin: username,
+                address: self.address
+            )
+            // cache current room
+            self.state.room = room.id
+            // return new room ID and motd
+            return CreateRoomResponse(
+                room: room.id,
+                message: room.message
+            )
+        }
+        
         private func joinRoom(_ request: JoinRoomRequest) async {
             log("Join Room - \(request.room)")
             do {
-                // send notification
-                let selfNotification = JoinRoomNotificationSelf()
-                await send(selfNotification)
-                let room = try await self.server.dataSource.room(for: request.room)
+                // validate auth
+                guard let username = await self.connection.username else {
+                    throw GunBoundError.notAuthenticated
+                }
+                // get room password
+                let password = try await self.server.dataSource.room(for: request.room).password
                 // validate password
-                guard room.password == request.password else {
+                guard password == request.password else {
                     // TODO: Return error response
                     throw GunBoundError.invalidPassword
+                }
+                // send notification
+                Task {
+                    let selfNotification = JoinRoomNotificationSelf()
+                    await send(selfNotification)
+                }
+                // new player session in room
+                let room = try await self.server.dataSource.update(room: request.room) { room in
+                    room.players.append(.init(
+                        id: numericCast(room.players.count + 1),
+                        username: username,
+                        address: address,
+                        primaryTank: .random,
+                        secondaryTank: .random,
+                        team: .b, // TODO: join A or B team
+                        isReady: false,
+                        isAdmin: false
+                    ))
+                    return room
                 }
                 // fetch room and players
                 let usernames = room.players.map { $0.username }
@@ -667,9 +735,9 @@ internal extension GunBoundServer {
                     JoinRoomResponse.PlayerSession(
                         id: player.id,
                         username: player.username,
-                        ipAddress: UInt32(0xC0A80177).bigEndian, //$0.address.ipAddress,
+                        ipAddress: unsafeBitCast(player.address.ipAddress, to: UInt32.self),
                         port: player.address.port,
-                        ipAddress2: UInt32(0xC0A80177).bigEndian, // TODO: IP Address
+                        ipAddress2: unsafeBitCast(player.address.ipAddress, to: UInt32.self),
                         port2: player.address.port,
                         primaryTank: player.primaryTank,
                         secondary: player.primaryTank,
@@ -698,7 +766,7 @@ internal extension GunBoundServer {
                 // wait for notification to send
                 Task {
                     try await Task.sleep(for: .seconds(1))
-                await respond(response)
+                    await respond(response)
                 }
                 // inform other users
                 for player in players {
@@ -709,23 +777,6 @@ internal extension GunBoundServer {
             catch {
                 await close(error)
             }
-        }
-        
-        private func createRoom(_ request: CreateRoomRequest) async throws -> CreateRoomResponse {
-            log("Create Room - \(request.name)")
-            // current channel
-            let channel = self.state.channel
-            // insert room
-            let room = try await self.server.dataSource.create(
-                room: request.name,
-                in: channel,
-                password: request.password,
-                settings: request.settings,
-                capacity: request.capacity
-            )
-            // cache current room
-            self.state.room = room.id
-            return CreateRoomResponse(room: room.id, message: room.message)
         }
         
         private func updateRoom() async {
