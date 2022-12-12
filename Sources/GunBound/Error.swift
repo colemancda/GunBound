@@ -11,6 +11,8 @@ public enum GunBoundError: Error {
     
     case invalidAddress(String)
     
+    case disconnected(GunBoundAddress)
+    
     case invalidData(Data)
     
     case unexpectedResponse(Data)

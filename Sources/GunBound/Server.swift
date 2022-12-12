@@ -103,6 +103,17 @@ public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunB
             await storage.removeAllConnections()
         }
     }
+    
+    public func send<T>(
+        _ packet: T,
+        to address: GunBoundAddress
+    ) async throws where T: GunBoundPacket, T: Encodable {
+        assert(T.opcode.type == .notification)
+        guard let connection = await self.storage.connections[address] else {
+            throw GunBoundError.disconnected(address)
+        }
+        await connection.send(packet)
+    }
 }
 
 // MARK: - Supporting Types
@@ -561,7 +572,7 @@ internal extension GunBoundServer {
         }
         
         /// Respond to a client-initiated PDU message.
-        private func respond <T> (_ response: T) async where T: GunBoundPacket, T: Encodable {
+        internal func respond <T> (_ response: T) async where T: GunBoundPacket, T: Encodable {
             log("Response: \(response)")
             assert(T.opcode.type == .response)
             guard let _ = await connection.queue(response)
@@ -569,14 +580,14 @@ internal extension GunBoundServer {
         }
         
         /// Send a server-initiated PDU message.
-        private func send <T> (_ notification: T) async where T: GunBoundPacket, T: Encodable  {
+        internal func send <T> (_ notification: T) async where T: GunBoundPacket, T: Encodable  {
             log("Notification: \(notification)")
             assert(T.opcode.type == .notification)
             guard let _ = await connection.queue(notification)
                 else { fatalError("Could not add PDU to queue: \(notification)") }
         }
         
-        private func close(_ error: Error) async {
+        internal func close(_ error: Error) async {
             log("Error: \(error)")
             await self.connection.socket.close()
         }
