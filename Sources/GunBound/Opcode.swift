@@ -190,12 +190,14 @@ public extension Opcode {
         case .channelChatCommand:                   return .command
         case .channelChatBroadcast:                 return .notification
         case .startGameCommand:                     return .command
+        case .startGameNotification:                return .notification
         case .userDeadRequest:                      return .request
         case .userDeadResponse:                     return .response
         case .playResultCommand:                    return .command
         case .playResultNotification:               return .notification
+        
         default:
-            assertionFailure("\(self)")
+            assertionFailure("Unimplemented \(self)")
             return .request
         }
     }
@@ -203,6 +205,7 @@ public extension Opcode {
     var isEncrypted: Bool {
         switch self {
         case .cashUpdateNotification,
+            .startGameNotification,
             .userResponse,
             .channelChatCommand,
             .channelChatBroadcast,
