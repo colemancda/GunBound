@@ -197,6 +197,10 @@ public protocol GunBoundServerDataSource: AnyObject {
         for id: Room.ID
     ) async throws -> Room
     
+    func room(
+        for username: Username
+    ) async throws -> Room.ID?
+    
     func update<T>(
         room: Room.ID,
         _ body: (inout Room) -> (T)
@@ -464,6 +468,16 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             throw GunBoundError.unknownRoom(id)
         }
         return room
+    }
+    
+    public func room(
+        for username: Username
+    ) throws -> Room.ID? {
+        return state.rooms.first(where: {
+            $0.value.players.contains(where: {
+                $0.username == username
+            })
+        })?.key
     }
     
     public func rooms(
@@ -907,6 +921,9 @@ internal extension GunBoundServer {
                         message: responseMessage
                     )
                     
+                }
+                if self.state.room != nil {
+                    await updateRoom()
                 }
             }
             catch {

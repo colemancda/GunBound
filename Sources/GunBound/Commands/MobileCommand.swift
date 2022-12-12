@@ -25,6 +25,18 @@ public struct MobileCommand: GunBoundCommand {
         dataSource: GunBoundServerDataSource
     ) async throws -> String? {
         // find room for user
+        guard let username = username else {
+            throw GunBoundError.notAuthenticated
+        }
+        guard let roomID = try await dataSource.room(for: username) else {
+            throw GunBoundError.notInRoom
+        }
+        // update tank in player session
+        try await dataSource.update(room: roomID) { room in
+            if let index = room.players.firstIndex(where: { $0.username == username }) {
+                room.players[index].primaryTank = tank
+            }
+        }
         return "Set \(tank)"
     }
 }

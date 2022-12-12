@@ -38,7 +38,7 @@ final class CommandTests: XCTestCase {
                 return
             }
             XCTAssertEqual(commandType.tank, mobile)
-            print(arguments.reduce("", { $0 + " " + $1 }), mobile)
+            print(arguments.reduce("", { $0 + ($0.isEmpty ? "" : " ") + $1 }), mobile)
         }
     }
 }
