@@ -6,7 +6,7 @@
 //
 
 /// GunBound Game Map
-public enum GameMap: UInt8, Codable {
+public enum GameMap: UInt8, Codable, CaseIterable {
     
     /// Random Map
     case random             = 0
@@ -40,6 +40,27 @@ public enum GameMap: UInt8, Codable {
     
     /// Meta Mine
     case metaMine           = 10
+}
+
+public extension GameMap {
+    
+    static let stages: [GameMap] = {
+        var stages = Self.allCases
+        stages.removeFirst()
+        assert(stages.contains(.random) == false)
+        return stages
+    }()
+    
+    static func randomStage(using generator: inout RandomNumberGenerator) -> GameMap {
+        let stage = stages.randomElement(using: &generator)!
+        assert(stage != .random)
+        return stage
+    }
+    
+    static var randomStage: GameMap {
+        var generator: RandomNumberGenerator = SystemRandomNumberGenerator()
+        return randomStage(using: &generator)
+    }
 }
 
 // MARK: - CustomStringConvertible
