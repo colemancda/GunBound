@@ -351,7 +351,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         username: Username,
         address: GunBoundAddress
     ) throws -> (Room, Room.PlayerSession) {
-        guard var room = self.state.rooms[id] else {
+        guard let room = self.state.rooms[id] else {
             throw GunBoundError.unknownRoom(id)
         }
         guard let playerID = room.nextID else {
@@ -367,7 +367,8 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             isReady: false,
             isAdmin: false
         )
-        room.players.append(player)
+        // cache value
+        self.state.rooms[id]?.players.append(player)
         return (room, player)
     }
     
@@ -731,14 +732,14 @@ internal extension GunBoundServer {
                 )
             }
             // send notifications
-            if let user = users.enumerated().first(where: { $0.element.username == username }) {
+            if let user = users.first(where: { $0.username == username }) {
                 let notification = JoinChannelNotification(
-                    channelPosition: numericCast(user.offset),
-                    username: user.element.username,
-                    avatarEquipped: user.element.avatarEquipped,
-                    guild: user.element.guild,
-                    rankCurrent: user.element.rankCurrent,
-                    rankSeason: user.element.rankSeason
+                    channelPosition: user.id,
+                    username: user.username,
+                    avatarEquipped: user.avatarEquipped,
+                    guild: user.guild,
+                    rankCurrent: user.rankCurrent,
+                    rankSeason: user.rankSeason
                 )
                 Task {
                     // send notifications to all clients in channel
@@ -1119,15 +1120,42 @@ internal extension GunBoundServer {
                 guard let id = self.state.room else {
                     throw GunBoundError.notInRoom
                 }
+                // mark game as playing
                 let room = try await self.server.dataSource.update(room: id) { room in
                     // select random map
                     room.isPlaying = true
                     return room
                 }
-                let stage = (room.map == .random) ? GameMap.randomStage : .random
-                
+                // update random stage and tank
+                let map = (room.map == .random) ? (GameMap.allCases.randomElement() ?? .random) : room.map
+                let playerIDs = room.players.map { $0.id }
+                let playerTurnOrder = playerIDs.shuffled()
                 // send notifications
-                let notification = StartGameNotification()
+                var players = [StartGameNotification.Player]()
+                players.reserveCapacity(room.players.count)
+                for player in room.players {
+                    let primaryTank = (player.primaryTank == .random) ? Mobile.random : player.primaryTank
+                    let secondaryTank = (player.secondaryTank == .random) ? Mobile.random : player.secondaryTank
+                    let turnOrder = playerTurnOrder.firstIndex(of: player.id)!
+                    let notificationPlayer = StartGameNotification.Player(
+                        id: player.id,
+                        username: player.username,
+                        team: player.team,
+                        primaryTank: primaryTank,
+                        secondaryTank: secondaryTank,
+                        xPosition: 154,
+                        yPosition: 0,
+                        turnOrder: UInt16(turnOrder)
+                    )
+                    players.append(notificationPlayer)
+                }
+                assert(players.count == room.players.count)
+                let notification = StartGameNotification(
+                    map: map,
+                    players: players,
+                    events: 0xFF00,
+                    commandData: command.value0
+                )
                 for player in room.players {
                     guard let connection = await self.server.storage.connections[player.address] else {
                         continue

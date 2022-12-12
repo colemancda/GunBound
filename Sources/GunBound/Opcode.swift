@@ -195,7 +195,8 @@ public extension Opcode {
         case .userDeadResponse:                     return .response
         case .playResultCommand:                    return .command
         case .playResultNotification:               return .notification
-        
+        case .clientCommand:                        return .command
+        case .printClient:                          return .notification
         default:
             assertionFailure("Unimplemented \(self)")
             return .request

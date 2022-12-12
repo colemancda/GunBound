@@ -980,6 +980,14 @@ final class GunBoundTests: XCTestCase {
     
     func testStartGameNotification() {
         
+        /*
+         Map Side A
+         Spawn order / slot: [0, 3, 4, 7, 5, 6, 1, 2]
+         Turn order / slot: [0, 1]
+         x: 253 y 0
+         x: 936 y 0
+         */
+        
         let data = Data(hexString: "5600017A3234A34D16EBFBA6F065ACC095DEA8FEB8356893D0E6E4A889D997E8CF18BEE510BE396B45F40AD9D2A62015DBBE6359208B16F7630BC23041311B1EF4DB1B74E729816BD533773BC813DA67AF8C392FD2EC")!
         let plainText = Data(hexString: "00020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000")!
         
@@ -999,9 +1007,41 @@ final class GunBoundTests: XCTestCase {
             password: "1234",
             nonce: 0x00010203
         )
+                
+        let value = StartGameNotification(
+            map: .random,
+            players: [
+                StartGameNotification.Player(
+                    id: 0x00,
+                    username: "admin",
+                    team: .a,
+                    primaryTank: .random,
+                    secondaryTank: .random,
+                    xPosition: 253,
+                    yPosition: 0,
+                    turnOrder: 0
+                ),
+                StartGameNotification.Player(
+                    id: 0x01,
+                    username: "colemancda",
+                    team: .b,
+                    primaryTank: .random,
+                    secondaryTank: .random,
+                    xPosition: 936,
+                    yPosition: 0,
+                    turnOrder: 1
+                )
+            ],
+            events: 0xFF00,
+            commandData: UInt32(0xF6749000).bigEndian
+        )
         
-        XCTAssertEqual(try Packet(opcode: packet.opcode, id: packet.id, parameters: plainText).encrypt(key: key), packet)
-        
+        let plainTextPacket = Packet(opcode: packet.opcode, id: packet.id, parameters: plainText)
+        XCTAssertEqual(try plainTextPacket.encrypt(key: key), packet)
+        //XCTAssertDecodeDecrypted(value, plainTextPacket)
+        //XCTAssertEncodeDecrypted(value, plainTextPacket)
+        //XCTAssertEncode(value, packet, key: key)
+        //XCTAssertDecode(value, packet, key: key)
     }
 }
 
@@ -1054,6 +1094,27 @@ func XCTAssertEncode<T>(
     }
 }
 
+
+func XCTAssertEncodeDecrypted<T>(
+    _ value: T,
+    _ packet: Packet,
+    file: StaticString = #file,
+    line: UInt = #line
+) where T: Equatable, T: Encodable, T: GunBoundPacket {
+    
+    var encoder = GunBoundEncoder()
+    encoder.log = { print("Encoder:", $0) }
+    
+    do {
+        let encodedPacket = try encoder.encode(value, id: packet.id)
+        XCTAssertFalse(encodedPacket.data.isEmpty, file: file, line: line)
+        XCTAssertEqual(encodedPacket.data, packet.data, "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)", file: file, line: line)
+    } catch {
+        XCTFail(error.localizedDescription, file: file, line: line)
+        dump(error)
+    }
+}
+
 func XCTAssertDecode<T>(
     _ value: T,
     _ packet: Packet,
@@ -1073,6 +1134,25 @@ func XCTAssertDecode<T>(
             }
             packet = try packet.decrypt(key: key)
         }
+        let decodedValue = try decoder.decodePacket(T.self, from: packet.data)
+        XCTAssertEqual(decodedValue, value, file: file, line: line)
+    } catch {
+        XCTFail(error.localizedDescription, file: file, line: line)
+        dump(error)
+    }
+}
+
+func XCTAssertDecodeDecrypted<T>(
+    _ value: T,
+    _ packet: Packet,
+    file: StaticString = #file,
+    line: UInt = #line
+) where T: GunBoundPacket, T: Equatable, T: Decodable {
+    
+    var decoder = GunBoundDecoder()
+    decoder.log = { print("Decoder:", $0) }
+    
+    do {
         let decodedValue = try decoder.decodePacket(T.self, from: packet.data)
         XCTAssertEqual(decodedValue, value, file: file, line: line)
     } catch {

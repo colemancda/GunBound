@@ -60,6 +60,28 @@ public enum Mobile: UInt8, Codable, CaseIterable {
     case random     = 0xFF
 }
 
+public extension Mobile {
+    
+    /// Mobile that can be operated (all but `.random`),
+    static let validMobiles: Set<Mobile> = {
+        var values = Set(allCases)
+        values.remove(.random)
+        assert(values.contains(.random) == false)
+        return values
+    }()
+    
+    static var randomMobile: Mobile {
+        var generator: RandomNumberGenerator = SystemRandomNumberGenerator()
+        return random(using: &generator)
+    }
+    
+    static func random(using generator: inout RandomNumberGenerator) -> Mobile {
+        let value = validMobiles.randomElement(using: &generator)!
+        assert(value != .random)
+        return value
+    }
+}
+
 // MARK: - CustomStringConvertible
 
 extension Mobile: CustomStringConvertible, CustomDebugStringConvertible {

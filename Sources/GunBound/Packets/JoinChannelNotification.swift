@@ -12,7 +12,7 @@ public struct JoinChannelNotification: GunBoundPacket, Codable, Equatable, Hasha
     
     public static var opcode: Opcode { .joinChannelNotification }
     
-    public let channelPosition: UInt8
+    public let channelPosition: Channel.UserID
     
     public let username: Username
     
@@ -25,7 +25,7 @@ public struct JoinChannelNotification: GunBoundPacket, Codable, Equatable, Hasha
     public let rankSeason: UInt16
     
     public init(
-        channelPosition: UInt8,
+        channelPosition: Channel.UserID,
         username: Username,
         avatarEquipped: UInt64,
         guild: Guild,
