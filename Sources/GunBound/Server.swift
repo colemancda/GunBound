@@ -113,6 +113,8 @@ public protocol GunBoundServerDataSource: AnyObject {
     /// get the list of servers
     var serverDirectory: ServerDirectory { get async throws }
     
+    var functionRestrict: FunctionRestrict { get async throws }
+    
     func register(
         username: Username
     ) async throws -> Bool
@@ -203,6 +205,10 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     ///
     public var serverDirectory: ServerDirectory {
         state.serverDirectory
+    }
+    
+    public var functionRestrict: FunctionRestrict {
+        state.functionRestrict
     }
     
     public func register(
@@ -400,6 +406,8 @@ public extension InMemoryGunBoundServerDataSource {
         
         public var serverDirectory: ServerDirectory = []
         
+        public var functionRestrict: FunctionRestrict = []
+        
         public var autoRegister = true
         
         public var users = [Username: User]()
@@ -524,6 +532,8 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.roomChangeCapacity($0) }
             // user ready
             await register { [unowned self] in try await self.userReady($0) }
+            // user death (in-game)
+            await register { [unowned self] in try await self.userDeath($0) }
         }
         
         @discardableResult
@@ -647,7 +657,7 @@ internal extension GunBoundServer {
             return AuthenticationResponse(userData:
                 AuthenticationResponse.UserData(
                     session: session,
-                    username: .init(rawValue: request.username)!,
+                    username: username,
                     avatarEquipped: user.avatarEquipped,
                     guild: user.guild,
                     rankCurrent: user.rankCurrent,
@@ -1070,6 +1080,12 @@ internal extension GunBoundServer {
                 room.players[index].isReady = request.isReady
             }
             return UserReadyResponse()
+        }
+        
+        private func userDeath(_ request: UserDeathRequest) async throws -> UserDeathResponse {
+            log("User Death")
+            // player death side effects
+            return UserDeathResponse()
         }
     }
 }

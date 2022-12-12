@@ -189,6 +189,11 @@ public extension Opcode {
         case .roomUserReadyResponse:                return .response
         case .channelChatCommand:                   return .command
         case .channelChatBroadcast:                 return .notification
+        case .startGameCommand:                     return .command
+        case .userDeadRequest:                      return .request
+        case .userDeadResponse:                     return .response
+        case .playResultCommand:                    return .command
+        case .playResultNotification:               return .notification
         default:
             assertionFailure("\(self)")
             return .request
@@ -233,7 +238,8 @@ private extension Opcode {
         (.createRoomRequest,             .createRoomResponse),
         (.roomSelectTankRequest,         .roomSelectTankResponse),
         (.roomSelectTeamRequest,         .roomSelectTeamResponse),
-        (.roomUserReadyRequest,          .roomUserReadyResponse)
+        (.roomUserReadyRequest,          .roomUserReadyResponse),
+        (.userDeadRequest,               .userDeadResponse),
         
     ]
     

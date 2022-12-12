@@ -912,6 +912,49 @@ final class GunBoundTests: XCTestCase {
         
         XCTAssertEncode(value, packet, key: key)
     }
+    
+    func testUserDeathRequest() {
+        
+        let data = Data(hexString: "0B00BF4C00410100000000")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 11)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .userDeadRequest)
+        XCTAssertEqual(packet.opcode.type, .request)
+        XCTAssertEqual(packet.opcode.response, .userDeadResponse)
+        XCTAssertEqual(packet.id, 0x4CBF)
+        
+        let value = UserDeathRequest(
+            value0: 01,
+            value1: 0x00000000
+        )
+        XCTAssertDecode(value, packet)
+    }
+    
+    func testUserDeadResponse() {
+        
+        let data = Data(hexString: "060030A40141")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 6)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .userDeadResponse)
+        XCTAssertEqual(packet.opcode.type, .response)
+        XCTAssertEqual(packet.opcode.request, .userDeadRequest)
+        XCTAssertEqual(packet.id, 0xA430)
+        
+        let value = UserDeathResponse()
+        XCTAssertEncode(value, packet)
+    }
 }
 
 // MARK: - Extensions
