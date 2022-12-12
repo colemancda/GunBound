@@ -541,6 +541,8 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.gameResult($0) }
             // start game
             await connection.register { [unowned self] in await self.startGame($0) }
+            // return to room after game
+            await register { [unowned self] in try await self.roomReturnResult($0) }
         }
         
         @discardableResult
@@ -1095,7 +1097,7 @@ internal extension GunBoundServer {
         }
         
         private func userDeath(_ request: UserDeathRequest) async throws -> UserDeathResponse {
-            log("User Death")
+            log("Player Death")
             // player death side effects
             return UserDeathResponse()
         }
@@ -1129,7 +1131,7 @@ internal extension GunBoundServer {
                 }
                 // mark game as playing
                 let room = try await self.server.dataSource.update(room: id) { room in
-                    // select random map
+                    // update state
                     room.isPlaying = true
                     return room
                 }
@@ -1173,6 +1175,20 @@ internal extension GunBoundServer {
             catch {
                 await close(error)
             }
+        }
+        
+        private func roomReturnResult(_ request: RoomReturnResultRequest) async throws -> RoomReturnResultResponse {
+            log("Room Return Result")
+            guard let id = self.state.room else {
+                throw GunBoundError.notInRoom
+            }
+            // mark game as playing
+            try await self.server.dataSource.update(room: id) { room in
+                // update state
+                room.isPlaying = false
+            }
+            //
+            return RoomReturnResultResponse()
         }
     }
 }
