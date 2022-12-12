@@ -66,6 +66,7 @@ public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunB
                         self.log?("[\(newSocket.address.address)] New connection")
                         let connection = await Connection(socket: newSocket, server: self)
                         await self.storage.newConnection(connection)
+                        await self.dataSource.didConnect(newSocket.address)
                     }
                 }
             }
@@ -125,6 +126,10 @@ public protocol GunBoundServerDataSource: AnyObject {
     var serverDirectory: ServerDirectory { get async throws }
     
     var functionRestrict: FunctionRestrict { get async throws }
+    
+    func didConnect(_ address: GunBoundAddress) async
+    
+    func didDisconnect(_ address: GunBoundAddress, username: Username?) async
     
     func position(
         for user: Room.PlayerSession.ID,
@@ -228,6 +233,34 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         state.functionRestrict
     }
     
+    public func didConnect(_ address: GunBoundAddress) {
+        
+    }
+    
+    public func didDisconnect(_ address: GunBoundAddress, username: Username?) {
+        // remove from channels
+        for (channelID, channel) in state.channels {
+            for (userID, user) in channel.users {
+                if user == username {
+                    state.channels[channelID]?[userID] = nil
+                    break
+                }
+            }
+        }
+        // remove from room
+        for (roomID, room) in state.rooms {
+            for (playerIndex, player) in room.players.enumerated() {
+                if player.username == username || player.address == address {
+                    state.rooms[roomID]?.players.remove(at: playerIndex)
+                    break
+                }
+            }
+            if let isEmpty = state.rooms[roomID]?.players.isEmpty, isEmpty {
+                state.rooms[roomID] = nil
+            }
+        }
+    }
+    
     public func position(
         for user: Room.PlayerSession.ID,
         in room: Room.ID,
@@ -311,9 +344,17 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             message: "$Welcome to channel \(channel.rawValue + 1)\r\nEnjoy!"
         )
         // insert user into channel
-        guard let userID = state.channels[channel, default: newChannel].nextUserID else {
+        let userID: Channel.UserID
+        if let id = state.channels[channel, default: newChannel][username] {
+            // exisitng user ID
+            userID = id
+        } else if let id = state.channels[channel, default: newChannel].nextUserID {
+            // next user ID
+            userID = id
+        } else {
             throw GunBoundError.channelFull
         }
+        // store user
         state.channels[channel, default: newChannel].users[userID] = username
         // remove from old channels
         let otherChannels = state.channels.keys.lazy.filter { $0 != channel }
@@ -536,7 +577,9 @@ internal extension GunBoundServer {
             self.address = address
             self.server = server
             self.connection = await GunBound.Connection(socket: socket, log: log) { error in
+                let username = await server.storage.connections[address]?.connection.username
                 await server.storage.removeConnection(address)
+                await server.dataSource.didDisconnect(address, username: username)
             }
             await self.registerHandlers()
         }
