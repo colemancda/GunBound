@@ -924,7 +924,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 14)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
-        XCTAssertEqual(packet.opcode, .clientCommand)
+        XCTAssertEqual(packet.opcode, .clientGenericCommand)
         XCTAssertEqual(packet.id, 0x8D4F)
         
         let value = ClientGenericCommand(

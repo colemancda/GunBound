@@ -1,4 +1,5 @@
 import Foundation
+import ArgumentParser
 
 /// GunBound Classic Server
 public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunBoundSocketUDP, DataSource: GunBoundServerDataSource> {
@@ -122,6 +123,8 @@ public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunB
 ///
 public protocol GunBoundServerDataSource: AnyObject {
     
+    var command: ParsableCommand.Type { get }
+    
     /// get the list of servers
     var serverDirectory: ServerDirectory { get async throws }
     
@@ -219,6 +222,10 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     }
     
     internal let stateChanged: ((State) -> ())?
+    
+    public nonisolated var command: ParsableCommand.Type {
+        DefaultCommand.self
+    }
     
     public func update(_ body: (inout State) throws -> ()) rethrows {
         try body(&state)
@@ -884,7 +891,27 @@ internal extension GunBoundServer {
         
         private func clientCommand(_ command: ClientGenericCommand) async {
             log("Client Command - \(command.command)")
-            
+            // try to parse a command
+            let arguments = command.command.components(separatedBy: " ")
+            guard var parsableCommand = (try? self.server.dataSource.command.parseAsRoot(arguments)) as? GunBoundCommand else {
+                return
+            }
+            // execute command
+            let username = await self.connection.username
+            // execute command
+            do {
+                if let responseMessage = try await parsableCommand.execute(address: self.address, username: username, dataSource: server.dataSource) {
+                    log(responseMessage)
+                    // respond to client
+                    let notification = ClientPrintNotification(
+                        message: responseMessage
+                    )
+                    
+                }
+            }
+            catch {
+                log("Command Error: \(error)")
+            }
         }
         
         private func roomList(_ request: RoomListRequest) async throws -> RoomListResponse {

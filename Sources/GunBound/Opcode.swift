@@ -119,9 +119,9 @@ public enum Opcode: UInt16, Codable {
     
     case playResultNotification     = 0x4413
     
-    case clientCommand              = 0x5100
+    case clientGenericCommand       = 0x5100
     
-    case printClient                = 0x5101
+    case clientPrintNotification    = 0x5101
     
     case rebroadcast                = 0x4410
     
@@ -197,8 +197,8 @@ public extension Opcode {
         case .userDeadResponse:                     return .response
         case .playResultCommand:                    return .command
         case .playResultNotification:               return .notification
-        case .clientCommand:                        return .command
-        case .printClient:                          return .notification
+        case .clientGenericCommand:                 return .command
+        case .clientPrintNotification:              return .notification
         case .roomReturnResultRequest:              return .request
         case .roomReturnResultResponse:             return .response
         case .gameUnknown0:                         return .command

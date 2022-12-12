@@ -38,7 +38,11 @@ let package = Package(
             name: "GunBound",
             dependencies: [
                 "Socket",
-                "CryptoSwift"
+                "CryptoSwift",
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                ),
             ]
         ),
         .executableTarget(

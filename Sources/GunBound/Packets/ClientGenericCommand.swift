@@ -10,7 +10,7 @@ import Foundation
 /// Client Generic Command
 public struct ClientGenericCommand: GunBoundPacket, Decodable, Equatable, Hashable {
     
-    public static var opcode: Opcode { .clientCommand }
+    public static var opcode: Opcode { .clientGenericCommand }
     
     internal let value0: UInt8
     
