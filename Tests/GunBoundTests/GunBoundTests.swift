@@ -955,6 +955,29 @@ final class GunBoundTests: XCTestCase {
         let value = UserDeathResponse()
         XCTAssertEncode(value, packet)
     }
+    
+    func testStartGameCommand() {
+        
+        let data = Data(hexString: "0A0004313034F6749000")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 10)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .startGameCommand)
+        XCTAssertEqual(packet.opcode.type, .command)
+        XCTAssertEqual(packet.id, 0x3104)
+        
+        let value = StartGameCommand(
+            value0: UInt32(0xF6749000).bigEndian
+        )
+        XCTAssertDecode(value, packet)
+        XCTAssertEncode(value, packet)
+    }
+    
 }
 
 // MARK: - Extensions
