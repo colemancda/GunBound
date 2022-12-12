@@ -25,6 +25,8 @@ public enum GunBoundError: Error {
     
     case unknownRoom(Room.ID)
     
+    case notInRoom
+    
     case invalidPassword
     
     case roomFull

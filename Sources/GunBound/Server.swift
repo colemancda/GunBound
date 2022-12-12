@@ -534,6 +534,8 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.userReady($0) }
             // user death (in-game)
             await register { [unowned self] in try await self.userDeath($0) }
+            // game result
+            await connection.register { [unowned self] in await self.gameResult($0) }
         }
         
         @discardableResult
@@ -1086,6 +1088,27 @@ internal extension GunBoundServer {
             log("User Death")
             // player death side effects
             return UserDeathResponse()
+        }
+        
+        private func gameResult(_ command: GameResultCommand) async {
+            log("Game Result")
+            do {
+                guard let id = self.state.room else {
+                    throw GunBoundError.notInRoom
+                }
+                let room = try await self.server.dataSource.room(for: id)
+                // send notifications
+                let notification = GameResultNotification()
+                for player in room.players {
+                    guard let connection = await self.server.storage.connections[player.address] else {
+                        continue
+                    }
+                    await connection.send(notification)
+                }
+            }
+            catch {
+                await close(error)
+            }
         }
     }
 }
