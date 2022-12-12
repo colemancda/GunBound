@@ -6,7 +6,7 @@
 //
 
 /// GunBound Game Mode (Room Play Mode)
-public enum GameMode: UInt8, Codable {
+public enum GameMode: UInt8, Codable, CaseIterable {
     
     /// Solo
     case solo       = 0x00

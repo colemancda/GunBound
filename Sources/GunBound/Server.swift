@@ -126,6 +126,12 @@ public protocol GunBoundServerDataSource: AnyObject {
     
     var functionRestrict: FunctionRestrict { get async throws }
     
+    func position(
+        for user: Room.PlayerSession.ID,
+        in room: Room.ID,
+        map: GameMap
+    ) async throws -> (x: UInt, y: UInt)
+    
     func register(
         username: Username
     ) async throws -> Bool
@@ -222,9 +228,29 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         state.functionRestrict
     }
     
+    public func position(
+        for user: Room.PlayerSession.ID,
+        in room: Room.ID,
+        map: GameMap
+    ) throws -> (x: UInt, y: UInt) {
+        guard let roomValue = self.state.rooms[room] else {
+            throw GunBoundError.unknownRoom(room)
+        }
+        guard let player = roomValue.players.first(where: { $0.id == user }) else {
+            throw GunBoundError.notInRoom
+        }
+        // get position data for slot
+        guard let positionData = self.state.mapData.position(for: user, in: map, team: player.team) else {
+            return (0, 0)
+        }
+        let x = UInt.random(in: positionData.minX ... positionData.maxX)
+        let y = positionData.y ?? 0
+        return (x, y)
+    }
+    
     public func register(
         username: Username
-    ) async throws -> Bool {
+    ) throws -> Bool {
         guard state.autoRegister else {
             return false
         }
@@ -429,6 +455,8 @@ public extension InMemoryGunBoundServerDataSource {
         public var channels = [Channel.ID: Channel]()
         
         public var rooms = [Room.ID: Room]()
+        
+        public var mapData = MapData.default
     }
 }
 
@@ -1162,14 +1190,15 @@ internal extension GunBoundServer {
                     let primaryTank = (player.primaryTank == .random) ? Mobile.random : player.primaryTank
                     let secondaryTank = (player.secondaryTank == .random) ? Mobile.random : player.secondaryTank
                     let turnOrder = playerTurnOrder.firstIndex(of: player.id)!
+                    let position = try await self.server.dataSource.position(for: player.id, in: id, map: map)
                     let notificationPlayer = StartGameNotification.Player(
                         id: player.id,
                         username: player.username,
                         team: player.team,
                         primaryTank: primaryTank,
                         secondaryTank: secondaryTank,
-                        xPosition: 154, // TODO: choose random position for map
-                        yPosition: 0,
+                        xPosition: numericCast(position.x),
+                        yPosition: numericCast(position.y),
                         turnOrder: UInt16(turnOrder)
                     )
                     players.append(notificationPlayer)
@@ -1195,9 +1224,6 @@ internal extension GunBoundServer {
         
         private func roomReturnResult(_ request: RoomReturnResultRequest) async throws -> RoomReturnResultResponse {
             log("Room Return Result")
-            guard let id = self.state.room else {
-                throw GunBoundError.notInRoom
-            }
             return RoomReturnResultResponse()
         }
     }

@@ -5,8 +5,6 @@
 //  Created by Alsey Coleman Miller on 12/9/22.
 //
 
-import Foundation
-
 public enum Team: UInt8, Codable, CaseIterable {
     
     /// Team A
