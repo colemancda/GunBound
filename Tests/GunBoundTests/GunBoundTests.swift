@@ -913,6 +913,27 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEncode(value, packet, key: key)
     }
     
+    func testClientCommand() {
+        
+        let data = Data([0x0E, 0x00, 0x4F, 0x8D, 0x00, 0x51, 0x2F, 0x74, 0x65, 0x73, 0x74, 0x20, 0x68, 0x69])
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 14)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .clientCommand)
+        XCTAssertEqual(packet.id, 0x8D4F)
+        
+        let value = ClientGenericCommand(
+            value0: 0x2F,
+            command: "test hi"
+        )
+        XCTAssertDecode(value, packet)
+    }
+    
     func testUserDeathRequest() {
         
         let data = Data(hexString: "0B00BF4C00410100000000")!

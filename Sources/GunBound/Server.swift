@@ -513,6 +513,8 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.joinChannel($0) }
             // channel chat
             await connection.register { [unowned self] in await self.channelChat($0) }
+            // client command
+            await connection.register { [unowned self] in await self.clientCommand($0) }
             // room list
             await register { [unowned self] in try await self.roomList($0) }
             // join room
@@ -794,6 +796,11 @@ internal extension GunBoundServer {
             catch {
                 await close(error)
             }
+        }
+        
+        private func clientCommand(_ command: ClientGenericCommand) async {
+            log("Client Command - \(command.command)")
+            
         }
         
         private func roomList(_ request: RoomListRequest) async throws -> RoomListResponse {
@@ -1143,7 +1150,7 @@ internal extension GunBoundServer {
                         team: player.team,
                         primaryTank: primaryTank,
                         secondaryTank: secondaryTank,
-                        xPosition: 154,
+                        xPosition: 154, // TODO: choose random position for map
                         yPosition: 0,
                         turnOrder: UInt16(turnOrder)
                     )

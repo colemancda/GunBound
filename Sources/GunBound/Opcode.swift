@@ -202,6 +202,7 @@ public extension Opcode {
         case .roomReturnResultRequest:              return .request
         case .roomReturnResultResponse:             return .response
         case .gameUnknown0:                         return .command
+        case .close:                                return .notification
         default:
             assertionFailure("Unimplemented \(self)")
             return .request
