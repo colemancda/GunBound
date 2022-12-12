@@ -978,6 +978,31 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEncode(value, packet)
     }
     
+    func testStartGameNotification() {
+        
+        let data = Data(hexString: "5600017A3234A34D16EBFBA6F065ACC095DEA8FEB8356893D0E6E4A889D997E8CF18BEE510BE396B45F40AD9D2A62015DBBE6359208B16F7630BC23041311B1EF4DB1B74E729816BD533773BC813DA67AF8C392FD2EC")!
+        let plainText = Data(hexString: "00020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000")!
+        
+        guard let packet = Packet(data: data) else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(packet.data, data)
+        XCTAssertEqual(packet.size, 86)
+        XCTAssertEqual(packet.size, numericCast(packet.data.count))
+        XCTAssertEqual(packet.opcode, .startGameNotification)
+        XCTAssertEqual(packet.opcode.type, .notification)
+        XCTAssertEqual(packet.id, 0x7A01)
+        
+        let key = Key(
+            username: "colemancda",
+            password: "1234",
+            nonce: 0x00010203
+        )
+        
+        XCTAssertEqual(try Packet(opcode: packet.opcode, id: packet.id, parameters: plainText).encrypt(key: key), packet)
+        
+    }
 }
 
 // MARK: - Extensions
