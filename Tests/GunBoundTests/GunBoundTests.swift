@@ -954,9 +954,7 @@ func XCTAssertEncode<T>(
             guard let key = key else {
                 throw GunBoundError.notAuthenticated
             }
-            let plainText = encodedPacket.parameters
-            let parameters = try Crypto.AES.encrypt(plainText, key: key, opcode: T.opcode)
-            encodedPacket = Packet(opcode: T.opcode, id: encodedPacket.id, parameters: parameters)
+            encodedPacket = try encodedPacket.encrypt(key: key)
         }
         XCTAssertEqual(encodedPacket.data, packet.data, "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)", file: file, line: line)
     } catch {
@@ -982,9 +980,7 @@ func XCTAssertDecode<T>(
             guard let key = key else {
                 throw GunBoundError.notAuthenticated
             }
-            let encrypted = packet.parameters
-            let decrypted = try Crypto.AES.decrypt(encrypted, key: key, opcode: T.opcode)
-            packet = Packet(opcode: T.opcode, id: packet.id, parameters: decrypted)
+            packet = try packet.decrypt(key: key)
         }
         let decodedValue = try decoder.decodePacket(T.self, from: packet.data)
         XCTAssertEqual(decodedValue, value, file: file, line: line)

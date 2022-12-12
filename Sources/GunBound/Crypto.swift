@@ -71,6 +71,29 @@ extension Key: CustomStringConvertible, CustomDebugStringConvertible {
     }
 }
 
+// MARK: - Packet Encryption
+
+public extension Packet {
+    
+    /// Encrypt
+    func encrypt(key: Key) throws -> Packet {
+        let plainText = self.parameters
+        let opcode = self.opcode
+        let id = self.id
+        let encrypted = try Crypto.AES.encrypt(plainText, key: key, opcode: opcode)
+        return Packet(opcode: opcode, id: id, parameters: encrypted)
+    }
+    
+    /// Decrypt
+    func decrypt(key: Key) throws -> Packet {
+        let encrypted = self.parameters
+        let opcode = self.opcode
+        let id = self.id
+        let decrypted = try Crypto.AES.decrypt(encrypted, key: key, opcode: opcode)
+        return Packet(opcode: opcode, id: id, parameters: decrypted)
+    }
+}
+
 // MARK: - Encryption
 
 internal struct Crypto {

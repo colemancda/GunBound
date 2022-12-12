@@ -165,9 +165,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             guard let key = key else {
                 throw GunBoundError.notAuthenticated
             }
-            let encrypted = packet.parameters
-            let decrypted = try Crypto.AES.decrypt(encrypted, key: key, opcode: opcode)
-            packet = Packet(opcode: opcode, id: packet.id, parameters: decrypted)
+            packet = try packet.decrypt(key: key)
         }
         
         // handle packet
@@ -199,9 +197,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             guard let key = self.key else {
                 throw GunBoundError.notAuthenticated
             }
-            let plainText = packet.parameters
-            let parameters = try Crypto.AES.encrypt(plainText, key: key, opcode: opcode)
-            packet = Packet(opcode: opcode, parameters: parameters)
+            packet = try packet.encrypt(key: key)
         }
         
         // use special ID for first login
