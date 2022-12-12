@@ -1108,10 +1108,15 @@ internal extension GunBoundServer {
                 guard let id = self.state.room else {
                     throw GunBoundError.notInRoom
                 }
-                let room = try await self.server.dataSource.room(for: id)
+                // mark game as playing
+                let players = try await self.server.dataSource.update(room: id) { room in
+                    // update state
+                    room.isPlaying = false
+                    return room.players
+                }
                 // send notifications
                 let notification = GameResultNotification()
-                for player in room.players {
+                for player in players {
                     guard let connection = await self.server.storage.connections[player.address] else {
                         continue
                     }
@@ -1182,12 +1187,6 @@ internal extension GunBoundServer {
             guard let id = self.state.room else {
                 throw GunBoundError.notInRoom
             }
-            // mark game as playing
-            try await self.server.dataSource.update(room: id) { room in
-                // update state
-                room.isPlaying = false
-            }
-            //
             return RoomReturnResultResponse()
         }
     }
