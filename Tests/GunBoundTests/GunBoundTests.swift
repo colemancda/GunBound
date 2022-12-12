@@ -363,6 +363,7 @@ final class GunBoundTests: XCTestCase {
             maxPosition: 0,
             users: [
                 JoinChannelResponse.ChannelUser(
+                    id: 0,
                     username: "admin",
                     avatarEquipped: UInt64(0x0080008000800000).bigEndian,
                     guild: "virtual",

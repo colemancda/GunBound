@@ -16,7 +16,7 @@ public struct JoinChannelResponse: GunBoundPacket, Equatable, Hashable, Encodabl
     
     public let channel: Channel.ID
     
-    public let maxPosition: UInt8
+    public let maxPosition: Channel.UserID
     
     public let users: [ChannelUser]
     
@@ -31,7 +31,9 @@ extension JoinChannelResponse: GunBoundEncodable {
         try container.encode(status, forKey: CodingKeys.status)
         try container.encode(channel, forKey: CodingKeys.channel)
         try container.encode(maxPosition, forKey: CodingKeys.maxPosition)
-        try container.encode(users, forKey: CodingKeys.users)
+        let maxUsers = Int(UInt8.max)
+        try container.encode(UInt8(min(users.count, maxUsers))) // write count
+        try container.encodeArray(users.prefix(maxUsers), forKey: CodingKeys.users)
         try container.encode(message.data(using: .ascii) ?? Data())
     }
 }
@@ -40,8 +42,10 @@ extension JoinChannelResponse: GunBoundEncodable {
 
 public extension JoinChannelResponse {
     
-    struct ChannelUser: Equatable, Hashable, Encodable {
-                
+    struct ChannelUser: Equatable, Hashable, Encodable, Identifiable {
+        
+        public let id: Channel.UserID // channel position
+        
         public let username: Username
         
         public let avatarEquipped: UInt64

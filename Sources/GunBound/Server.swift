@@ -151,9 +151,15 @@ public protocol GunBoundServerDataSource: AnyObject {
         password: RoomPassword,
         settings: UInt32,
         capacity: RoomCapacity,
-        admin username: Username,
+        username: Username,
         address: GunBoundAddress
     ) async throws -> Room
+    
+    func join(
+        room id: Room.ID,
+        username: Username,
+        address: GunBoundAddress
+    ) async throws -> (Room, Room.PlayerSession)
     
     func rooms(
         in channel: Channel.ID,
@@ -246,7 +252,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     ) -> Channel {
         let newChannel = Channel(
             id: id,
-            users: [],
+            users: [:],
             message: "$Welcome to channel \(id.rawValue + 1)\r\nEnjoy!"
         )
         return state.channels[id, default: newChannel]
@@ -255,19 +261,23 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
     public func join(
         channel: Channel.ID,
         for username: Username
-    ) -> Channel {
+    ) throws -> Channel {
         let newChannel = Channel(
             id: channel,
-            users: [],
+            users: [:],
             message: "$Welcome to channel \(channel.rawValue + 1)\r\nEnjoy!"
         )
         // insert user into channel
-        state.channels[channel, default: newChannel].users.insert(username)
+        guard let userID = state.channels[channel, default: newChannel].nextUserID else {
+            throw GunBoundError.channelFull
+        }
+        state.channels[channel, default: newChannel].users[userID] = username
         // remove from old channels
         let otherChannels = state.channels.keys.lazy.filter { $0 != channel }
         for id in otherChannels {
-            if state.channels[id]?.users.contains(username) ?? false {
-                state.channels[id]?.users.remove(username)
+            if let channel = state.channels[id],
+               let userID = channel[username] {
+                state.channels[id]?.users[userID] = nil
             }
         }
         // remove from rooms
@@ -289,7 +299,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         password: RoomPassword,
         settings: UInt32,
         capacity: RoomCapacity,
-        admin username: Username,
+        username: Username,
         address: GunBoundAddress
     ) throws -> Room {
         let id = self.state.rooms.values.nextID
@@ -320,7 +330,39 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         )
         // store data
         self.state.rooms[id] = room
+        // remove user from channels
+        for id in state.channels.keys {
+            if let channel = state.channels[id],
+               let userID = channel[username] {
+                state.channels[id]?.users[userID] = nil
+            }
+        }
         return room
+    }
+    
+    public func join(
+        room id: Room.ID,
+        username: Username,
+        address: GunBoundAddress
+    ) throws -> (Room, Room.PlayerSession) {
+        guard var room = self.state.rooms[id] else {
+            throw GunBoundError.unknownRoom(id)
+        }
+        guard let playerID = room.nextID else {
+            throw GunBoundError.roomFull
+        }
+        let player = Room.PlayerSession(
+            id: playerID,
+            username: username,
+            address: address,
+            primaryTank: .random,
+            secondaryTank: .random,
+            team: room.nextTeam,
+            isReady: false,
+            isAdmin: false
+        )
+        room.players.append(player)
+        return (room, player)
     }
     
     public func room(
@@ -367,8 +409,6 @@ public extension InMemoryGunBoundServerDataSource {
         public var channels = [Channel.ID: Channel]()
         
         public var rooms = [Room.ID: Room]()
-        
-        public var lastRoomID: Room.ID = 0x00
     }
 }
 
@@ -659,15 +699,21 @@ internal extension GunBoundServer {
             )
             // cache current channel
             self.state.channel = targetChannel
+            self.state.room = nil // exit room
             // get users
-            let usernames = channel.users.sorted() // sort users
-            let users = try await self.server.dataSource.users(for: usernames).map {
-                JoinChannelResponse.ChannelUser(
-                    username: $0.id,
-                    avatarEquipped: $0.avatarEquipped,
-                    guild: $0.guild,
-                    rankCurrent: $0.rankCurrent,
-                    rankSeason: $0.rankSeason
+            let usersByID = channel.users
+                .sorted(by: { $0.value < $1.value })
+                .map { (id: $0.key, username: $0.value) }// sort users
+            let usernames = usersByID.map { $0.username }
+            // map values
+            let users = try await self.server.dataSource.users(for: usernames).enumerated().map { (index, user) in
+                return JoinChannelResponse.ChannelUser(
+                    id: usersByID[index].id,
+                    username: user.id,
+                    avatarEquipped: user.avatarEquipped,
+                    guild: user.guild,
+                    rankCurrent: user.rankCurrent,
+                    rankSeason: user.rankSeason
                 )
             }
             // send notifications
@@ -691,11 +737,12 @@ internal extension GunBoundServer {
                     }
                 }
             }
+            let maxPosition = channel.maxUserID ?? 0
             // response
             return JoinChannelResponse(
                 status: 0x00, // hardcoded
                 channel: targetChannel,
-                maxPosition: 0x00,
+                maxPosition: maxPosition,
                 users: users,
                 message: channel.message
             )
@@ -711,11 +758,13 @@ internal extension GunBoundServer {
                 // get users in channel
                 let channel = try await self.server.dataSource.channel(for: self.state.channel)
                 assert(channel.id == self.state.channel)
-                // get users
-                let usernames = channel.users.sorted() // sort users
+                // get user id
+                guard let userID = channel[username] else {
+                    throw GunBoundError.unknownUser(username.rawValue)
+                }
                 // notification
                 let notification = ChannelChatBroadcast(
-                    position: UInt8((usernames.firstIndex(of: username) ?? 0) + 1),
+                    position: userID,
                     username: username,
                     message: command.message
                 )
@@ -767,7 +816,7 @@ internal extension GunBoundServer {
                 password: request.password,
                 settings: request.settings,
                 capacity: request.capacity,
-                admin: username,
+                username: username,
                 address: self.address
             )
             // cache current room
@@ -799,20 +848,11 @@ internal extension GunBoundServer {
                     await send(selfNotification)
                 }
                 // new player session in room
-                let (room, player) = try await self.server.dataSource.update(room: request.room) { room in
-                    let player = Room.PlayerSession(
-                        id: room.nextID ?? 255,
-                        username: username,
-                        address: address,
-                        primaryTank: .random,
-                        secondaryTank: .random,
-                        team: room.nextTeam,
-                        isReady: false,
-                        isAdmin: false
-                    )
-                    room.players.append(player)
-                    return (room, player)
-                }
+                let (room, player) = try await self.server.dataSource.join(
+                    room: request.room,
+                    username: username,
+                    address: address
+                )
                 // fetch room and players
                 let usernames = room.players.map { $0.username }
                 let users = try await self.server.dataSource.users(for: usernames)
@@ -850,7 +890,6 @@ internal extension GunBoundServer {
                 )
                 // cache current room
                 self.state.room = room.id
-                
                 // wait for notification to send
                 Task {
                     try await Task.sleep(for: .seconds(1))
