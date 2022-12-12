@@ -107,6 +107,8 @@ public enum Opcode: UInt16, Codable {
     
     case close                      = 0x3FFF
     
+    case gameUnknown0               = 0x4000
+    
     case endGameJewelCommand        = 0x4200
     
     case userDeadRequest            = 0x4100
@@ -199,6 +201,7 @@ public extension Opcode {
         case .printClient:                          return .notification
         case .roomReturnResultRequest:              return .request
         case .roomReturnResultResponse:             return .response
+        case .gameUnknown0:                         return .command
         default:
             assertionFailure("Unimplemented \(self)")
             return .request
