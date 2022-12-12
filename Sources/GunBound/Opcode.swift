@@ -197,6 +197,8 @@ public extension Opcode {
         case .playResultNotification:               return .notification
         case .clientCommand:                        return .command
         case .printClient:                          return .notification
+        case .roomReturnResultRequest:              return .request
+        case .roomReturnResultResponse:             return .response
         default:
             assertionFailure("Unimplemented \(self)")
             return .request
@@ -244,6 +246,7 @@ private extension Opcode {
         (.roomSelectTeamRequest,         .roomSelectTeamResponse),
         (.roomUserReadyRequest,          .roomUserReadyResponse),
         (.userDeadRequest,               .userDeadResponse),
+        (.roomReturnResultRequest,       .roomReturnResultResponse),
         
     ]
     
