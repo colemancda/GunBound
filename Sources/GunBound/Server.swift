@@ -1,5 +1,6 @@
 import Foundation
 import ArgumentParser
+import SystemPackage
 
 /// GunBound Classic Server
 public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunBoundSocketUDP, DataSource: GunBoundServerDataSource> {
@@ -59,8 +60,8 @@ public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunB
         log?("Started GunBound Server")
         // listening run loop
         self.tcpListenTask = Task.detached(priority: .high) { [weak self] in
-            do {
-                while let socket = self?.tcpSocket {
+            while let socket = self?.tcpSocket {
+                do {
                     // wait for incoming sockets
                     let newSocket = try await socket.accept()
                     if let self = self {
@@ -70,25 +71,33 @@ public final class GunBoundServer <TCPSocket: GunBoundSocketTCP, UDPSocket: GunB
                         await self.dataSource.didConnect(newSocket.address)
                     }
                 }
-            }
-            catch _ as CancellationError { }
-            catch {
-                self?.log?("Error waiting for new TCP connection: \(error)")
+                catch _ as CancellationError { }
+                catch SystemPackage.Errno.resourceTemporarilyUnavailable {
+                    // TODO: Fix Socket dependency
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+                catch {
+                    self?.log?("Error waiting for new TCP connection: \(error)")
+                }
             }
         }
         self.udpListenTask = Task.detached(priority: .high) { [weak self] in
-            do {
-                while let socket = self?.udpSocket {
+            while let socket = self?.udpSocket {
+                do {
                     // wait for incoming sockets
                     let (recievedData, address) = try await socket.recieve(Packet.maxSize)
                     self?.log?("[\(address.address)] Recieved \(recievedData.count) bytes")
                     try await socket.send(recievedData, to: address)
                     self?.log?("[\(address.address)] Echoed data")
                 }
-            }
-            catch _ as CancellationError { }
-            catch {
-                self?.log?("Error waiting for new UDP connection: \(error)")
+                catch _ as CancellationError { }
+                catch Errno.resourceTemporarilyUnavailable {
+                    // TODO: Fix Socket dependency
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+                catch {
+                    self?.log?("Error waiting for new UDP connection: \(error)")
+                }
             }
         }
     }
