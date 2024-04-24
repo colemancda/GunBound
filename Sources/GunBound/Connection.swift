@@ -106,7 +106,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
     
     private func socketEvent(_ event: GunBoundSocketEvent) async {
         switch event {
-        case .pendingRead:
+        case .read:
             #if DEBUG
             log?("Pending read")
             #endif
@@ -115,23 +115,28 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
                 log?("Unable to read. \(error)")
                 await self.socket.close()
             }
-        case let .read(byteCount):
+        case let .didRead(byteCount):
             #if DEBUG
             log?("Did read \(byteCount) bytes")
             #endif
-        case let .write(byteCount):
+        case let .didWrite(byteCount):
             #if DEBUG
             log?("Did write \(byteCount) bytes")
             #endif
             // try to write again
             do { try await write() }
             catch { log?("Unable to write. \(error)") }
-        case let .close(error):
+        case let .error(error):
             #if DEBUG
-            log?("Did close. \(error?.localizedDescription ?? "")")
+            log?("Error. \(error.localizedDescription)")
             #endif
+        case .close:
             isConnected = false
-            await didDisconnect?(error)
+            await didDisconnect?(nil)
+        case .connection:
+            break
+        case .write:
+            break
         }
     }
     

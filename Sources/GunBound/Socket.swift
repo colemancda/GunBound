@@ -61,10 +61,26 @@ public protocol GunBoundSocketUDP {
 /// GunBound Socket Event
 public enum GunBoundSocketEvent {
     
-    case pendingRead
-    case read(Int)
-    case write(Int)
-    case close(Error?)
+    /// New connection
+    case connection
+    
+    /// Pending read
+    case read
+    
+    /// Pending Write
+    case write
+    
+    /// Did read
+    case didRead(Int)
+    
+    /// Did write
+    case didWrite(Int)
+    
+    /// Error ocurred
+    case error(Error)
+    
+    /// Socket closed
+    case close
 }
 
 public typealias GunBoundSocketEventStream = AsyncStream<GunBoundSocketEvent>
@@ -122,11 +138,8 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP {
         destination destinationAddress: GunBoundAddress
     ) async throws -> Self {
         let fileDescriptor = try SocketDescriptor.tcp(localAddress) // [.closeOnExec, .nonBlocking])
-        try await fileDescriptor.closeIfThrows {
-            try fileDescriptor.setSocketOption(GenericSocketOption.ReuseAddress(true))
-            try fileDescriptor.setNonblocking()
-            try await fileDescriptor.connect(to: IPv4SocketAddress(destinationAddress), sleep: 100_000_000)
-        }
+        let socket = await Socket(fileDescriptor: fileDescriptor)
+        try await socket.connect(to: IPv4SocketAddress(destinationAddress))
         return await Self(
             fileDescriptor: fileDescriptor,
             address: localAddress
@@ -151,16 +164,13 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP {
     // MARK: - Methods
     
     public func accept() async throws -> Self {
-        let (clientFileDescriptor, clientAddress) = try await socket.fileDescriptor.accept(IPv4SocketAddress.self, sleep: 100_000_000)
-        try clientFileDescriptor.closeIfThrows {
-            try clientFileDescriptor.setNonblocking()
-        }
+        let (clientSocket, clientAddress) = try await socket.accept(IPv4SocketAddress.self)
         let address = GunBoundAddress(
             ipAddress: clientAddress.address,
             port: clientAddress.port
         )
-        return await Self(
-            fileDescriptor: clientFileDescriptor,
+        return Self(
+            socket: clientSocket,
             address: address
         )
     }
@@ -231,16 +241,7 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP {
 internal extension GunBoundSocketEvent {
     
     init(_ event: Socket.Event) {
-        switch event {
-        case .pendingRead:
-            self = .pendingRead
-        case let .read(bytes):
-            self = .read(bytes)
-        case let .write(bytes):
-            self = .write(bytes)
-        case let .close(error):
-            self = .close(error)
-        }
+        self = unsafeBitCast(event, to: GunBoundSocketEvent.self)
     }
 }
 
