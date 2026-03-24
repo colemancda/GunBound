@@ -253,7 +253,18 @@ public extension Opcode {
         case .roomReturnResultResponse:             return .response
         case .gameDropUserCommand:                  return .command
         case .close:                                return .notification
-        
+        case .getAvatarRequest:                     return .request
+        case .getAvatarResponse:                    return .response
+        case .setAvatarRequest:                     return .request
+        case .setAvatarResponse:                    return .response
+        case .buyGoldRequest:                       return .request
+        case .buyCashRequest:                       return .request
+        case .buyResponse:                          return .response
+        case .sellRequest:                          return .request
+        case .sellResponse:                         return .response
+        case .giftRequest:                          return .request
+        case .giftResponse:                         return .response
+
         default:
             assertionFailure("Unimplemented \(self)")
             return .request
@@ -268,9 +279,15 @@ public extension Opcode {
             .channelChatCommand,
             .channelChatBroadcast,
             .endGameJewelCommand,
-            .getAvatarResponse:
+            // incoming avatar shop requests are encrypted
+            .setAvatarRequest,
+            .buyGoldRequest,
+            .buyCashRequest,
+            .sellRequest,
+            .giftRequest:
             return true
         default:
+            // getAvatarResponse is pre-encrypted by the handler (RTC prefix must stay outside AES)
             return false
         }
     }
@@ -302,7 +319,12 @@ private extension Opcode {
         (.roomUserReadyRequest,          .roomUserReadyResponse),
         (.userDeadRequest,               .userDeadResponse),
         (.roomReturnResultRequest,       .roomReturnResultResponse),
-        
+        (.getAvatarRequest,              .getAvatarResponse),
+        (.setAvatarRequest,              .setAvatarResponse),
+        (.buyGoldRequest,                .buyResponse),
+        (.buyCashRequest,                .buyResponse),
+        (.sellRequest,                   .sellResponse),
+        (.giftRequest,                   .giftResponse),
     ]
     
     static let responsesByRequest: [Opcode: Opcode] = {
