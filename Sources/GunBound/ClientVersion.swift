@@ -17,6 +17,15 @@ public struct ClientVersion: RawRepresentable, Equatable, Hashable, Codable {
     }
 }
 
+// MARK: - Comparable
+
+extension ClientVersion: Comparable {
+
+    public static func < (lhs: ClientVersion, rhs: ClientVersion) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
 // MARK: - ExpressibleByIntegerLiteral
 
 extension ClientVersion: ExpressibleByIntegerLiteral {
