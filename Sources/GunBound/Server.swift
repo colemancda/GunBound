@@ -66,7 +66,13 @@ public final class GunBoundServer<TCPSocket: GunBoundSocketTCP, UDPSocket: GunBo
                     // wait for incoming sockets
                     let newSocket = try await socket.accept()
                     if let self = self {
-                        self.log?("[\(newSocket.address.address)] New connection")
+                        let ipString = newSocket.address.address
+                        guard self.configuration.isAllowed(ipString) else {
+                            self.log?("[\(ipString)] Rejected by IP allowlist")
+                            await newSocket.close()
+                            continue
+                        }
+                        self.log?("[\(ipString)] New connection")
                         let connection = await Connection(socket: newSocket, server: self)
                         await self.storage.newConnection(connection)
                         await self.dataSource.didConnect(newSocket.address)
@@ -133,6 +139,18 @@ public protocol GunBoundServerDataSource: AnyObject {
     var serverDirectory: ServerDirectory { get async throws }
 
     var functionRestrict: FunctionRestrict { get async throws }
+
+    /// Accepted client version range (VersionFirst…VersionLast from setting.txt).
+    var versionFirst: ClientVersion { get async throws }
+    var versionLast: ClientVersion { get async throws }
+
+    /// Accepted rank range (GradeLimitFirst…GradeLimitLast from setting.txt).
+    /// Values are `Rank.rawValue` (Int16).
+    var gradeLimitFirst: Int16 { get async throws }
+    var gradeLimitLast: Int16 { get async throws }
+
+    /// When true, room creation is blocked for all users.
+    var noRoomCreate: Bool { get async throws }
 
     func didConnect(_ address: GunBoundAddress) async
 
@@ -253,6 +271,12 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         state.functionRestrict
     }
 
+    public var versionFirst: ClientVersion { state.versionFirst }
+    public var versionLast: ClientVersion  { state.versionLast  }
+    public var gradeLimitFirst: Int16 { state.gradeLimitFirst }
+    public var gradeLimitLast: Int16  { state.gradeLimitLast  }
+    public var noRoomCreate: Bool { state.noRoomCreate }
+
     public func didConnect(_ address: GunBoundAddress) {
 
     }
@@ -349,7 +373,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         let newChannel = Channel(
             id: id,
             users: [:],
-            message: "$Welcome to channel \(id.rawValue + 1)\r\nEnjoy!"
+            message: state.defaultChannelMessage
         )
         return state.channels[id, default: newChannel]
     }
@@ -361,7 +385,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         let newChannel = Channel(
             id: channel,
             users: [:],
-            message: "$Welcome to channel \(channel.rawValue + 1)\r\nEnjoy!"
+            message: state.defaultChannelMessage
         )
         // insert user into channel
         let userID: Channel.UserID
@@ -408,7 +432,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         address: GunBoundAddress
     ) throws -> Room {
         let id = self.state.rooms.values.nextID
-        let message = "$Welcome to room \(name)\r\nEnjoy a \(capacity) game!"
+        let message = state.defaultRoomMessage
         let room = Room(
             id: id,
             channel: channel,
@@ -532,6 +556,33 @@ public extension InMemoryGunBoundServerDataSource {
 
         public var autoRegister = true
 
+        // MARK: - Version / grade limits (from setting.txt)
+
+        /// Minimum accepted client version (VersionFirst).
+        public var versionFirst: ClientVersion = 0
+
+        /// Maximum accepted client version (VersionLast).
+        public var versionLast: ClientVersion = 999
+
+        /// Minimum allowed rank rawValue (GradeLimitFirst). Default: silverDragon (-4).
+        public var gradeLimitFirst: Int16 = -4
+
+        /// Maximum allowed rank rawValue (GradeLimitLast). Default: administrator (20).
+        public var gradeLimitLast: Int16 = 20
+
+        /// Block all room creation when true (NoRoomCreate).
+        public var noRoomCreate: Bool = false
+
+        // MARK: - Messages (from channel_ment.txt / room_ment.txt)
+
+        /// Default MOTD inserted into every new channel (channel_ment.txt).
+        public var defaultChannelMessage: String = "$Welcome!"
+
+        /// Default MOTD inserted into every new room (room_ment.txt).
+        public var defaultRoomMessage: String = "$Welcome!"
+
+        // MARK: - Persistent data
+
         public var users = [Username: User]()
 
         public var passwords = [String: String]()
@@ -550,12 +601,48 @@ public struct GunBoundServerConfiguration: Equatable, Hashable, Codable {
 
     public let backlog: Int
 
+    /// IP allowlist loaded from the `Accept` key in setting.txt.
+    /// Each entry is an IPv4 address or a CIDR range (e.g. "192.168.0.0/24").
+    /// An empty list means "accept all".
+    public let accept: [String]
+
     public init(
         address: GunBoundAddress = .serverDefault,
-        backlog: Int = 1000
+        backlog: Int = 1000,
+        accept: [String] = []
     ) {
         self.address = address
         self.backlog = backlog
+        self.accept = accept
+    }
+
+    /// Returns true if `ipString` is permitted by the allowlist.
+    /// Always returns true when `accept` is empty.
+    public func isAllowed(_ ipString: String) -> Bool {
+        guard !accept.isEmpty else { return true }
+        return accept.contains { GunBoundServerConfiguration.ipMatches(ipString, filter: $0) }
+    }
+
+    /// Matches an IPv4 address string against a filter entry that may include a CIDR prefix.
+    static func ipMatches(_ ip: String, filter: String) -> Bool {
+        func toUInt32(_ s: String) -> UInt32? {
+            let parts = s.components(separatedBy: ".")
+            guard parts.count == 4 else { return nil }
+            var v: UInt32 = 0
+            for p in parts {
+                guard let octet = UInt32(p), octet <= 255 else { return nil }
+                v = (v << 8) | octet
+            }
+            return v
+        }
+        let segments = filter.components(separatedBy: "/")
+        guard let addrBits = toUInt32(ip),
+              let filterBits = toUInt32(segments[0]) else { return false }
+        if segments.count == 2, let prefix = Int(segments[1]), prefix >= 0, prefix <= 32 {
+            let mask: UInt32 = prefix == 0 ? 0 : (~UInt32(0) << (32 - prefix))
+            return (addrBits & mask) == (filterBits & mask)
+        }
+        return addrBits == filterBits
     }
 }
 
@@ -799,6 +886,24 @@ internal extension GunBoundServer {
                 return .badPassword
             }
 
+            // check client version range (VersionFirst…VersionLast)
+            let versionFirst = try await server.dataSource.versionFirst
+            let versionLast  = try await server.dataSource.versionLast
+            guard decryptedValue.clientVersion >= versionFirst,
+                  decryptedValue.clientVersion <= versionLast else {
+                log("Rejected version \(decryptedValue.clientVersion) (allowed \(versionFirst)…\(versionLast))")
+                return .badVersion
+            }
+
+            // check rank grade limits (GradeLimitFirst…GradeLimitLast)
+            let gradeLimitFirst = try await server.dataSource.gradeLimitFirst
+            let gradeLimitLast  = try await server.dataSource.gradeLimitLast
+            guard user.rank.rawValue >= gradeLimitFirst,
+                  user.rank.rawValue <= gradeLimitLast else {
+                log("Rejected rank \(user.rank) for grade limit \(gradeLimitFirst)…\(gradeLimitLast)")
+                return .bannedUser
+            }
+
             let session = await self.connection.session
 
             return AuthenticationResponse(
@@ -989,6 +1094,11 @@ internal extension GunBoundServer {
             // validate auth
             guard let username = await self.connection.username else {
                 throw GunBoundError.notAuthenticated
+            }
+            // check NoRoomCreate flag
+            guard try await !self.server.dataSource.noRoomCreate else {
+                log("Room creation blocked (NoRoomCreate)")
+                throw GunBoundError.notInRoom  // closest existing error; client sees no response
             }
             // current channel
             let channel = self.state.channel
