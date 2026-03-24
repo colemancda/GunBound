@@ -87,7 +87,7 @@ public typealias GunBoundSocketEventStream = AsyncStream<GunBoundSocketEvent>
 
 // MARK: - Implementation
 
-public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP {
+public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable {
     
     // MARK: - Properties
     
@@ -190,7 +190,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP {
     }
 }
 
-public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP {
+public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable {
     
     // MARK: - Properties
     
@@ -212,7 +212,7 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP {
     // MARK: - Initialization
     
     deinit {
-        let socket = self.socket
+        nonisolated(unsafe) let socket = self.socket
         Task(priority: .high) {
             await socket.close()
         }

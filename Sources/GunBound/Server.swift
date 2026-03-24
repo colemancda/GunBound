@@ -713,7 +713,7 @@ internal extension GunBoundServer {
         
         internal func close(_ error: Error) async {
             log("Error: \(error)")
-            await self.connection.socket.close()
+            await self.connection.closeSocket()
         }
         
         // MARK: - Requests

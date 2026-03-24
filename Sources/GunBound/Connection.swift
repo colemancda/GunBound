@@ -31,9 +31,9 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
     
     var username: Username?
     
-    let encoder = GunBoundEncoder()
-    
-    let decoder = GunBoundDecoder()
+    nonisolated let encoder = GunBoundEncoder()
+
+    nonisolated let decoder = GunBoundDecoder()
     
     private var didAuthenticate = false
     
@@ -94,6 +94,10 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         return key
     }
     
+    func closeSocket() async {
+        await socket.close()
+    }
+
     private func run() {
         Task(priority: .high) {
             let stream = self.socket.event
