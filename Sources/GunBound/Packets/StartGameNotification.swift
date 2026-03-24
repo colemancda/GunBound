@@ -63,3 +63,42 @@ public extension StartGameNotification {
         public let turnOrder: UInt16
     }
 }
+
+// MARK: - GunBoundCodable
+
+extension StartGameNotification.Player: GunBoundCodable {
+
+    public init(from container: GunBoundDecodingContainer) throws {
+        self.id = try container.decode(UInt8.self)
+        self.username = try container.decode(Username.self)
+        let teamRaw = try container.decode(UInt8.self)
+        guard let team = Team(rawValue: teamRaw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid team \(teamRaw)"))
+        }
+        self.team = team
+        let primaryRaw = try container.decode(UInt8.self)
+        guard let primaryTank = Mobile(rawValue: primaryRaw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid mobile \(primaryRaw)"))
+        }
+        self.primaryTank = primaryTank
+        let secondaryRaw = try container.decode(UInt8.self)
+        guard let secondaryTank = Mobile(rawValue: secondaryRaw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid mobile \(secondaryRaw)"))
+        }
+        self.secondaryTank = secondaryTank
+        self.xPosition = try container.decode(UInt16.self)
+        self.yPosition = try container.decode(UInt16.self)
+        self.turnOrder = try container.decode(UInt16.self)
+    }
+
+    public func encode(to container: GunBoundEncodingContainer) throws {
+        try container.encode(id)
+        try username.encode(to: container)
+        try container.encode(team.rawValue)
+        try container.encode(primaryTank.rawValue)
+        try container.encode(secondaryTank.rawValue)
+        try container.encode(xPosition)
+        try container.encode(yPosition)
+        try container.encode(turnOrder)
+    }
+}
