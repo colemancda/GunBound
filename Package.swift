@@ -3,6 +3,10 @@
 
 import PackageDescription
 
+let swiftSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v5)
+]
+
 let package = Package(
     name: "GunBound",
     platforms: [
@@ -43,7 +47,8 @@ let package = Package(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
                 ),
-            ]
+            ],
+            swiftSettings: swiftSettings
         ),
         .executableTarget(
             name: "GunBoundServer",
@@ -53,11 +58,13 @@ let package = Package(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
                 ),
-            ]
+            ],
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "GunBoundTests",
-            dependencies: ["GunBound"]
+            dependencies: ["GunBound"],
+            swiftSettings: swiftSettings
         )
     ]
 )
