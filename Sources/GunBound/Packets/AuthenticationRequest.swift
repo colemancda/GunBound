@@ -1,6 +1,6 @@
 //
 //  AuthenticationRequest.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/6/22.
 //
@@ -9,11 +9,11 @@ import Foundation
 
 /// GunBound Authentication Request
 public struct AuthenticationRequest: GunBoundPacket, Equatable, Hashable, Decodable {
-    
+
     public static var opcode: Opcode { .authenticationRequest }
-    
+
     public let username: String
-    
+
     /// Needs to be decrypted before it can be decoded
     public let encryptedData: Data
 }
@@ -21,7 +21,7 @@ public struct AuthenticationRequest: GunBoundPacket, Equatable, Hashable, Decoda
 // MARK: - GunBoundDecodable
 
 extension AuthenticationRequest: GunBoundDecodable {
-    
+
     public init(from container: GunBoundDecodingContainer) throws {
         // decode username
         self.username = try container.decode(length: 0x10) {
@@ -32,7 +32,7 @@ extension AuthenticationRequest: GunBoundDecodable {
                 }
             }
         }
-        let _ = try container.decode(Data.self, length: 0x10) // unknown
+        let _ = try container.decode(Data.self, length: 0x10)  // unknown
         // starts at 0x20
         assert(container.decoder.offset == 6 + 0x20)
         self.encryptedData = try container.decode(Data.self, length: container.remainingBytes)
@@ -42,18 +42,18 @@ extension AuthenticationRequest: GunBoundDecodable {
 // MARK: - Supporting Types
 
 public extension AuthenticationRequest {
-    
+
     /// Encrupted payload for authentication request.
     struct EncryptedData: Decodable, Equatable, Hashable {
-        
+
         public let password: String
-        
+
         public let clientVersion: ClientVersion
     }
 }
 
 extension AuthenticationRequest.EncryptedData: GunBoundDecodable {
-    
+
     public init(from container: GunBoundDecodingContainer) throws {
         // decode password
         self.password = try container.decode(length: 0xC) { data in

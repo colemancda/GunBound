@@ -1,13 +1,13 @@
 //
 //  Rank.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/6/22.
 //
 
 /// GunBound Rank
 public enum Rank: Int16, Codable, Sendable {
-    
+
     case administrator = 20
     case chick = 19
     case wooden = 18

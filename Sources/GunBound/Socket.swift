@@ -1,6 +1,6 @@
 //
 //  Socket.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/6/22.
 //
@@ -10,30 +10,30 @@ import Socket
 
 /// GunBound Socket protocol
 public protocol GunBoundSocketTCP {
-    
+
     /// Socket address
     var address: GunBoundAddress { get }
-    
+
     /// Event stream
     var event: GunBoundSocketEventStream { get }
-    
+
     /// Write to the socket.
     func send(_ data: Data) async throws
-    
+
     /// Reads from the socket.
     func recieve(_ bufferSize: Int) async throws -> Data
-    
+
     /// Attempt to accept an incoming connection.
     func accept() async throws -> Self
-    
+
     /// Close immediately.
     func close() async
-    
+
     static func client(
         address: GunBoundAddress,
         destination: GunBoundAddress
     ) async throws -> Self
-    
+
     static func server(
         address: GunBoundAddress,
         backlog: Int
@@ -41,44 +41,44 @@ public protocol GunBoundSocketTCP {
 }
 
 public protocol GunBoundSocketUDP {
-    
+
     /// Initialize with address
     init(address: GunBoundAddress) async throws
-    
+
     /// Socket address
     var address: GunBoundAddress { get }
-    
+
     /// Event stream
     var event: GunBoundSocketEventStream { get }
-    
+
     /// Write to the socket.
     func send(_ data: Data, to destination: GunBoundAddress) async throws
-    
+
     /// Reads from the socket.
     func recieve(_ bufferSize: Int) async throws -> (Data, GunBoundAddress)
 }
 
 /// GunBound Socket Event
 public enum GunBoundSocketEvent {
-    
+
     /// New connection
     case connection
-    
+
     /// Pending read
     case read
-    
+
     /// Pending Write
     case write
-    
+
     /// Did read
     case didRead(Int)
-    
+
     /// Did write
     case didWrite(Int)
-    
+
     /// Error ocurred
     case error(Error)
-    
+
     /// Socket closed
     case close
 }
@@ -88,14 +88,14 @@ public typealias GunBoundSocketEventStream = AsyncStream<GunBoundSocketEvent>
 // MARK: - Implementation
 
 public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable {
-    
+
     // MARK: - Properties
-    
+
     public let address: GunBoundAddress
-    
+
     @usableFromInline
     internal let socket: Socket
-    
+
     public var event: GunBoundSocketEventStream {
         let stream = self.socket.event
         var iterator = stream.makeAsyncIterator()
@@ -105,9 +105,9 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
                 .map { .init($0) }
         })
     }
-    
+
     // MARK: - Initialization
-    
+
     deinit {
         // TODO: Fix crash
         /*
@@ -116,7 +116,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
         }
          */
     }
-    
+
     internal init(
         socket: Socket,
         address: GunBoundAddress
@@ -124,7 +124,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
         self.socket = socket
         self.address = address
     }
-    
+
     internal init(
         fileDescriptor: SocketDescriptor,
         address: GunBoundAddress
@@ -132,12 +132,12 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
         self.socket = await Socket(fileDescriptor: fileDescriptor)
         self.address = address
     }
-    
+
     public static func client(
         address localAddress: GunBoundAddress,
         destination destinationAddress: GunBoundAddress
     ) async throws -> Self {
-        let fileDescriptor = try SocketDescriptor.tcp(localAddress) // [.closeOnExec, .nonBlocking])
+        let fileDescriptor = try SocketDescriptor.tcp(localAddress)  // [.closeOnExec, .nonBlocking])
         let socket = await Socket(fileDescriptor: fileDescriptor)
         try await socket.connect(to: IPv4SocketAddress(destinationAddress))
         return await Self(
@@ -145,12 +145,12 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
             address: localAddress
         )
     }
-    
+
     public static func server(
         address: GunBoundAddress,
         backlog: Int = 100
     ) async throws -> Self {
-        let fileDescriptor = try SocketDescriptor.tcp(address) // [.closeOnExec, .nonBlocking])
+        let fileDescriptor = try SocketDescriptor.tcp(address)  // [.closeOnExec, .nonBlocking])
         try fileDescriptor.closeIfThrows {
             try fileDescriptor.listen(backlog: backlog)
             try fileDescriptor.setNonblocking()
@@ -160,9 +160,9 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
             address: address
         )
     }
-    
+
     // MARK: - Methods
-    
+
     public func accept() async throws -> Self {
         let (clientSocket, clientAddress) = try await socket.accept(IPv4SocketAddress.self)
         let address = GunBoundAddress(
@@ -174,31 +174,31 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
             address: address
         )
     }
-    
+
     /// Write to the socket.
     public func send(_ data: Data) async throws {
         try await socket.write(data)
     }
-    
+
     /// Reads from the socket.
     public func recieve(_ bufferSize: Int) async throws -> Data {
         return try await socket.read(bufferSize)
     }
-    
+
     public func close() async {
         await socket.close()
     }
 }
 
 public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable {
-    
+
     // MARK: - Properties
-    
+
     public let address: GunBoundAddress
-    
+
     @usableFromInline
     internal let socket: Socket
-    
+
     public var event: GunBoundSocketEventStream {
         let stream = self.socket.event
         var iterator = stream.makeAsyncIterator()
@@ -208,16 +208,16 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
                 .map { .init($0) }
         })
     }
-    
+
     // MARK: - Initialization
-    
+
     deinit {
         nonisolated(unsafe) let socket = self.socket
         Task(priority: .high) {
             await socket.close()
         }
     }
-    
+
     public init(address: GunBoundAddress) async throws {
         let fileDescriptor = try SocketDescriptor.udp(address)
         try fileDescriptor.closeIfThrows {
@@ -226,13 +226,13 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
         self.address = address
         self.socket = await Socket(fileDescriptor: fileDescriptor)
     }
-    
+
     // MARK: - Methods
-    
+
     public func send(_ data: Data, to destination: GunBoundAddress) async throws {
         try await socket.sendMessage(data, to: IPv4SocketAddress(destination))
     }
-    
+
     public func recieve(_ bufferSize: Int) async throws -> (Data, GunBoundAddress) {
         let (data, address) = try await socket.receiveMessage(bufferSize, fromAddressOf: IPv4SocketAddress.self)
         return (data, GunBoundAddress(ipAddress: address.address, port: address.port))
@@ -240,14 +240,14 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
 }
 
 internal extension GunBoundSocketEvent {
-    
+
     init(_ event: Socket.Event) {
         self = unsafeBitCast(event, to: GunBoundSocketEvent.self)
     }
 }
 
 internal extension SocketDescriptor {
-    
+
     /// Creates a TCP socket binded to the specified address.
     @usableFromInline
     static func tcp(
@@ -257,7 +257,7 @@ internal extension SocketDescriptor {
         let socketAddress = IPv4SocketAddress(address)
         return try self.init(socketProtocol, bind: socketAddress)
     }
-    
+
     /// Creates a UDP socket binded to the specified address.
     @usableFromInline
     static func udp(
@@ -267,7 +267,7 @@ internal extension SocketDescriptor {
         let socketAddress = IPv4SocketAddress(address)
         return try self.init(socketProtocol, bind: socketAddress)
     }
-    
+
     @usableFromInline
     func setNonblocking(retryOnInterrupt: Bool = true) throws {
         var flags = try getStatus(retryOnInterrupt: retryOnInterrupt)

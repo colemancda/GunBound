@@ -1,6 +1,6 @@
 //
 //  MapData.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/12/22.
 //
@@ -9,9 +9,9 @@ import Foundation
 
 // Map Metadata
 public struct MapData: Equatable, Hashable, Sendable {
-    
+
     internal private(set) var data = [[[Position]]]()
-    
+
     /// Initialize
     public init() {
         self.data = []
@@ -19,13 +19,13 @@ public struct MapData: Equatable, Hashable, Sendable {
 }
 
 public extension MapData {
-    
+
     typealias Key = GameMap
-    
+
     var isEmpty: Bool {
         return data.isEmpty
     }
-    
+
     func position(for player: Room.PlayerSession.ID, in map: GameMap, team: Team) -> Position? {
         let mapIndex = Int(map.rawValue)
         guard mapIndex < data.count else {
@@ -46,11 +46,11 @@ public extension MapData {
 // MARK: - Codable
 
 extension MapData: Codable {
-    
+
     public init(from decoder: Decoder) throws {
         self.data = try [[[Position]]].init(from: decoder)
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         try self.data.encode(to: encoder)
     }
@@ -59,28 +59,28 @@ extension MapData: Codable {
 // MARK: - ExpressibleByDictionaryLiteral
 
 extension MapData: ExpressibleByDictionaryLiteral {
-    
+
     public init(dictionaryLiteral elements: (GameMap, [Team: [Position]])...) {
         self.init(.init(uniqueKeysWithValues: elements))
     }
-    
+
     public init(_ data: [GameMap: [Team: [Position]]]) {
-        
+
     }
 }
 */
 // MARK: - Supporting Types
 
 public extension MapData {
-    
+
     struct Position: Codable, Equatable, Hashable, Sendable {
-        
+
         public var minX: UInt
-        
+
         public var maxX: UInt
-        
+
         public var y: UInt?
-        
+
         public init(
             minX: UInt,
             maxX: UInt,
@@ -96,7 +96,7 @@ public extension MapData {
 // MARK: - Default Data
 
 public extension MapData {
-    
+
     static let `default`: MapData = {
         var mapData = MapData()
         mapData.data.reserveCapacity(11)

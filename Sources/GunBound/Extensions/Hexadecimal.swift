@@ -6,9 +6,9 @@
 //
 
 internal extension FixedWidthInteger {
-    
+
     func toHexadecimal() -> String {
-        
+
         var string = String(self, radix: 16)
         while string.utf8.count < (MemoryLayout<Self>.size * 2) {
             string = "0" + string
@@ -18,7 +18,7 @@ internal extension FixedWidthInteger {
 }
 
 internal extension Collection where Element: FixedWidthInteger {
-    
+
     func toHexadecimal() -> String {
         let length = count * MemoryLayout<Element>.size * 2
         var string = ""
@@ -30,7 +30,7 @@ internal extension Collection where Element: FixedWidthInteger {
 }
 
 internal extension Sequence where Element == UInt8 {
-    
+
     var hexString: String {
         return "[" + reduce("", { $0 + ($0.isEmpty ? "" : ", ") + "0x" + $1.toHexadecimal().uppercased() }) + "]"
     }

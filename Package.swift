@@ -46,7 +46,7 @@ let package = Package(
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
-                ),
+                )
             ],
             swiftSettings: swiftSettings
         ),
@@ -57,7 +57,7 @@ let package = Package(
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
-                ),
+                )
             ],
             swiftSettings: swiftSettings
         ),

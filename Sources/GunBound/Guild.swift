@@ -1,15 +1,15 @@
 //
 //  Guild.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/10/22.
 //
 
 /// Guild
 public struct Guild: RawRepresentable, Equatable, Hashable, Codable, CustomStringConvertible, ExpressibleByStringLiteral, Sendable {
-    
+
     public let rawValue: String
-    
+
     public init?(rawValue: String) {
         guard Self.validate(rawValue) else {
             return nil
@@ -19,6 +19,6 @@ public struct Guild: RawRepresentable, Equatable, Hashable, Codable, CustomStrin
 }
 
 extension Guild: FixedLengthString {
-    
+
     public static var length: Int { 8 }
 }

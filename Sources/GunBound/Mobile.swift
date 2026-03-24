@@ -1,67 +1,67 @@
 //
 //  Mobile.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/6/22.
 //
 
 /// GunBound Mobile / Tanks
 public enum Mobile: UInt8, Codable, CaseIterable, Sendable {
-    
+
     /// Armor
-    case armor      = 0x00
-    
+    case armor = 0x00
+
     /// Mage
-    case mage       = 0x01
-    
+    case mage = 0x01
+
     /// Nak
-    case nak        = 0x02
-    
+    case nak = 0x02
+
     /// Trico
-    case trico      = 0x03
-    
+    case trico = 0x03
+
     /// Big Foot
-    case bigFoot    = 0x04
-    
+    case bigFoot = 0x04
+
     /// Boomer
-    case boomer     = 0x05
-    
+    case boomer = 0x05
+
     /// Raon
-    case raon       = 0x06
-    
+    case raon = 0x06
+
     /// Lighting
-    case lightning  = 0x07
-    
+    case lightning = 0x07
+
     /// J.D
-    case jd         = 0x08
-    
+    case jd = 0x08
+
     /// A.Sate
-    case asate      = 0x09
-    
+    case asate = 0x09
+
     /// Ice
-    case ice        = 0x0A
-    
+    case ice = 0x0A
+
     /// Turtle
-    case turtle     = 0x0B
-    
+    case turtle = 0x0B
+
     /// Grub
-    case grub       = 0x0C
-    
+    case grub = 0x0C
+
     /// Aduka
-    case aduka      = 0x0D
-    
+    case aduka = 0x0D
+
     /// Dragon
-    case dragon     = 0x11
-    
+    case dragon = 0x11
+
     /// Knight
-    case knight     = 0x12
-    
+    case knight = 0x12
+
     /// Random
-    case random     = 0xFF
+    case random = 0xFF
 }
 
 public extension Mobile {
-    
+
     /// Mobile that can be operated (all but `.random`),
     static let validMobiles: Set<Mobile> = {
         var values = Set(allCases)
@@ -69,12 +69,12 @@ public extension Mobile {
         assert(values.contains(.random) == false)
         return values
     }()
-    
+
     static var randomMobile: Mobile {
         var generator: RandomNumberGenerator = SystemRandomNumberGenerator()
         return random(using: &generator)
     }
-    
+
     static func random(using generator: inout RandomNumberGenerator) -> Mobile {
         let value = validMobiles.randomElement(using: &generator)!
         assert(value != .random)
@@ -85,7 +85,7 @@ public extension Mobile {
 // MARK: - CustomStringConvertible
 
 extension Mobile: CustomStringConvertible, CustomDebugStringConvertible {
-    
+
     public var description: String {
         switch self {
         case .random:
@@ -124,7 +124,7 @@ extension Mobile: CustomStringConvertible, CustomDebugStringConvertible {
             return "Knight"
         }
     }
-    
+
     public var debugDescription: String {
         description
     }

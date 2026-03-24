@@ -1,6 +1,6 @@
 //
 //  JoinRoomResponse.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/10/22.
 //
@@ -8,34 +8,34 @@
 import Foundation
 
 public struct JoinRoomResponse: GunBoundPacket, Encodable, Equatable, Hashable {
-    
+
     public static var opcode: Opcode { .joinRoomResponse }
-    
+
     internal let rtc: UInt16
-    
-    internal let value0: UInt16 // 0x0100
-    
+
+    internal let value0: UInt16  // 0x0100
+
     public let room: Room.ID
-    
+
     public let name: String
-    
+
     public let map: GameMap
-    
+
     public let settings: UInt32
-    
-    internal let value1: UInt64 // 0xFFFFFFFFFFFF
-    
+
+    internal let value1: UInt64  // 0xFFFFFFFFFFFF
+
     public let capacity: RoomCapacity
-    
+
     public let players: [PlayerSession]
-    
+
     public let message: String
 }
 
 // MARK: - GunBoundEncodable
 
 extension JoinRoomResponse: GunBoundEncodable {
-    
+
     public func encode(to container: GunBoundEncodingContainer) throws {
         try container.encode(rtc, forKey: CodingKeys.rtc)
         try container.encode(value0, forKey: CodingKeys.value0)
@@ -55,31 +55,31 @@ extension JoinRoomResponse: GunBoundEncodable {
 // MARK: - Supporting Types
 
 public extension JoinRoomResponse {
-    
+
     struct PlayerSession: Encodable, Equatable, Hashable, Identifiable {
-        
+
         public let id: UInt8
-        
-        public let username: Username // 0xC length
-        
+
+        public let username: Username  // 0xC length
+
         public let address: GunBoundAddress
-            
+
         public let address2: GunBoundAddress
-        
+
         public let primaryTank: Mobile
-        
+
         public let secondary: Mobile
-        
+
         public let team: Team
-        
+
         internal let value0: UInt8
-        
+
         public let avatarEquipped: UInt64
-        
+
         public let guild: Guild
-        
+
         public let rankCurrent: UInt16
-        
+
         public let rankSeason: UInt16
     }
 }

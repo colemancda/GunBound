@@ -1,51 +1,51 @@
 //
 //  GameMap.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/9/22.
 //
 
 /// GunBound Game Map
 public enum GameMap: UInt8, Codable, CaseIterable, Sendable {
-    
+
     /// Random Map
-    case random             = 0
-    
+    case random = 0
+
     /// Miramo Town
-    case miramoTown         = 1
-    
+    case miramoTown = 1
+
     /// Nirvana
-    case nirvana            = 2
-    
+    case nirvana = 2
+
     /// Metropolis
-    case metropolis         = 3
-    
+    case metropolis = 3
+
     /// Sea of Hero
-    case seaHero            = 4
-    
+    case seaHero = 4
+
     /// Adiumroot
-    case adiumroot          = 5
-    
+    case adiumroot = 5
+
     /// Dragon
-    case dragon             = 6
-    
+    case dragon = 6
+
     /// Cozytower
-    case cozytower          = 7
-    
+    case cozytower = 7
+
     /// Dummy Slope
-    case dummySlope         = 8
-    
+    case dummySlope = 8
+
     /// Stardust
-    case stardust           = 9
-    
+    case stardust = 9
+
     /// Meta Mine
-    case metaMine           = 10
+    case metaMine = 10
 }
 
 // MARK: - CustomStringConvertible
 
 extension GameMap: CustomStringConvertible, CustomDebugStringConvertible {
-    
+
     public var description: String {
         switch self {
         case .random:
@@ -72,7 +72,7 @@ extension GameMap: CustomStringConvertible, CustomDebugStringConvertible {
             return "Meta Mine"
         }
     }
-    
+
     public var debugDescription: String {
         description
     }

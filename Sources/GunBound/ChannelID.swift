@@ -8,12 +8,12 @@
 import Foundation
 
 public extension Channel {
-    
+
     /// GunBound Channel
     struct ID: RawRepresentable, Codable, Equatable, Hashable, Sendable {
-        
+
         public var rawValue: UInt16
-        
+
         public init(rawValue: UInt16) {
             self.rawValue = rawValue
         }
@@ -23,7 +23,7 @@ public extension Channel {
 // MARK: - ExpressibleByIntegerLiteral
 
 extension Channel.ID: ExpressibleByIntegerLiteral {
-    
+
     public init(integerLiteral value: UInt16) {
         self.rawValue = value
     }
@@ -32,11 +32,11 @@ extension Channel.ID: ExpressibleByIntegerLiteral {
 // MARK: - CustomStringConvertible
 
 extension Channel.ID: CustomStringConvertible, CustomDebugStringConvertible {
-    
+
     public var description: String {
         rawValue.description
     }
-    
+
     public var debugDescription: String {
         description
     }

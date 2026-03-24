@@ -1,6 +1,6 @@
 //
 //  Connection.swift
-//  
+//
 //
 //  Created by Alsey Coleman Miller on 12/6/22.
 //
@@ -9,60 +9,60 @@ import Foundation
 import Socket
 
 /// GunBound Connection
-internal actor Connection <Socket: GunBoundSocketTCP> {
-    
+internal actor Connection<Socket: GunBoundSocketTCP> {
+
     let socket: Socket
-    
+
     let log: ((String) -> ())?
-    
+
     let didDisconnect: ((Error?) async -> ())?
-    
+
     var isConnected = true
-    
+
     var sentBytes = 0
-    
+
     var recievedBytes = 0
-    
+
     var nonce: Nonce = 0x0000
-    
+
     var session: UInt32 = .random(in: .min ..< .max)
-    
+
     var key: Key?
-    
+
     var username: Username?
-    
+
     nonisolated let encoder = GunBoundEncoder()
 
     nonisolated let decoder = GunBoundDecoder()
-    
+
     private var didAuthenticate = false
-    
+
     /// There's a pending incoming request.
     private var incomingRequest = false
-    
+
     /// IDs for registered callbacks.
     private var nextRegisterID: UInt = 0
-    
+
     /// IDs for "send" ops.
     private var nextSendOpcodeID: UInt = 0
-    
+
     /// Pending request state.
     private var pendingRequest: SendOperation?
-    
+
     /// Queued protocol requests
     private var requestQueue = [SendOperation]()
-    
+
     /// Queued protocol indications
     private var indicationQueue = [SendOperation]()
-    
+
     /// Queue of packets ready to send
     private var writeQueue = [SendOperation]()
-    
+
     /// List of registered callbacks.
     private var notifyList = [NotifyType]()
-    
+
     // MARK: - Initialization
-    
+
     public init(
         socket: Socket,
         log: ((String) -> ())? = nil,
@@ -73,16 +73,16 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         self.didDisconnect = didDisconnect
         run()
     }
-    
+
     // MARK: - Methods
-    
+
     @discardableResult
     public func refreshNonce() -> Nonce {
         let nonce = Nonce()
         self.nonce = nonce
         return nonce
     }
-    
+
     @discardableResult
     public func authenticate(
         username: Username,
@@ -93,7 +93,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         self.username = username
         return key
     }
-    
+
     func closeSocket() async {
         await socket.close()
     }
@@ -107,15 +107,14 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             // socket closed
         }
     }
-    
+
     private func socketEvent(_ event: GunBoundSocketEvent) async {
         switch event {
         case .read:
             #if DEBUG
             log?("Pending read")
             #endif
-            do { try await read() }
-            catch {
+            do { try await read() } catch {
                 log?("Unable to read. \(error)")
                 await self.socket.close()
             }
@@ -128,8 +127,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             log?("Did write \(byteCount) bytes")
             #endif
             // try to write again
-            do { try await write() }
-            catch { log?("Unable to write. \(error)") }
+            do { try await write() } catch { log?("Unable to write. \(error)") }
         case let .error(error):
             #if DEBUG
             log?("Error. \(error.localizedDescription)")
@@ -143,32 +141,32 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             break
         }
     }
-    
+
     /// Performs the actual IO for recieving data.
     internal func read() async throws {
-        
+
         // read packet
         let bytesToRead = Packet.maxSize
         let recievedData = try await socket.recieve(bytesToRead)
         self.recievedBytes += recievedData.count
-        
+
         // parse packet
         guard var packet = Packet(data: recievedData, validateLength: false, validateOpcode: false) else {
             throw GunBoundError.invalidData(recievedData)
         }
-        
+
         // validate opcode
         guard let opcode = Opcode(rawValue: packet.opcodeRawValue) else {
             log?("Recieved unknown opcode 0x\(packet.opcodeRawValue.toHexadecimal())")
             return
         }
         assert(packet.opcode == opcode)
-        
+
         log?("Recieved packet \(packet.opcode) ID \(packet.id)")
         #if DEBUG
         log?("\(packet.data.hexString)")
         #endif
-        
+
         // decrypt
         if opcode.isEncrypted {
             guard let key = key else {
@@ -176,7 +174,7 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             }
             packet = try packet.decrypt(key: key)
         }
-        
+
         // handle packet
         switch opcode.type {
         case .response:
@@ -188,19 +186,19 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             try await handle(notify: packet)
         }
     }
-    
+
     /// Performs the actual IO for sending data.
     @discardableResult
     internal func write() async throws -> Bool {
-        
+
         // get next write operation
         guard let sendOperation = pickNextSendOpcode()
-            else { return false }
-        
+        else { return false }
+
         // encode packet
         let opcode = type(of: sendOperation.packet).opcode
         var packet = try encoder.encode(sendOperation.packet, id: 0x0000)
-        
+
         // encrypt packet parameters
         if opcode.isEncrypted {
             guard let key = self.key else {
@@ -208,19 +206,19 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             }
             packet = try packet.encrypt(key: key)
         }
-        
+
         // use special ID for first login
         self.sentBytes += packet.data.count
         packet.id = .init(serverPacketLength: Int(sentBytes))
-        
+
         // write data to socket
         try await socket.send(packet.data)
-        
+
         log?("Sent packet \(packet.opcode) ID \(packet.id)")
         #if DEBUG
         log?("\(packet.data.hexString)")
         #endif
-        
+
         // wait for pending response
         switch packet.opcode.type {
         case .request:
@@ -231,142 +229,142 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
         case .command, .notification:
             break
         }
-        
+
         return true
     }
-    
+
     // write all pending PDUs
     private func writePending() {
         Task(priority: .high) {
             guard self.isConnected else { return }
-            do { try await self.write() }
-            catch {
+            do { try await self.write() } catch {
                 self.log?("Unable to write. \(error)")
                 await self.socket.close()
             }
         }
     }
-    
+
     /// Registers a callback for an opcode and returns the ID associated with that callback.
     @discardableResult
-    public func register <T> (_ callback: @escaping (T) async -> ()) -> UInt where T: GunBoundPacket, T: Decodable {
-        
+    public func register<T>(_ callback: @escaping (T) async -> ()) -> UInt where T: GunBoundPacket, T: Decodable {
+
         let id = nextRegisterID
-        
+
         // create notification
         let notify = Notify(id: id, notify: callback)
-        
+
         // increment ID
         nextRegisterID += 1
-        
+
         // add to queue
         notifyList.append(notify)
-        
+
         return id
     }
-    
+
     /// Unregisters the callback associated with the specified identifier.
     ///
     /// - Returns: Whether the callback was unregistered.
     @discardableResult
     public func unregister(_ id: UInt) -> Bool {
-        
+
         guard let index = notifyList.firstIndex(where: { $0.id == id })
-            else { return false }
+        else { return false }
         notifyList.remove(at: index)
         return true
     }
-    
+
     /// Registers all callbacks.
     public func unregisterAll() {
         notifyList.removeAll()
     }
-    
+
     /// Adds a packet to the queue to send.
     ///
     /// - Returns: Identifier of queued send operation or `nil` if the packet cannot be sent.
     @discardableResult
-    public func queue <T> (
+    public func queue<T>(
         _ packet: T,
         response: (callback: (GunBoundPacket) -> (), GunBoundPacket.Type)? = nil
     ) -> UInt? where T: GunBoundPacket, T: Encodable {
-        
+
         // Only request PDUs should have response callbacks.
         switch T.opcode.type {
         case .request:
-            
+
             guard response != nil
-                else { return nil }
-            
+            else { return nil }
+
         case .response,
-             .command,
-             .notification:
-            
+            .command,
+            .notification:
+
             guard response == nil
-                else { return nil }
+            else { return nil }
         }
-        
+
         // increment ID
         let id = nextSendOpcodeID
         nextSendOpcodeID += 1
-        
+
         let sendOpcode = SendOperation(
             id: id,
             packet: packet,
             response: response
         )
-        
+
         // Add the op to the correct queue based on its type
         switch T.opcode.type {
         case .request:
             requestQueue.append(sendOpcode)
         case .response,
-             .command,
-             .notification:
+            .command,
+            .notification:
             writeQueue.append(sendOpcode)
         }
-        
+
         writePending()
-        
+
         return sendOpcode.id
     }
-    
+
     private func pickNextSendOpcode() -> SendOperation? {
-        
+
         // See if any operations are already in the write queue
         if let sendOpcode = writeQueue.popFirst() {
             return sendOpcode
         }
-        
+
         // If there is no pending request, pick an operation from the request queue.
         if pendingRequest == nil,
-            let sendOpcode = requestQueue.popFirst() {
+            let sendOpcode = requestQueue.popFirst()
+        {
             return sendOpcode
         }
-        
+
         return nil
     }
-    
+
     private func handle(notify packet: Packet) async throws {
-        
+
         var foundPDU: GunBoundPacket?
-        
+
         let oldList = notifyList
         for notify in oldList {
-            
+
             // try next opcode
             guard type(of: notify).packetType.opcode == packet.opcode else {
                 continue
             }
-            
+
             // attempt to deserialize
             guard let PDU = foundPDU ?? (try? type(of: notify).packetType.init(packet: packet, decoder: decoder))
-                else { throw GunBoundError.invalidData(packet.data) }
-            
+            else { throw GunBoundError.invalidData(packet.data) }
+
             foundPDU = PDU
-            
+
             await notify.callback(PDU)
-            
+
             // callback could remove all entries from notify list, if so, exit the loop
             if self.notifyList.isEmpty { break }
         }
@@ -377,69 +375,71 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
             //let _ = queue(errorResponse)
         }
     }
-    
+
     private func handle(response packet: Packet) async throws {
-        
+
         // If no request is pending, then the response is unexpected. Disconnect the bearer.
         guard let sendOperation = self.pendingRequest else {
             throw GunBoundError.invalidData(packet.data)
         }
-        
+
         // If the received response doesn't match the pending request, or if the request is malformed,
         // end the current request with failure.
-                
+
         guard let requestOpcode = packet.opcode.request
-            else { throw GunBoundError.unexpectedResponse(packet.data) }
-                
+        else { throw GunBoundError.unexpectedResponse(packet.data) }
+
         // clear current pending request
         defer { self.pendingRequest = nil }
-        
+
         /// Verify the recieved response belongs to the pending request
         guard type(of: sendOperation.packet).opcode == requestOpcode else {
             throw GunBoundError.invalidData(packet.data)
         }
-        
+
         // success!
         try sendOperation.handleResponse(packet)
-        
+
         writePending()
     }
-    
+
     private func handle(request packet: Packet) async throws {
-        
+
         /*
         * If a request is currently pending, then the sequential
         * protocol was violated. Disconnect the bearer, which will
         * promptly notify the upper layer via disconnect handlers.
         */
-        
+
         // Received request while another is pending.
         guard incomingRequest == false
-            else { throw GunBoundError.invalidData(packet.data) }
-        
+        else { throw GunBoundError.invalidData(packet.data) }
+
         incomingRequest = true
-        
+
         // notify
         try await handle(notify: packet)
     }
 }
 
 internal final class SendOperation {
-    
+
     /// The operation identifier.
     let id: UInt
-    
+
     /// The packet to send.
     let packet: any (GunBoundPacket & Encodable)
-    
+
     /// The response callback.
     let response: (callback: (GunBoundPacket) -> (), responseType: GunBoundPacket.Type)?
-    
+
     fileprivate init(
         id: UInt,
         packet: any (GunBoundPacket & Encodable),
-        response: (callback: (GunBoundPacket) -> (),
-                   responseType: GunBoundPacket.Type)? = nil
+        response: (
+            callback: (GunBoundPacket) -> (),
+            responseType: GunBoundPacket.Type
+        )? = nil
     ) {
         self.id = id
         self.packet = packet
@@ -448,7 +448,7 @@ internal final class SendOperation {
 }
 
 extension SendOperation {
-    
+
     func handleResponse(_ packet: Packet) throws {
         // TODO: Handle response
         /*
@@ -459,19 +459,19 @@ extension SendOperation {
             else { throw GunBoundError.invalidData(data) }
         
         if opcode == .errorResponse {
-            
+        
             guard let errorResponse = ErrorResponse(data: data)
                 else { throw GunBoundError.invalidData(data) }
-            
+        
             responseInfo.callback(errorResponse)
-            
+        
         } else if opcode == responseInfo.responseType.attributeOpcode {
-            
+        
             guard let response = responseInfo.responseType.init(data: data)
                 else { throw GunBoundError.invalidData(data) }
-            
+        
             responseInfo.callback(response)
-            
+        
         } else {
             // other response
             throw GunBoundError.unexpectedResponse(packet.data)
@@ -480,26 +480,26 @@ extension SendOperation {
 }
 
 internal protocol NotifyType {
-    
+
     static var packetType: (GunBoundPacket & Decodable).Type { get }
-    
+
     var id: UInt { get }
-    
+
     var callback: (GunBoundPacket) async -> () { get }
 }
 
 internal struct Notify<Packet>: NotifyType where Packet: GunBoundPacket, Packet: Decodable {
-    
+
     static var packetType: (GunBoundPacket & Decodable).Type { return Packet.self }
-    
+
     let id: UInt
-    
+
     let notify: (Packet) async -> ()
-    
+
     var callback: (GunBoundPacket) async -> () { return { await self.notify($0 as! Packet) } }
-    
+
     init(id: UInt, notify: @escaping (Packet) async -> ()) {
-        
+
         self.id = id
         self.notify = notify
     }
