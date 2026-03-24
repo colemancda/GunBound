@@ -427,7 +427,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
                     primaryTank: .random,
                     secondaryTank: .random,
                     team: .a,
-                    isReady: false,
+                    status: .waiting,
                     isAdmin: true
                 )
             ],
@@ -464,7 +464,7 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             primaryTank: .random,
             secondaryTank: .random,
             team: room.nextTeam,
-            isReady: false,
+            status: .waiting,
             isAdmin: false
         )
         // cache value
@@ -722,6 +722,10 @@ internal extension GunBoundServer {
 
         private func nonce(_ packet: NonceRequest) async throws -> NonceResponse {
             log("Nonce Request")
+            // Reject nonce requests from already-authenticated connections (matches binary behavior)
+            guard await self.connection.username == nil else {
+                throw GunBoundError.notAuthenticated
+            }
             let nonce = await self.connection.refreshNonce()
             return NonceResponse(nonce: nonce)
         }
@@ -745,6 +749,11 @@ internal extension GunBoundServer {
 
         private func authenticate(_ request: AuthenticationRequest) async throws -> AuthenticationResponse {
             log("Authentication Request - \(request.username)")
+
+            // Reject re-authentication on an already-authenticated connection (matches binary behavior)
+            guard await self.connection.username == nil else {
+                throw GunBoundError.notAuthenticated
+            }
 
             // validate username
             guard let username = Username(rawValue: request.username) else {
@@ -1043,7 +1052,7 @@ internal extension GunBoundServer {
                             primaryTank: player.primaryTank,
                             secondary: player.secondaryTank,
                             team: player.team,
-                            value0: 0x01,
+                            value0: player.status.rawValue,
                             avatarEquipped: user.avatarEquipped,
                             guild: user.guild,
                             rankCurrent: user.rankCurrent,
@@ -1240,19 +1249,34 @@ internal extension GunBoundServer {
             // update player session state
             try await self.server.dataSource.update(room: id) { room in
                 assert(room.id == id)
-                guard
-                    let index = room.players.firstIndex(where: { player in
-                        player.username == username
-                    })
-                else { return }
-                room.players[index].isReady = request.isReady
+                // ready toggle is only valid in lobby, not during an active game
+                guard !room.isPlaying else { return }
+                guard let index = room.players.firstIndex(where: { $0.username == username }) else { return }
+                room.players[index].status = request.isReady ? .ready : .waiting
             }
             return UserReadyResponse()
         }
 
         private func userDeath(_ request: UserDeathRequest) async throws -> UserDeathResponse {
             log("Player Death")
-            // player death side effects
+            guard let id = self.state.room,
+                  let username = await self.connection.username else {
+                return UserDeathResponse()
+            }
+            // Transition the dying player from alive → dead.
+            // Guard: must be in an active game and the slot must currently be alive.
+            let shouldCheckEnd = try await self.server.dataSource.update(room: id) { room in
+                guard room.isPlaying,
+                      let index = room.players.firstIndex(where: { $0.username == username }),
+                      room.players[index].status == .alive else {
+                    return false
+                }
+                room.players[index].status = .dead
+                return true
+            }
+            if shouldCheckEnd {
+                await checkPlayEnd(roomID: id)
+            }
             return UserDeathResponse()
         }
 
@@ -1262,13 +1286,13 @@ internal extension GunBoundServer {
                 guard let id = self.state.room else {
                     throw GunBoundError.notInRoom
                 }
-                // mark game as playing
                 let players = try await self.server.dataSource.update(room: id) { room in
-                    // update state
                     room.isPlaying = false
+                    for i in room.players.indices {
+                        room.players[i].status = .waiting
+                    }
                     return room.players
                 }
-                // send notifications
                 let notification = GameResultNotification()
                 for player in players {
                     guard let connection = await self.server.storage.connections[player.address] else {
@@ -1281,18 +1305,76 @@ internal extension GunBoundServer {
             }
         }
 
+        /// Server-side end-of-game check, called after every player death.
+        ///  - Jewel mode (settings & 0xC0000 == 0x40000 / 0xC0000): compare team death counts
+        ///    against the kill threshold encoded in bits [23:20] of `settings`.
+        ///  - Score / Solo mode (default): game ends when only one team has alive players.
+        private func checkPlayEnd(roomID: Room.ID) async {
+            do {
+                let room = try await self.server.dataSource.room(for: roomID)
+                guard room.isPlaying else { return }
+
+                let gameMode = room.settings & 0x000C_0000
+                let gameOver: Bool
+
+                if gameMode == 0x0004_0000 || gameMode == 0x000C_0000 {
+                    // Jewel mode: a team loses when its death count reaches the kill threshold
+                    let killThreshold = Int((room.settings >> 20) & 0xF)
+                    guard killThreshold > 0 else { return }
+                    let teamADeaths = room.players.filter { $0.team == .a && $0.status == .dead }.count
+                    let teamBDeaths = room.players.filter { $0.team == .b && $0.status == .dead }.count
+                    gameOver = teamADeaths >= killThreshold || teamBDeaths >= killThreshold
+                } else {
+                    // Score / Solo mode: game ends when at most one team still has alive players
+                    let aliveTeams = Set(room.players.filter { $0.status == .alive }.map { $0.team })
+                    gameOver = aliveTeams.count <= 1
+                }
+
+                guard gameOver else { return }
+
+                let players = try await self.server.dataSource.update(room: roomID) { room in
+                    room.isPlaying = false
+                    for i in room.players.indices {
+                        room.players[i].status = .waiting
+                    }
+                    return room.players
+                }
+                let notification = GameResultNotification()
+                for player in players {
+                    guard let connection = await self.server.storage.connections[player.address] else { continue }
+                    await connection.send(notification)
+                }
+            } catch {
+                log("checkPlayEnd error: \(error)")
+            }
+        }
+
         private func startGame(_ command: StartGameCommand) async {
             log("Start Game")
             do {
                 guard let id = self.state.room else {
                     throw GunBoundError.notInRoom
                 }
-                // mark game as playing
-                let room = try await self.server.dataSource.update(room: id) { room in
-                    // update state
+                // Atomically validate pre-conditions and transition to playing.
+                // Returns (started: Bool, room: Room) — started is false if any guard fails.
+                let (started, room) = try await self.server.dataSource.update(room: id) { room in
+                    // reject if already in progress
+                    guard !room.isPlaying else { return (false, room) }
+                    // all non-admin slots must be ready (matches binary guard loop)
+                    let nonAdmin = room.players.filter { !$0.isAdmin }
+                    guard nonAdmin.allSatisfy({ $0.status == .ready }) else { return (false, room) }
+                    // teams must be balanced (admin rank-bypass not implemented)
+                    let teamACount = room.players.filter { $0.team == .a }.count
+                    let teamBCount = room.players.filter { $0.team == .b }.count
+                    guard teamACount == teamBCount else { return (false, room) }
+                    // start game: set playing and mark all slots alive
                     room.isPlaying = true
-                    return room
+                    for i in room.players.indices {
+                        room.players[i].status = .alive
+                    }
+                    return (true, room)
                 }
+                guard started else { return }
                 // update random stage and tank
                 let map = (room.map == .random) ? (GameMap.allCases.randomElement() ?? .random) : room.map
                 let playerIDs = room.players.map { $0.id }
