@@ -41,9 +41,11 @@ public struct User: Equatable, Hashable, Codable, Identifiable {
     public var guildRank: UInt16
     
     public var gpCurrent: UInt32
-    
+
     public var gpSeason: UInt32
-    
+
+    public var avatarInventory: [UInt32]
+
     public init(
         id: Username,
         isBanned: Bool = false,
@@ -59,7 +61,8 @@ public struct User: Equatable, Hashable, Codable, Identifiable {
         rankPositionSeason: UInt16 = 0,
         guildRank: UInt16 = 0,
         gpCurrent: UInt32 = 0,
-        gpSeason: UInt32 = 0
+        gpSeason: UInt32 = 0,
+        avatarInventory: [UInt32] = []
     ) {
         self.id = id
         self.isBanned = isBanned
@@ -76,5 +79,6 @@ public struct User: Equatable, Hashable, Codable, Identifiable {
         self.guildRank = guildRank
         self.gpCurrent = gpCurrent
         self.gpSeason = gpSeason
+        self.avatarInventory = avatarInventory
     }
 }
