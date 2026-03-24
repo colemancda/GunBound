@@ -4,31 +4,25 @@ jobs:
 
   macos:
     name: macOS
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
-    - name: Install Swift
-      uses: slashmo/install-swift@v0.3.0
-      with:
-        version: 5.7.1
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Swift Version
       run: swift --version
     - name: Build (Debug)
       run: swift build -c debug
     - name: Build (Release)
       run: swift build -c release
-  
+
   linux:
     name: Linux
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.2
     steps:
-    - name: Install Swift
-      uses: slashmo/install-swift@v0.3.0
-      with:
-        version: 5.7.1
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Swift Version
       run: swift --version
     - name: Build (Debug)
