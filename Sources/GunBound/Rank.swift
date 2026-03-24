@@ -6,7 +6,7 @@
 //
 
 /// GunBound Rank
-public enum Rank: Int16, Codable {
+public enum Rank: Int16, Codable, Sendable {
     
     case administrator = 20
     case chick = 19

@@ -8,7 +8,7 @@
 import Foundation
 
 /// User
-public struct User: Equatable, Hashable, Codable, Identifiable {
+public struct User: Equatable, Hashable, Codable, Identifiable, Sendable {
     
     public let id: Username
     

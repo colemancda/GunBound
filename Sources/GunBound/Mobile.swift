@@ -6,7 +6,7 @@
 //
 
 /// GunBound Mobile / Tanks
-public enum Mobile: UInt8, Codable, CaseIterable {
+public enum Mobile: UInt8, Codable, CaseIterable, Sendable {
     
     /// Armor
     case armor      = 0x00

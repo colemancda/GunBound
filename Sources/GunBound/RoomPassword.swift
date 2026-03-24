@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct RoomPassword: Codable {
+public struct RoomPassword: Codable, Sendable {
     
     internal let bytes: (UInt8, UInt8, UInt8, UInt8)
     

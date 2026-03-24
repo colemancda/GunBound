@@ -6,7 +6,7 @@
 //
 
 /// Room Capacity
-public enum RoomCapacity: UInt8, Codable, CaseIterable {
+public enum RoomCapacity: UInt8, Codable, CaseIterable, Sendable {
     
     // 1:1
     case _1_1 = 2

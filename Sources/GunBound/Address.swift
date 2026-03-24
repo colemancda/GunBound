@@ -9,7 +9,7 @@ import Foundation
 import Socket
 
 /// GunBound Socket Address
-public struct GunBoundAddress: Equatable, Hashable, Codable {
+public struct GunBoundAddress: Equatable, Hashable, Codable, Sendable {
     
     /// IP Address
     public var address: String {

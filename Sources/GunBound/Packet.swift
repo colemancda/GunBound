@@ -144,7 +144,7 @@ extension Packet: CustomStringConvertible, CustomDebugStringConvertible {
 // MARK: - Supporting Types
 
 /// Gunbound Packet Parameters protocol
-public protocol GunBoundPacket {
+public protocol GunBoundPacket: Sendable {
     
     /// GunBound command type
     static var opcode: Opcode { get }

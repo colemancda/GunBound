@@ -95,10 +95,10 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
     }
     
     private func run() {
-        Task.detached(priority: .high) { [weak self] in
-            guard let stream = self?.socket.event else { return }
+        Task(priority: .high) {
+            let stream = self.socket.event
             for await event in stream {
-                await self?.socketEvent(event)
+                await self.socketEvent(event)
             }
             // socket closed
         }
@@ -233,11 +233,11 @@ internal actor Connection <Socket: GunBoundSocketTCP> {
     
     // write all pending PDUs
     private func writePending() {
-        Task(priority: .high) { [weak self] in
-            guard let self = self, await self.isConnected else { return }
+        Task(priority: .high) {
+            guard self.isConnected else { return }
             do { try await self.write() }
             catch {
-                log?("Unable to write. \(error)")
+                self.log?("Unable to write. \(error)")
                 await self.socket.close()
             }
         }

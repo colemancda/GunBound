@@ -6,7 +6,7 @@
 //
 
 /// GunBound Function Restrict
-public struct FunctionRestrict: OptionSet, Codable, Equatable, Hashable {
+public struct FunctionRestrict: OptionSet, Codable, Equatable, Hashable, Sendable {
     
     public var rawValue: UInt32
     

@@ -9,7 +9,7 @@ import Foundation
 import Socket
 
 /// GunBound Server Directory
-public struct ServerDirectory: Equatable, Hashable {
+public struct ServerDirectory: Equatable, Hashable, Sendable {
     
     internal var servers: [Element]
     
@@ -97,7 +97,7 @@ extension ServerDirectory: Codable {
 public extension ServerDirectory {
     
     /// Server Directory instance
-    struct Element: Equatable, Hashable, Codable {
+    struct Element: Equatable, Hashable, Codable, Sendable {
         
         enum CodingKeys: String, CodingKey {
             case name

@@ -6,7 +6,7 @@
 //
 
 /// Guild
-public struct Guild: RawRepresentable, Equatable, Hashable, Codable, CustomStringConvertible, ExpressibleByStringLiteral {
+public struct Guild: RawRepresentable, Equatable, Hashable, Codable, CustomStringConvertible, ExpressibleByStringLiteral, Sendable {
     
     public let rawValue: String
     

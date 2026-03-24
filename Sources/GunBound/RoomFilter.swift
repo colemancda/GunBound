@@ -8,7 +8,7 @@
 import Foundation
 
 /// Room Filter
-public enum RoomFilter: UInt8, Codable {
+public enum RoomFilter: UInt8, Codable, Sendable {
     
     /// All rooms
     case all = 1

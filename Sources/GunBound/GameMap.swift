@@ -6,7 +6,7 @@
 //
 
 /// GunBound Game Map
-public enum GameMap: UInt8, Codable, CaseIterable {
+public enum GameMap: UInt8, Codable, CaseIterable, Sendable {
     
     /// Random Map
     case random             = 0

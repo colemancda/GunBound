@@ -6,7 +6,7 @@
 //
 
 /// Username
-public struct Username: RawRepresentable, Equatable, Hashable, Codable, CustomStringConvertible, ExpressibleByStringLiteral {
+public struct Username: RawRepresentable, Equatable, Hashable, Codable, CustomStringConvertible, ExpressibleByStringLiteral, Sendable {
     
     public let rawValue: String
     

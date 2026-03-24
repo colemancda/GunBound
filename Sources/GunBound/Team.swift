@@ -5,7 +5,7 @@
 //  Created by Alsey Coleman Miller on 12/9/22.
 //
 
-public enum Team: UInt8, Codable, CaseIterable {
+public enum Team: UInt8, Codable, CaseIterable, Sendable {
     
     /// Team A
     case a = 0x00

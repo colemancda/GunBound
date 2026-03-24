@@ -212,6 +212,7 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP {
     // MARK: - Initialization
     
     deinit {
+        let socket = self.socket
         Task(priority: .high) {
             await socket.close()
         }

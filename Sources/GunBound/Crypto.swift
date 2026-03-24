@@ -10,7 +10,7 @@ import CryptoSwift
 
 // MARK: - Key
 
-public struct Key {
+public struct Key: Sendable {
     
     public let data: Data
     

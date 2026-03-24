@@ -8,7 +8,7 @@
 public extension Channel {
     
     /// GunBound Channel
-    struct UserID: RawRepresentable, Codable, Equatable, Hashable {
+    struct UserID: RawRepresentable, Codable, Equatable, Hashable, Sendable {
         
         public var rawValue: UInt8
         

@@ -6,7 +6,7 @@
 //
 
 /// GunBound Room
-public struct Room: Equatable, Hashable, Codable, Identifiable {
+public struct Room: Equatable, Hashable, Codable, Identifiable, Sendable {
     
     public let id: ID
     
@@ -34,7 +34,7 @@ public struct Room: Equatable, Hashable, Codable, Identifiable {
 public extension Room {
     
     /// Player Session
-    struct PlayerSession: Equatable, Hashable, Codable, Identifiable {
+    struct PlayerSession: Equatable, Hashable, Codable, Identifiable, Sendable {
         
         public let id: UInt8
         

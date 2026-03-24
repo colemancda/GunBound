@@ -10,7 +10,7 @@ import Foundation
 public extension Room {
     
     /// GunBound Room
-    struct ID: RawRepresentable, Codable, Equatable, Hashable {
+    struct ID: RawRepresentable, Codable, Equatable, Hashable, Sendable {
         
         public var rawValue: UInt16
         

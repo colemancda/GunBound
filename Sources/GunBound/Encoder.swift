@@ -8,7 +8,7 @@
 import Foundation
 
 /// Gunbound Packet Encoder
-public struct GunBoundEncoder {
+public struct GunBoundEncoder: @unchecked Sendable {
     
     // MARK: - Properties
     

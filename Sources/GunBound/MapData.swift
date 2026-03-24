@@ -8,7 +8,7 @@
 import Foundation
 
 // Map Metadata
-public struct MapData: Equatable, Hashable {
+public struct MapData: Equatable, Hashable, Sendable {
     
     internal private(set) var data = [[[Position]]]()
     
@@ -73,7 +73,7 @@ extension MapData: ExpressibleByDictionaryLiteral {
 
 public extension MapData {
     
-    struct Position: Codable, Equatable, Hashable {
+    struct Position: Codable, Equatable, Hashable, Sendable {
         
         public var minX: UInt
         
@@ -97,7 +97,7 @@ public extension MapData {
 
 public extension MapData {
     
-    static var `default`: MapData = {
+    static let `default`: MapData = {
         var mapData = MapData()
         mapData.data.reserveCapacity(11)
         var mapRandom = [[Position]]()

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Gunbound Packet Opcode
-public enum Opcode: UInt16, Codable {
+public enum Opcode: UInt16, Codable, Sendable {
     
     /// Keep Alive
     case keepAlive                  = 0x0000

@@ -8,7 +8,7 @@
 import Foundation
 
 /// GunBound Channel
-public struct Channel: Codable, Equatable, Hashable, Identifiable {
+public struct Channel: Codable, Equatable, Hashable, Identifiable, Sendable {
     
     public let id: ID
     
