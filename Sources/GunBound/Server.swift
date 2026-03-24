@@ -790,7 +790,7 @@ internal extension GunBoundServer {
                     gpCurrent: user.gpCurrent,
                     gpSeason: user.gpSeason,
                     gold: user.gold,
-                    funcRestrict: [] // TODO: funcRestrict
+                    funcRestrict: (try? await server.dataSource.functionRestrict) ?? []
                 )
             )
         }
@@ -929,7 +929,7 @@ internal extension GunBoundServer {
                     let notification = ClientPrintNotification(
                         message: responseMessage
                     )
-                    
+                    await send(notification)
                 }
                 if self.state.room != nil {
                     await updateRoom()
@@ -1026,7 +1026,7 @@ internal extension GunBoundServer {
                         address: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363),
                         address2: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363),
                         primaryTank: player.primaryTank,
-                        secondary: player.primaryTank,
+                        secondary: player.secondaryTank,
                         team: player.team,
                         value0: 0x01,
                         avatarEquipped: user.avatarEquipped,
