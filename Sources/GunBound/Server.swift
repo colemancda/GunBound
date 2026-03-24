@@ -214,6 +214,11 @@ public protocol GunBoundServerDataSource: AnyObject {
         room: Room.ID,
         _ body: (inout Room) -> (T)
     ) async throws -> T
+
+    func updateUser(
+        _ username: Username,
+        _ body: (inout User) -> ()
+    ) async throws
 }
 
 public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
@@ -507,6 +512,17 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         self.state.rooms[id] = room
         return result
     }
+
+    public func updateUser(
+        _ username: Username,
+        _ body: (inout User) -> ()
+    ) throws {
+        guard var user = state.users[username] else {
+            throw GunBoundError.unknownUser(username.rawValue)
+        }
+        body(&user)
+        self.state.users[username] = user
+    }
 }
 
 public extension InMemoryGunBoundServerDataSource {
@@ -655,6 +671,13 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.startGame($0) }
             // return to room after game
             await register { [unowned self] in try await self.roomReturnResult($0) }
+            // avatar shop
+            await connection.register { [unowned self] in await self.getAvatar($0) }
+            await connection.register { [unowned self] in await self.setAvatar($0) }
+            await connection.register { [unowned self] in await self.buyGold($0) }
+            await connection.register { [unowned self] in await self.buyCash($0) }
+            await connection.register { [unowned self] in await self.sell($0) }
+            await connection.register { [unowned self] in await self.gift($0) }
         }
         
         @discardableResult
@@ -1321,6 +1344,104 @@ internal extension GunBoundServer {
         private func roomReturnResult(_ request: RoomReturnResultRequest) async throws -> RoomReturnResultResponse {
             log("Room Return Result")
             return RoomReturnResultResponse()
+        }
+
+        // MARK: - Avatar Shop
+
+        private func getAvatar(_ request: GetAvatarRequest) async {
+            log("Get Avatar Request (sendExtended: \(request.sendExtended))")
+            do {
+                guard let username = await self.connection.username else {
+                    throw GunBoundError.notAuthenticated
+                }
+                guard let key = await self.connection.key else {
+                    throw GunBoundError.notAuthenticated
+                }
+                let user = try await self.server.dataSource.user(for: username)
+                // Build avatar plaintext: equipped (8 bytes) + inventory count (2 bytes) + items (4 bytes each)
+                var plaintext = Data()
+                plaintext.append(contentsOf: withUnsafeBytes(of: user.avatarEquipped) { Array($0) })
+                if request.sendExtended {
+                    let count = UInt16(user.avatarInventory.count)
+                    plaintext.append(UInt8((count >> 0) & 0xFF))
+                    plaintext.append(UInt8((count >> 8) & 0xFF))
+                    for item in user.avatarInventory {
+                        plaintext.append(UInt8((item >>  0) & 0xFF))
+                        plaintext.append(UInt8((item >>  8) & 0xFF))
+                        plaintext.append(UInt8((item >> 16) & 0xFF))
+                        plaintext.append(UInt8((item >> 24) & 0xFF))
+                    }
+                }
+                let encrypted = try Crypto.AES.encrypt(plaintext, key: key, opcode: .getAvatarResponse)
+                let rtcAndEncrypted = Data([0x00, 0x00]) + encrypted
+                let response = GetAvatarResponse(rtcAndEncryptedData: rtcAndEncrypted)
+                await self.respond(response)
+                // send cash update
+                let notification = CashUpdate(cash: user.cash)
+                await self.send(notification)
+            }
+            catch {
+                await self.close(error)
+            }
+        }
+
+        private func setAvatar(_ request: SetAvatarRequest) async {
+            log("Set Avatar Request")
+            do {
+                guard let username = await self.connection.username else {
+                    throw GunBoundError.notAuthenticated
+                }
+                try await self.server.dataSource.updateUser(username) { user in
+                    user.avatarEquipped = request.avatarEquipped
+                }
+                await self.respond(SetAvatarResponse())
+            }
+            catch {
+                await self.close(error)
+            }
+        }
+
+        private func buyGold(_ request: BuyGoldRequest) async {
+            log("Buy Gold Request - avatar: \(request.avatar)")
+            do {
+                guard let username = await self.connection.username else {
+                    throw GunBoundError.notAuthenticated
+                }
+                try await self.server.dataSource.updateUser(username) { user in
+                    user.avatarInventory.append(request.avatar)
+                }
+                await self.respond(BuyResponse())
+            }
+            catch {
+                await self.close(error)
+            }
+        }
+
+        private func buyCash(_ request: BuyCashRequest) async {
+            log("Buy Cash Request - avatar: \(request.avatar)")
+            do {
+                guard let username = await self.connection.username else {
+                    throw GunBoundError.notAuthenticated
+                }
+                try await self.server.dataSource.updateUser(username) { user in
+                    user.avatarInventory.append(request.avatar)
+                }
+                await self.respond(BuyResponse())
+                await cashUpdate()
+            }
+            catch {
+                await self.close(error)
+            }
+        }
+
+        private func sell(_ request: SellRequest) async {
+            log("Sell Request - avatar: \(request.avatar)")
+            await self.respond(SellResponse())
+        }
+
+        private func gift(_ request: GiftRequest) async {
+            log("Gift Request - recipient: \(request.recipient), avatar: \(request.avatar)")
+            await self.respond(GiftResponse())
         }
     }
 }
