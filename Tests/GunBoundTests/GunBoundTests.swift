@@ -951,7 +951,7 @@ final class GunBoundTests: XCTestCase {
         XCTAssertEqual(packet.data, data)
         XCTAssertEqual(packet.size, 14)
         XCTAssertEqual(packet.size, numericCast(packet.data.count))
-        XCTAssertEqual(packet.opcode, .clientGenericCommand)
+        XCTAssertEqual(packet.opcode, .clientCommand)
         XCTAssertEqual(packet.id, 0x8D4F)
 
         let value = ClientGenericCommand(
@@ -1062,20 +1062,20 @@ final class GunBoundTests: XCTestCase {
             players: [
                 StartGameNotification.Player(
                     id: 0x00,
-                    username: "admin",
+                    username: "colemancda",
                     team: .a,
-                    primaryTank: .random,
-                    secondaryTank: .random,
+                    primaryTank: .bigFoot,
+                    secondaryTank: .jd,
                     xPosition: 253,
                     yPosition: 0,
                     turnOrder: 0
                 ),
                 StartGameNotification.Player(
                     id: 0x01,
-                    username: "colemancda",
+                    username: "admin",
                     team: .b,
-                    primaryTank: .random,
-                    secondaryTank: .random,
+                    primaryTank: .mage,
+                    secondaryTank: .lightning,
                     xPosition: 936,
                     yPosition: 0,
                     turnOrder: 1
@@ -1087,10 +1087,10 @@ final class GunBoundTests: XCTestCase {
 
         let plainTextPacket = Packet(opcode: packet.opcode, id: packet.id, parameters: plainText)
         XCTAssertEqual(try plainTextPacket.encrypt(key: key), packet)
-        //XCTAssertDecodeDecrypted(value, plainTextPacket)
-        //XCTAssertEncodeDecrypted(value, plainTextPacket)
-        //XCTAssertEncode(value, packet, key: key)
-        //XCTAssertDecode(value, packet, key: key)
+        XCTAssertDecodeDecrypted(value, plainTextPacket)
+        XCTAssertEncodeDecrypted(value, plainTextPacket)
+        XCTAssertEncode(value, packet, key: key)
+        XCTAssertDecode(value, packet, key: key)
     }
 
     func testGameResultCommand() {
