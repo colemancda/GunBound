@@ -762,6 +762,162 @@ import Testing
         #expect(packet.id == 0xF4A1)
         assertDecode(RoomReturnResultRequest(), packet)
     }
+
+    // MARK: - Tests from Server Logs (09/07/12 08:15:15)
+
+    @Test func nonceResponseFromLog() throws {
+        // Server log: SEND>> [SS=011BC818 SQ=53E5 CD=1001] 12 6D B4 07
+        // Demonstrates nonce response structure from real server
+        let packet = Packet(
+            opcode: .nonceResponse,
+            id: 0x53E5,
+            parameters: Data([0x12, 0x6D, 0xB4, 0x07])
+        )
+        #expect(packet.opcode == .nonceResponse)
+        #expect(packet.id == 0x53E5)
+        #expect(packet.size == 10)
+        #expect(packet.parameters == Data([0x12, 0x6D, 0xB4, 0x07]))
+    }
+
+    @Test func joinChannelResponseFromLog() throws {
+        // Server log: SEND>> [SS=011BC818 SQ=458B CD=2001]
+        // Demonstrates join channel response structure from real server
+        let value = JoinChannelResponse(
+            status: 0x0000,
+            channel: 2,
+            maxPosition: 0,
+            users: [
+                JoinChannelResponse.ChannelUser(
+                    id: 1,
+                    username: "blackscorpio",
+                    avatarEquipped: UInt64(0x0080_0080_0080_0080).bigEndian,
+                    guild: "",
+                    rankCurrent: 20,
+                    rankSeason: 20
+                )
+            ],
+            message: "$Blackscorpio - GB Private Server/Offline final released"
+        )
+        let packet = try GunBoundEncoder().encode(value, id: 0x458B)
+        #expect(packet.opcode == .joinChannelResponse)
+        #expect(packet.id == 0x458B)
+    }
+
+    @Test func roomListResponseEmptyFromLog() throws {
+        // Server log: SEND>> [SS=011BC818 SQ=ED6D CD=2103 RTC=0000] 00 00
+        // Empty room list response
+        let data = Data(hexString: "0A006DED032100000000")!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.data == data)
+        #expect(packet.size == 10)
+        #expect(packet.size == numericCast(packet.data.count))
+        #expect(packet.opcode == .roomListResponse)
+        #expect(packet.id == 0xED6D)
+        let value: RoomListResponse = []
+        assertEncode(value, packet)
+    }
+
+    @Test func cashUpdateFromLog() throws {
+        // Server log: SEND>> [SS=011BC818 SQ=72BA CD=1032]
+        // Demonstrates cash update notification structure (encrypted)
+        let packet = Packet(
+            opcode: .cashUpdateNotification,
+            id: 0x72BA,
+            parameters: Data([0x0E, 0x1F, 0xC3, 0x40, 0xE9, 0x4B, 0x62, 0xE1, 0xED, 0x39, 0xB1, 0xC2, 0x0E, 0x59, 0x2A, 0xE1])
+        )
+        #expect(packet.opcode == .cashUpdateNotification)
+        #expect(packet.id == 0x72BA)
+        #expect(packet.size == 22)
+        // Note: Encrypted payload bytes depend on key/cash value
+    }
+
+    // MARK: - Tests from Additional Server Logs (09/07/12 08:04-08:15)
+
+    @Test func nonceResponseAdditionalLog1() throws {
+        // Server log: SEND>> [SS=00347340 SQ=53E5 CD=1001] 88 4C 2D 1F
+        // Nonce bytes: 88 4C 2D 1F (big-endian) = 0x1F2D4C88
+        let data = Data(hexString: "0A00E55301101F2D4C88")!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.data == data)
+        #expect(packet.opcode == .nonceResponse)
+        #expect(packet.id == 0x53E5)
+        #expect(packet.size == 10)
+        assertEncode(NonceResponse(nonce: 0x1F2D_4C88), packet)
+    }
+
+    @Test func nonceResponseAdditionalLog2() throws {
+        // Server log: SEND>> [SS=00347340 SQ=53E5 CD=1001] 7C 7F 3F 13
+        // Nonce bytes: 7C 7F 3F 13 (big-endian) = 0x133F7F7C
+        let data = Data(hexString: "0A00E5530110133F7F7C")!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.data == data)
+        #expect(packet.opcode == .nonceResponse)
+        #expect(packet.id == 0x53E5)
+        #expect(packet.size == 10)
+        assertEncode(NonceResponse(nonce: 0x133F_7F7C), packet)
+    }
+
+    @Test func nonceResponseAdditionalLog3() throws {
+        // Server log: SEND>> [SS=00347340 SQ=53E5 CD=1001] A4 CD F9 36
+        // Nonce bytes: A4 CD F9 36 (big-endian) = 0x36F9CDA4
+        let data = Data(hexString: "0A00E553011036F9CDA4")!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.data == data)
+        #expect(packet.opcode == .nonceResponse)
+        #expect(packet.id == 0x53E5)
+        #expect(packet.size == 10)
+        assertEncode(NonceResponse(nonce: 0x36F9_CDA4), packet)
+    }
+
+    @Test func joinChannelResponseMultipleUsers() throws {
+        // Server log: SEND>> [SS=00347340 SQ=01E1 CD=2001] 00 00 02 00 01 01 01...
+        // This shows a user (blackscorpio with ID=1) already in the channel
+        // Demonstrates the join channel response with existing user data
+        let value = JoinChannelResponse(
+            status: 0x0000,
+            channel: 2,
+            maxPosition: 0,
+            users: [
+                JoinChannelResponse.ChannelUser(
+                    id: 1,
+                    username: "blackscorpio",
+                    avatarEquipped: UInt64(0x0080_0080_0080_0080).bigEndian,
+                    guild: "",
+                    rankCurrent: 20,
+                    rankSeason: 20
+                )
+            ],
+            message: "$Blackscorpio - GB Private Server/Offline final released"
+        )
+        let packet = try GunBoundEncoder().encode(value, id: 0x01E1)
+        #expect(packet.opcode == .joinChannelResponse)
+        #expect(packet.id == 0x01E1)
+        #expect(value.users.count == 1)
+    }
+
+    @Test func cashUpdateEncryptedVariants() throws {
+        // Server log shows different encrypted cash update payloads
+        // These tests verify the packet structure can handle various encrypted data
+        let packets = [
+            ("2E897EC68206952B823EAA3A9A229E15", 0x72BA),
+            ("E5C8DA0CDE620C4C2806DA1EEF052069", 0x72BA),
+            ("5D50446000960DBCD0C4120E48C22F2E", 0x2F10),
+        ]
+
+        for (hexParams, expectedId) in packets {
+            let parameters = Data(hexString: hexParams)!
+            let packetId = Packet.ID(rawValue: UInt16(expectedId))
+            let packet = Packet(
+                opcode: .cashUpdateNotification,
+                id: packetId,
+                parameters: parameters
+            )
+            #expect(packet.opcode == Opcode.cashUpdateNotification)
+            #expect(packet.id == packetId)
+            #expect(packet.size == 22)
+            #expect(packet.parameters == parameters)
+        }
+    }
 }
 
 // MARK: - Extensions
