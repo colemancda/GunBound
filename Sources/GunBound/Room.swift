@@ -48,10 +48,21 @@ public extension Room {
 
         public var team: Team
 
-        public var isReady: Bool
+        public var status: PlayerSlotStatus
 
         public var isAdmin: Bool
     }
+}
+
+// MARK: - PlayerSlotStatus
+
+/// Per-slot status byte matching the server's room memory layout.
+/// Corresponds to the byte at `room_base + slot * 8 + 7` in the original binary.
+public enum PlayerSlotStatus: UInt8, Equatable, Hashable, Codable, Sendable {
+    case waiting = 0x00  // in lobby, not ready
+    case ready   = 0x03  // ready to start
+    case alive   = 0x81  // in game, alive
+    case dead    = 0x82  // in game, dead
 }
 
 // MARK: - Extensions
