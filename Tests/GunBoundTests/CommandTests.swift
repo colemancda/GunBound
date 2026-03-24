@@ -6,39 +6,30 @@
 //
 
 import Foundation
-import XCTest
+import Testing
 @testable import GunBound
 
-final class CommandTests: XCTestCase {
+@Suite struct CommandTests {
 
-    func testQuitCommand() throws {
+    @Test func quitCommand() throws {
         let arguments = ["q"]
-        guard (try DefaultCommand.parseAsRoot(arguments)) as? QuitCommand != nil else {
-            XCTFail()
-            return
-        }
-
+        let command = try DefaultCommand.parseAsRoot(arguments)
+        #expect(command is QuitCommand)
     }
 
-    func testEchoCommand() throws {
+    @Test func echoCommand() throws {
         let arguments = ["echo", "hi"]
-        guard let commandType = (try DefaultCommand.parseAsRoot(arguments)) as? EchoCommand else {
-            XCTFail()
-            return
-        }
-        XCTAssertEqual(commandType.message, "hi")
+        let command = try DefaultCommand.parseAsRoot(arguments)
+        let echoCommand = try #require(command as? EchoCommand)
+        #expect(echoCommand.message == "hi")
     }
 
-    func testMobileCommand() throws {
-
+    @Test func mobileCommand() throws {
         for mobile in Mobile.allCases {
             let arguments = ["mobile", mobile.rawValue.description]
-            guard let commandType = (try DefaultCommand.parseAsRoot(arguments)) as? MobileCommand else {
-                XCTFail()
-                return
-            }
-            XCTAssertEqual(commandType.tank, mobile)
-            print(arguments.reduce("", { $0 + ($0.isEmpty ? "" : " ") + $1 }), mobile)
+            let command = try DefaultCommand.parseAsRoot(arguments)
+            let mobileCommand = try #require(command as? MobileCommand)
+            #expect(mobileCommand.tank == mobile)
         }
     }
 }
