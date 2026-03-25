@@ -310,11 +310,13 @@ public extension Opcode {
     var isEncrypted: Bool {
         switch self {
         case .cashUpdateNotification,
+            .goldUpdateResponse,
             .startGameNotification,
             .userResponse,
             .channelChatCommand,
             .channelChatBroadcast,
             .endGameJewelCommand,
+            .playResurrect,
             // incoming avatar shop requests are encrypted
             .setAvatarRequest,
             .buyGoldRequest,
@@ -348,7 +350,8 @@ private extension Opcode {
         (.userRequest, .userResponse),
         (.joinChannelRequest, .joinChannelResponse),
         (.joinRoomRequest, .joinRoomResponse),
-        (.roomListRequest, .joinRoomResponse),
+        (.roomListRequest, .roomListResponse),
+        (.roomDetailRequest, .roomDetailResponse),
         (.createRoomRequest, .createRoomResponse),
         (.roomSelectTankRequest, .roomSelectTankResponse),
         (.roomSelectTeamRequest, .roomSelectTeamResponse),
