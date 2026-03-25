@@ -8,13 +8,33 @@
 import Foundation
 
 /// GunBound Authentication Request
+///
+/// Sent by the client to authenticate with the GunBound server.
+/// This packet contains the username and encrypted authentication data
+/// (password and client version) used to verify the user's identity.
+///
+/// **Structure:**
+/// - Username (16 bytes, AES-encrypted)
+/// - Unknown data (16 bytes)
+/// - Encrypted data payload (variable length, contains password and client version)
+///
+/// **Usage:**
+/// This is the first packet sent by the client after connecting to the server.
+/// The server must decrypt the username and encrypted data to validate credentials.
 public struct AuthenticationRequest: GunBoundPacket, Equatable, Hashable, Decodable {
 
     public static var opcode: Opcode { .authenticationRequest }
 
+    /// The player's username (16 bytes, AES-encrypted with login key)
     public let username: String
 
-    /// Needs to be decrypted before it can be decoded
+    /// Encrypted payload containing password and client version
+    ///
+    /// This data must be decrypted using the server's decryption key
+    /// before it can be decoded. It contains:
+    /// - Password (12 bytes)
+    /// - Padding (8 bytes)
+    /// - Client version (4 bytes)
     public let encryptedData: Data
 }
 

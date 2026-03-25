@@ -8,12 +8,29 @@
 import Foundation
 
 /// Authentication Response
+///
+/// Sent by the server in response to an AuthenticationRequest.
+/// Contains the authentication result and user data if successful.
+///
+/// **Possible Status Codes:**
+/// - `.success` - Authentication successful, user data included
+/// - `.badUsername` - Username not found
+/// - `.badPassword` - Incorrect password
+/// - `.bannedUser` - User account is banned
+/// - `.badVersion` - Client version mismatch
+///
+/// **Usage:**
+/// When authentication fails, only the status is sent.
+/// When successful, the UserData structure contains all the player's
+/// current account information including session ID, rank, gold, GP, etc.
 public struct AuthenticationResponse: GunBoundPacket, Encodable, Hashable {
 
     public static var opcode: Opcode { .authenticationResponse }
 
+    /// The authentication status/result
     public let status: AuthenticationStatus
 
+    /// User account data (only included when status is `.success`)
     public let userData: UserData?
 
     private init(status: AuthenticationStatus, userData: UserData?) {
@@ -49,34 +66,53 @@ public extension AuthenticationResponse {
 
 public extension AuthenticationResponse {
 
+    /// User account data sent on successful authentication
+    ///
+    /// Contains all the player's current account information needed
+    /// to initialize their game session.
     struct UserData: Encodable, Hashable {
 
+        /// Unique session identifier for this connection (big-endian)
         public let session: UInt32
 
+        /// The player's username
         public let username: Username
 
-        public let avatarEquipped: UInt64  // 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00
+        /// Bitmask of equipped avatar items (8 bytes)
+        /// Format: 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00
+        public let avatarEquipped: UInt64
 
+        /// The player's guild information
         public let guild: Guild
 
+        /// Current rank points
         public let rankCurrent: UInt16
 
+        /// Season rank points
         public let rankSeason: UInt16
 
+        /// Number of members in the player's guild
         public let guildMemberCount: UInt16
 
+        /// Current season rank position (leaderboard standing)
         public let rankPositionCurrent: UInt16
 
+        /// Season rank position (leaderboard standing)
         public let rankPositionSeason: UInt16
 
+        /// Rank within the guild
         public let guildRank: UInt16
 
+        /// Current GP (GunBound Points) - lifetime
         public let gpCurrent: UInt32
 
+        /// Season GP points
         public let gpSeason: UInt32
 
+        /// Current gold balance
         public let gold: UInt32
 
+        /// Function restrictions (bitmask of disabled features)
         public let funcRestrict: FunctionRestrict
     }
 }

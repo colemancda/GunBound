@@ -8,13 +8,23 @@
 import Foundation
 
 /// Player Resurrect Command
-/// Command sent when a player resurrects in-game
+///
+/// Sent by the client when a player resurrects during gameplay.
+/// Used to respawn a player who has been eliminated.
+///
+/// **Usage:**
+/// Sent during active gameplay when a player uses a resurrection
+/// ability or item to return to the game after being killed.
+///
+/// This packet is encrypted but contains no meaningful data.
+/// The server validates the request and updates the game state
+/// accordingly, notifying all players of the resurrection.
 public struct PlayerResurrectCommand: GunBoundPacket, Codable, Equatable, Hashable {
 
     public static var opcode: Opcode { .playResurrect }
 
     public static var isEncrypted: Bool { true }
 
-    /// Empty payload - the packet is encrypted but has no meaningful data
+    /// Empty payload - packet is encrypted but has no meaningful data
     public init() {}
 }
