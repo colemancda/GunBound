@@ -7,10 +7,26 @@
 
 import Foundation
 
+/// Server Directory Response
+///
+/// Sent by the server in response to a ServerDirectoryRequest.
+/// Contains a list of available game servers for the client to choose from.
+///
+/// **Usage:**
+/// Sent after the client requests the server directory.
+/// The client displays this list to allow the player to select
+/// which game server to connect to.
+///
+/// Each server entry includes:
+/// - Server name and description
+/// - Network address and port
+/// - Current utilization and capacity
+/// - Whether the server is enabled/available
 public struct ServerDirectoryResponse: GunBoundPacket, Equatable, Hashable, Encodable {
 
     public static var opcode: Opcode { .serverDirectoryResponse }
 
+    /// List of available game servers
     public let directory: ServerDirectory
 
     public init(directory: ServerDirectory = []) {

@@ -8,10 +8,12 @@
 import Foundation
 
 /// Room Select Team Response
+/// Server response to team selection request.
 public struct RoomSelectTeamResponse: GunBoundPacket, Codable, Equatable, Hashable {
 
     public static var opcode: Opcode { .roomSelectTeamResponse }
 
+    /// Return code (0x00 = success)
     public let rtc: UInt16
 
     public init() {
