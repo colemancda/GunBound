@@ -14,10 +14,10 @@ public struct UserIdRequest: GunBoundPacket, Codable, Equatable, Hashable {
     public static var opcode: Opcode { .userRequest }
 
     public var unknown: UInt16
-    public var username: FixedLengthString<12>
+    public var username: Username
 
-    public init(unknown: UInt16 = 0, username: String) {
+    public init(unknown: UInt16 = 0, username: Username) {
         self.unknown = unknown
-        self.username = FixedLengthString(username)
+        self.username = username
     }
 }
