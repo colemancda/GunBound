@@ -43,6 +43,12 @@ public enum Opcode: UInt16, Codable, Sendable {
     /// Cash update
     case cashUpdateNotification = 0x1032
 
+    /// Gold update request
+    case goldUpdateRequest = 0x6104
+
+    /// Gold update response
+    case goldUpdateResponse = 0x6105
+
     /// Join Channel Request
     case joinChannelRequest = 0x2000  // SVC_CHANNEL_JOIN
 
@@ -217,6 +223,8 @@ public extension Opcode {
         case .userRequest: return .request
         case .userResponse: return .response
         case .cashUpdateNotification: return .notification
+        case .goldUpdateRequest: return .request
+        case .goldUpdateResponse: return .response
         case .joinChannelRequest: return .request
         case .joinChannelResponse: return .response
         case .joinChannelNotification: return .notification
@@ -324,7 +332,8 @@ private extension Opcode {
         (.buyGoldRequest, .buyResponse),
         (.buyCashRequest, .buyResponse),
         (.sellRequest, .sellResponse),
-        (.giftRequest, .giftResponse)
+        (.giftRequest, .giftResponse),
+        (.goldUpdateRequest, .goldUpdateResponse)
     ]
 
     static let responsesByRequest: [Opcode: Opcode] = {
