@@ -8,201 +8,300 @@
 import Foundation
 
 /// Gunbound Packet Opcode
+/// Represents all packet types in the GunBound protocol
 public enum Opcode: UInt16, Codable, Sendable {
 
-    /// Keep Alive
+    // MARK: - Connection
+
+    /// Keep Alive - ping/pong to maintain connection
     case keepAlive = 0x0000
 
-    /// Nonce Request
+    // MARK: - Authentication
+
+    /// Nonce Request - request nonce for authentication
     case nonceRequest = 0x1000
 
-    /// Nonce Response
+    /// Nonce Response - server returns nonce value
     case nonceResponse = 0x1001
 
-    /// Login Request
+    /// Login Request - authenticate with username and password
     case authenticationRequest = 0x1010
 
-    /// Login Response
+    /// Login Response - authentication result
     case authenticationResponse = 0x1012
 
-    /// User Request
+    /// User Request - look up user information by username
     case userRequest = 0x1020  // SVC_USER_ID
 
-    /// User Response
+    /// User Response - return user information (encrypted)
     case userResponse = 0x1021
 
-    /// User Nickname Request
+    /// User Nickname Request - look up user by nickname
     case userNicknameRequest = 0x1022  // SVC_USER_NICK
 
-    /// Server Directory Request
+    // MARK: - Server Directory
+
+    /// Server Directory Request - get list of available servers
     case serverDirectoryRequest = 0x1100
 
-    /// Server Directory Response
+    /// Server Directory Response - return server list
     case serverDirectoryResponse = 0x1102
 
-    /// Cash update
+    // MARK: - Currency Updates
+
+    /// Cash Update Notification - update player's cash balance
     case cashUpdateNotification = 0x1032
 
-    /// Gold update request
+    /// Gold Update Request - request current gold balance
     case goldUpdateRequest = 0x6104
 
-    /// Gold update response
+    /// Gold Update Response - return gold balance
     case goldUpdateResponse = 0x6105
+
+    // MARK: - Channel
 
     /// Join Channel Request
     case joinChannelRequest = 0x2000  // SVC_CHANNEL_JOIN
 
-    /// Join Channel Request
+    /// Join Channel Response
     case joinChannelResponse = 0x2001
 
-    /// Join Channel Notification
+    /// Join Channel Notification - broadcast when a user joins the channel
     case joinChannelNotification = 0x200E
 
+    // MARK: - Room List
+
+    /// Room List Request - get list of all rooms (sorted)
     case roomListRequest = 0x2100  // SVC_ROOM_SORTED_LIST
 
+    /// Room Specific List Request - get list of specific rooms
     case roomSpecificList = 0x2101  // SVC_ROOM_SPECIFIC_LIST
 
+    /// Room List Response
     case roomListResponse = 0x2103
 
+    /// Room Detail Request - get detailed information about a specific room
     case roomDetailRequest = 0x2104  // SVC_ROOM_DETAIL
 
+    /// Room Detail Response
     case roomDetailResponse = 0x2105
 
+    // MARK: - Room Management
+
+    /// Join Room Request - request to join a game room
     case joinRoomRequest = 0x2110  // SVC_ROOM_JOIN
 
+    /// Join Room Response
     case joinRoomResponse = 0x2111
 
+    /// Join Room Notification - broadcast when a player joins the room
     case joinRoomNotification = 0x3010
 
+    /// Join Room Self Notification - sent to the player who just joined
     case joinRoomNotificationSelf = 0x21F5
 
+    /// Channel Chat Command - send a chat message to the channel
     case channelChatCommand = 0x2010  // SVC_CHANNEL_CHAT
 
+    /// Channel Chat Broadcast - broadcast a chat message to all users in channel
     case channelChatBroadcast = 0x201F
 
+    // MARK: - Room Creation
+
+    /// Create Room Request - create a new game room
     case createRoomRequest = 0x2120  // SVC_ROOM_CREATE
 
+    /// Create Room Response
     case createRoomResponse = 0x2121
 
+    // MARK: - Room Commands
+
+    /// Room Change Stage Command - change the map/stage (room master only)
     case roomChangeStageCommand = 0x3100  // SVC_ROOM_CHANGE_STAGE
 
+    /// Room Change Option Command - change game options (room master only)
     case roomChangeOptionCommand = 0x3101  // SVC_ROOM_CHANGE_OPTION
 
+    /// Room Change Use Item Command - change item state in room (room master only)
     case roomChangeUseItemCommand = 0x3102  // SVC_ROOM_CHANGE_USEITEM
 
+    /// Room Change Capacity Command - change max players (room master only)
     case roomChangeCapacityCommand = 0x3103  // SVC_ROOM_CHANGE_MAXMEN
 
+    /// Room Set Title Command - change room title (room master only)
     case roomSetTitleCommand = 0x3104  // SVC_ROOM_CHANGE_TITLE
 
+    /// Room Update Notification - broadcast when room settings change
     case roomUpdateNotification = 0x3105
 
+    // MARK: - Room Player Actions
+
+    /// Room Select Team Request - select a team (A or B)
     case roomSelectTeamRequest = 0x3210  // SVC_ROOM_SELECT_TEAM
 
+    /// Room Select Team Response
     case roomSelectTeamResponse = 0x3211
 
+    /// Room Kick User Request - kick a player from room (room master only)
     case roomKickUserRequest = 0x3150  // SVC_ROOM_KICK_USER
 
+    /// Room Select Tank Request - select mobile/tank to play
     case roomSelectTankRequest = 0x3200  // SVC_ROOM_SELECT_TANK
 
+    /// Room Select Tank Response
     case roomSelectTankResponse = 0x3201
 
+    /// Room User Ready Request - toggle ready status
     case roomUserReadyRequest = 0x3230  // SVC_ROOM_USER_READY
 
+    /// Room User Ready Response
     case roomUserReadyResponse = 0x3231
 
+    /// Room Return Result Request - return game result to server
     case roomReturnResultRequest = 0x3232  // SVC_ROOM_RETURN_RESULT
 
+    /// Room Return Result Response
     case roomReturnResultResponse = 0x3233
 
+    // MARK: - Gameplay
+
+    /// Start Game Command - start the game (room master only)
     case startGameCommand = 0x3430  // SVC_START_GAME
 
+    /// Start Game Notification - broadcast when game starts
     case startGameNotification = 0x3432
 
+    /// Close Connection
     case close = 0x3FFF
 
+    /// Game Drop User Command - drop/disconnect a user from game
     case gameDropUserCommand = 0x4000  // SVC_PLAY_DROP_USER
 
+    /// End Game Jewel Command - end jewel mode game
     case endGameJewelCommand = 0x4200  // SVC_PLAY_END_JEWEL
 
+    /// User Dead Request - notify server that player died
     case userDeadRequest = 0x4100
 
+    /// User Dead Response - broadcast when player dies
     case userDeadResponse = 0x4101  // SVC_PLAY_USER_DEAD
 
+    /// Play Resurrect Command - player resurrects in-game
     case playResurrect = 0x4104  // SVC_PLAY_RESURRECT
 
+    /// Play Result Command - send game results
     case playResultCommand = 0x4412  // SVC_PLAY_RESULT
 
+    /// Play Result Notification - broadcast game results
     case playResultNotification = 0x4413
 
+    // MARK: - Server/Admin Commands
+
+    /// Police Accuse - report a player (anti-cheat system)
     case policeAccuse = 0x5000  // SVC_POLICE_ACCUSE
 
+    /// User Info - broadcast user information
     case userInfo = 0x5002  // SVC_USER_INFO
 
+    /// BCM (Broadcast Message) - server broadcast message
     case bcm = 0x5010  // SVC_BCM
 
+    /// Client Command - general client command from server
     case clientCommand = 0x5100  // SVC_COMMAND
 
+    /// Client Print Notification - display message to client
     case clientPrintNotification = 0x5101
 
+    /// Client Command Status - update server status
     case clientCommandStatus = 0x5110  // SVC_CMD_STATUS
 
     /// Client Command Message of the Day
     case clientCommandMOTD = 0x5112  // SVC_CMD_MOTD
 
+    /// Client Command BCM - send broadcast message
     case clientCommandBCM = 0x5114  // SVC_CMD_BCM
 
+    /// Client Command Set Version - set client version requirement
     case clientCommandSetVersion = 0x5116  // SVC_CMD_SETVERSION
 
+    /// Client Command Grade Limit - set rank/grade restrictions
     case clientCommandGradeLimit = 0x5120  // SVC_CMD_GRADELIMIT
 
+    /// Client Command Guild Mark Limit - set guild restrictions
     case clientCommandGuildMarkLimit = 0x5122  // SVC_CMD_GUILDLIMIT
 
+    /// Client Command Function Restrict - restrict specific functions
     case clientCommandFunctionRestrict = 0x5124  // SVC_CMD_FUNCTION_RESTRICT
 
+    /// Client Command Allowed Guild - set allowed guilds
     case clientCommandAllowedGuild = 0x5126  // SVC_CMD_SET_ALLOWEDGUILD
 
+    /// Client Set Event Act Prob - set event activation probability
     case clientSetEventActProb = 0x5128  // SVC_CMD_SET_EVENTACTPROB
 
+    /// Client Set Passable Authority - set passable authority level
     case clientSetPassableAuthority = 0x512a  // SVC_CMD_SET_PASSABLE_AUTH
 
+    /// Rebroadcast - rebroadcast packet to other players
     case rebroadcast = 0x4410
 
+    /// Tunnel - P2P tunneling packet for direct connection
     case tunnel = 0x4500  // SVC_TUNNEL
 
+    // MARK: - Shop/Avatar
+
+    /// Get Avatar Request - get player's avatar list
     case getAvatarRequest = 0x6000  // SVC_PROP_GET
 
+    /// Get Avatar Response - return player's avatar list
     case getAvatarResponse = 0x6001
 
+    /// Set Avatar Request - equip/change avatar
     case setAvatarRequest = 0x6004  // SVC_PROP_SET
 
+    /// Set Avatar Response
     case setAvatarResponse = 0x6005
 
+    /// Buy Gold Request - purchase avatar with gold
     case buyGoldRequest = 0x6010  // SVC_PROP_BUY
 
+    /// Buy Cash Request - purchase avatar with cash
     case buyCashRequest = 0x6011  // SVC_PROP_BUY_PP
 
+    /// Buy Response - confirmation of purchase
     case buyResponse = 0x6017
 
+    /// Sell Request - sell avatar for gold
     case sellRequest = 0x6020  // SVC_PROP_SELL
 
+    /// Sell Given - notification that item was sold
     case sellGiven = 0x6021  // SVC_PROP_SELL_GIVEN
 
+    /// Sell Response - confirmation of sale
     case sellResponse = 0x6027
 
+    /// Gift Request - gift avatar to another player
     case giftRequest = 0x6030  // SVC_PROP_GIFT
 
+    /// Gift Given - notification that item was gifted
     case giftGiven = 0x6031  // SVC_PROP_GIFT_GIVEN
 
+    /// Buy Gold Gift Request - gift avatar purchased with gold
     case buyGoldGiftRequest = 0x6032  // SVC_PROP_GIFT_BUY
 
+    /// Buy Cash Gift Request - gift avatar purchased with cash
     case buyCashGiftRequest = 0x6033  // SVC_PROP_GIFT_BUY_PP
 
+    /// Gift Response - confirmation of gift
     case giftResponse = 0x6037
 
+    /// User Center Location Request - request user location from user center
     case userCenterLocationRequest = 0xcf02  // RCTS_USER_LOCATION
 
+    /// User Center Record Request - request user record from user center
     case userCenterRecordRequest = 0xc103
 
+    /// Unknown opcode placeholder
     case unknown = 0x9999
 }
 
