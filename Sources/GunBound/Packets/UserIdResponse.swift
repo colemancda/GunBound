@@ -8,23 +8,27 @@
 import Foundation
 
 /// User ID Response
-/// Response containing user information (encrypted)
+///
+/// Response containing player information (encrypted)
 public struct UserIdResponse: GunBoundPacket, Codable, Equatable, Hashable {
-
     public static var opcode: Opcode { .userResponse }
 
     public static var isEncrypted: Bool { true }
 
+    /// The player's nickname (display name)
     public var nickname1: Username
+    /// The player's secondary nickname (display name)
     public var nickname2: Username
-    public var guild: Guild
+    /// The player's guild name
     public var rankCurrent: Int16
+    /// The player's rank for current season (points)
     public var rankSeason: Int16
-
+    /// The player's total games played
+    public var rankSeason: Int16 = 0)
     public init(
         nickname1: Username,
-        nickname2: Username,
-        guild: Guild,
+        nickname2: Username
+        guild: Guild = "",
         rankCurrent: Int16 = 0,
         rankSeason: Int16 = 0
     ) {
