@@ -222,6 +222,7 @@ public extension Opcode {
         case .serverDirectoryResponse: return .response
         case .userRequest: return .request
         case .userResponse: return .response
+        case .userNicknameRequest: return .request
         case .cashUpdateNotification: return .notification
         case .goldUpdateRequest: return .request
         case .goldUpdateResponse: return .response
@@ -230,6 +231,9 @@ public extension Opcode {
         case .joinChannelNotification: return .notification
         case .roomListRequest: return .request
         case .roomListResponse: return .response
+        case .roomSpecificList: return .request
+        case .roomDetailRequest: return .request
+        case .roomDetailResponse: return .response
         case .joinRoomRequest: return .request
         case .joinRoomResponse: return .response
         case .joinRoomNotification: return .notification
@@ -240,9 +244,11 @@ public extension Opcode {
         case .roomSelectTankResponse: return .response
         case .roomSelectTeamRequest: return .request
         case .roomSelectTeamResponse: return .response
+        case .roomKickUserRequest: return .request
         case .roomUpdateNotification: return .notification
         case .roomChangeStageCommand: return .command
         case .roomChangeOptionCommand: return .command
+        case .roomChangeUseItemCommand: return .command
         case .roomChangeCapacityCommand: return .command
         case .roomSetTitleCommand: return .command
         case .roomUserReadyRequest: return .request
@@ -253,13 +259,28 @@ public extension Opcode {
         case .startGameNotification: return .notification
         case .userDeadRequest: return .request
         case .userDeadResponse: return .response
+        case .playResurrect: return .command
         case .playResultCommand: return .command
         case .playResultNotification: return .notification
         case .clientCommand: return .command
         case .clientPrintNotification: return .notification
+        case .clientCommandStatus: return .command
+        case .clientCommandMOTD: return .command
+        case .clientCommandBCM: return .command
+        case .clientCommandSetVersion: return .command
+        case .clientCommandGradeLimit: return .command
+        case .clientCommandGuildMarkLimit: return .command
+        case .clientCommandFunctionRestrict: return .command
+        case .clientCommandAllowedGuild: return .command
+        case .clientSetEventActProb: return .command
+        case .clientSetPassableAuthority: return .command
         case .roomReturnResultRequest: return .request
         case .roomReturnResultResponse: return .response
         case .gameDropUserCommand: return .command
+        case .policeAccuse: return .command
+        case .userInfo: return .notification
+        case .bcm: return .command
+        case .rebroadcast: return .command
         case .close: return .notification
         case .getAvatarRequest: return .request
         case .getAvatarResponse: return .response
@@ -270,8 +291,15 @@ public extension Opcode {
         case .buyResponse: return .response
         case .sellRequest: return .request
         case .sellResponse: return .response
+        case .sellGiven: return .notification
         case .giftRequest: return .request
         case .giftResponse: return .response
+        case .giftGiven: return .notification
+        case .buyGoldGiftRequest: return .request
+        case .buyCashGiftRequest: return .request
+        case .userCenterLocationRequest: return .request
+        case .userCenterRecordRequest: return .request
+        case .unknown: return .command
 
         default:
             assertionFailure("Unimplemented \(self)")
