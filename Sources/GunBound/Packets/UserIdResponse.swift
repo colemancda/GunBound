@@ -15,16 +15,16 @@ public struct UserIdResponse: GunBoundPacket, Codable, Equatable, Hashable {
 
     public static var isEncrypted: Bool { true }
 
-    public var nickname1: FixedLengthString<12>
-    public var nickname2: FixedLengthString<12>
-    public var guild: FixedLengthString<8>
+    public var nickname1: Username
+    public var nickname2: Username
+    public var guild: Guild
     public var rankCurrent: Int16
     public var rankSeason: Int16
 
     public init(
-        nickname1: FixedLengthString<12>,
-        nickname2: FixedLengthString<12>,
-        guild: FixedLengthString<8>,
+        nickname1: Username,
+        nickname2: Username,
+        guild: Guild,
         rankCurrent: Int16 = 0,
         rankSeason: Int16 = 0
     ) {
@@ -36,14 +36,14 @@ public struct UserIdResponse: GunBoundPacket, Codable, Equatable, Hashable {
     }
 
     public init(
-        nickname: String,
-        guild: String = "",
+        nickname: Username,
+        guild: Guild = "",
         rankCurrent: Int16 = 0,
         rankSeason: Int16 = 0
     ) {
-        self.nickname1 = FixedLengthString(nickname)
-        self.nickname2 = FixedLengthString(nickname)
-        self.guild = FixedLengthString(guild)
+        self.nickname1 = nickname
+        self.nickname2 = nickname
+        self.guild = guild
         self.rankCurrent = rankCurrent
         self.rankSeason = rankSeason
     }
