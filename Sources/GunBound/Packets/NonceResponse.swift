@@ -22,7 +22,7 @@ import Foundation
 ///
 /// **Note:** The filename has a typo ("Nonce" instead of "Nonce"),
 /// but this is kept for compatibility with original codebase.
-public struct NonceResponse: GunBoundPacket, Equatable, Hashable, Codable {
+public struct NonceResponse: GunBoundPacket, Equatable, Hashable {
 
     public static var opcode: Opcode { .nonceResponse }
 
