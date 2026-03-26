@@ -1947,6 +1947,1425 @@ import Testing
         #expect(packet.parametersSize == 0)
         #expect(packet.parameters.isEmpty)
     }
+    
+    /// [000] RECV>> [cmd=0x0010] [6 bytes]
+    @Test func pkt000_nonceRequest() throws {
+        let data = Data(hexString:
+            "0600B1360010"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .nonceRequest)
+        #expect(packet.size   == 6)
+        #expect(packet.id     == 0x36B1)
+    }
+
+    /// [001] SEND>> [cmd=0x0110] [10 bytes]
+    /// nonce=0xDB6A9AF6
+    @Test func pkt001_nonceResponse() throws {
+        let data = Data(hexString:
+            "0A00E5530110DB6A9AF6"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .nonceResponse)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x53E5)
+    }
+
+    /// [002] RECV>> [cmd=0x1010] [86 bytes]
+    /// username=colemancda password=1234 clientVersion=280
+    @Test func pkt002_authenticationRequest() throws {
+        let data = Data(hexString:
+            "5600AF0D1010218ABED7FA38086ECC02"
+        + "A15A4D3010F1E2DA03985C6E99D1496C"
+        + "BD2DA584FA8CAF1C01BB5032237E9EB4"
+        + "70A7257E0C5F47F47346A2D11FF06E0D"
+        + "1368B0FCB40574009D44E1871A6FA816"
+        + "4D67C0F863BD"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .authenticationRequest)
+        #expect(packet.size   == 86)
+        #expect(packet.id     == 0x0DAF)
+    }
+
+    /// [003] SEND>> [cmd=0x1210] [419 bytes]
+    /// status=success username=colemancda gold=999999
+    @Test func pkt003_authenticationResponse() throws {
+        let data = Data(hexString:
+            "A301FC9A1210000043107A1C636F6C65"
+        + "6D616E63646100000100000001000300"
+        + "746573740000000014001400050D3905"
+        + "000039050000040D0000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "00000000000000000000000000000000"
+        + "000038900D0038900D003F420F000000"
+        + "00000000000000000000000000000010"
+        + "A00600"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .authenticationResponse)
+        #expect(packet.size   == 419)
+        #expect(packet.id     == 0x9AFC)
+    }
+
+    /// [004] SEND>> [cmd=0x3210] [22 bytes]
+    /// encrypted cash payload for colemancda
+    @Test func pkt004_cashUpdateNotification() throws {
+        let data = Data(hexString:
+            "1600BA72321034E66D6BE366FB2DD142"
+        + "6CED3ACACFB6"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .cashUpdateNotification)
+        #expect(packet.size   == 22)
+        #expect(packet.id     == 0x72BA)
+    }
+
+    /// [005] RECV>> [cmd=0x0020] [8 bytes]
+    /// channel=0xFFFF routes to channel 0
+    @Test func pkt005_joinChannelRequest_1() throws {
+        let data = Data(hexString:
+            "0800972D0020FFFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x2D97)
+    }
+
+    /// [006] SEND>> [cmd=0x0120] [265 bytes]
+    /// 5 users maxPosition=4 channel=0
+    @Test func pkt006_joinChannelResponse_1() throws {
+        let data = Data(hexString:
+            "09019FD3012000000000040500757300"
+        + "00000000000000000000800080008000"
+        + "007669727475616C0013001300016A67"
+        + "00000000000000000000008000800080"
+        + "00007669727475616C000C000C000261"
+        + "646D696E000000000000000080008000"
+        + "8000007669727475616C001400140003"
+        + "636F6C656D616E636461000001000000"
+        + "01000300746573740000000000001400"
+        + "04636F6C656D616E6364610000010000"
+        + "00010003007465737400000000140014"
+        + "00244368616E6E656C204D4F54440D0A"
+        + "52657175657374696E67205356435F43"
+        + "48414E4E454C5F4A4F494E2030206174"
+        + "20323032362D30332D32352032323A33"
+        + "383A35380D0A436C69656E7420566572"
+        + "73696F6E3A20323830"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelResponse)
+        #expect(packet.size   == 265)
+        #expect(packet.id     == 0xD39F)
+    }
+
+    /// [007] RECV>> [cmd=0x0021] [10 bytes]
+    /// filter=waiting(2)
+    @Test func pkt007_roomListRequest_1() throws {
+        let data = Data(hexString:
+            "0A00E53F002102000000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomListRequest)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x3FE5)
+    }
+
+    /// [008] SEND>> [cmd=0x0321] [79 bytes]
+    /// 3 virtual waiting rooms
+    @Test func pkt008_roomListResponse_1() throws {
+        let data = Data(hexString:
+            "4F00B2CE03210000030000000A757320"
+        + "7669727475616C00B2620C0001020000"
+        + "01000A6A67207669727475616C00B262"
+        + "0C000102000002000D61646D696E2076"
+        + "69727475616C00B2620C0001020000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomListResponse)
+        #expect(packet.size   == 79)
+        #expect(packet.id     == 0xCEB2)
+    }
+
+    /// [009] RECV>> [cmd=0x2010] [38 bytes]
+    /// encrypted SVC_USER_ID lookup for "us"
+    @Test func pkt009_userRequest() throws {
+        let data = Data(hexString:
+            "260007ED2010C8AC2504FF015BBD5EB2"
+        + "3C73822183A1E7EEB0AF622BB17C1C6A"
+        + "B23DA595450E"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .userRequest)
+        #expect(packet.size   == 38)
+        #expect(packet.id     == 0xED07)
+    }
+
+    /// [010] SEND>> [cmd=0x2110] [72 bytes]
+    /// encrypted user record for "us"
+    @Test func pkt010_userResponse() throws {
+        let data = Data(hexString:
+            "4800DAED211000004A285C716457B52B"
+        + "F2D576F0BFE98C884A285C716457B52B"
+        + "F2D576F0BFE98C88B5DB965B5290E0BF"
+        + "6617DDE8E4C96672FCFA4EB298CDE89C"
+        + "3E0FA129D1A610E7"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .userResponse)
+        #expect(packet.size   == 72)
+        #expect(packet.id     == 0xEDDA)
+    }
+
+    /// [011] RECV>> [cmd=0x2021] [20 bytes]
+    /// name=test settings=0x000062B2 password=1234 capacity=2(_1_1)
+    @Test func pkt011_createRoomRequest() throws {
+        let data = Data(hexString:
+            "1400CB3C20210474657374B262000031"
+        + "32333402"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .createRoomRequest)
+        #expect(packet.size   == 20)
+        #expect(packet.id     == 0x3CCB)
+    }
+
+    /// [012] SEND>> [cmd=0x2121] [21 bytes]
+    /// room=3 message=$Room MOTD
+    @Test func pkt012_createRoomResponse() throws {
+        let data = Data(hexString:
+            "15009B812121000000030024526F6F6D"
+        + "204D4F5444"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .createRoomResponse)
+        #expect(packet.size   == 21)
+        #expect(packet.id     == 0x819B)
+    }
+
+    /// [013] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=armor secondary=random
+    @Test func pkt013_roomSelectTankRequest_armor() throws {
+        let data = Data(hexString:
+            "0800B35C003200FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x5CB3)
+    }
+
+    /// [014] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt014_roomSelectTankResponse_armor() throws {
+        let data = Data(hexString:
+            "0800A18301320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x83A1)
+    }
+
+    /// [015] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=mage secondary=random
+    @Test func pkt015_roomSelectTankRequest_mage() throws {
+        let data = Data(hexString:
+            "08009B7C003201FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x7C9B)
+    }
+
+    /// [016] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt016_roomSelectTankResponse_mage() throws {
+        let data = Data(hexString:
+            "08006BC101320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xC16B)
+    }
+
+    /// [017] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=nak secondary=random
+    @Test func pkt017_roomSelectTankRequest_nak() throws {
+        let data = Data(hexString:
+            "0800839C003202FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x9C83)
+    }
+
+    /// [018] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt018_roomSelectTankResponse_nak() throws {
+        let data = Data(hexString:
+            "080053E101320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xE153)
+    }
+
+    /// [019] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=trico secondary=random
+    @Test func pkt019_roomSelectTankRequest_trico() throws {
+        let data = Data(hexString:
+            "08006BBC003203FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xBC6B)
+    }
+
+    /// [020] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt020_roomSelectTankResponse_trico() throws {
+        let data = Data(hexString:
+            "08003B0101320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x013B)
+    }
+
+    /// [021] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=bigFoot secondary=random
+    @Test func pkt021_roomSelectTankRequest_bigFoot() throws {
+        let data = Data(hexString:
+            "080053DC003204FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xDC53)
+    }
+
+    /// [022] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt022_roomSelectTankResponse_bigFoot() throws {
+        let data = Data(hexString:
+            "0800232101320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x2123)
+    }
+
+    /// [023] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=boomer secondary=random
+    @Test func pkt023_roomSelectTankRequest_boomer() throws {
+        let data = Data(hexString:
+            "08003BFC003205FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xFC3B)
+    }
+
+    /// [024] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt024_roomSelectTankResponse_boomer() throws {
+        let data = Data(hexString:
+            "08000B4101320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x410B)
+    }
+
+    /// [025] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=raon secondary=random
+    @Test func pkt025_roomSelectTankRequest_raon() throws {
+        let data = Data(hexString:
+            "0800231C003206FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x1C23)
+    }
+
+    /// [026] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt026_roomSelectTankResponse_raon() throws {
+        let data = Data(hexString:
+            "0800F36001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x60F3)
+    }
+
+    /// [027] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=lightning secondary=random
+    @Test func pkt027_roomSelectTankRequest_lightning() throws {
+        let data = Data(hexString:
+            "08000B3C003207FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x3C0B)
+    }
+
+    /// [028] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt028_roomSelectTankResponse_lightning() throws {
+        let data = Data(hexString:
+            "0800DB8001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x80DB)
+    }
+
+    /// [029] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=jd secondary=random
+    @Test func pkt029_roomSelectTankRequest_jd() throws {
+        let data = Data(hexString:
+            "0800F35B003208FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x5BF3)
+    }
+
+    /// [030] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt030_roomSelectTankResponse_jd() throws {
+        let data = Data(hexString:
+            "0800C3A001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xA0C3)
+    }
+
+    /// [031] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=asate secondary=random
+    @Test func pkt031_roomSelectTankRequest_asate() throws {
+        let data = Data(hexString:
+            "0800DB7B003209FF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x7BDB)
+    }
+
+    /// [032] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt032_roomSelectTankResponse_asate() throws {
+        let data = Data(hexString:
+            "0800ABC001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xC0AB)
+    }
+
+    /// [033] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=ice secondary=random
+    @Test func pkt033_roomSelectTankRequest_ice() throws {
+        let data = Data(hexString:
+            "0800C39B00320AFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x9BC3)
+    }
+
+    /// [034] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt034_roomSelectTankResponse_ice() throws {
+        let data = Data(hexString:
+            "080093E001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xE093)
+    }
+
+    /// [035] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=turtle secondary=random
+    @Test func pkt035_roomSelectTankRequest_turtle() throws {
+        let data = Data(hexString:
+            "0800ABBB00320BFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xBBAB)
+    }
+
+    /// [036] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt036_roomSelectTankResponse_turtle() throws {
+        let data = Data(hexString:
+            "08007B0001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x007B)
+    }
+
+    /// [037] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=grub secondary=random
+    @Test func pkt037_roomSelectTankRequest_grub() throws {
+        let data = Data(hexString:
+            "080093DB00320CFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xDB93)
+    }
+
+    /// [038] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt038_roomSelectTankResponse_grub() throws {
+        let data = Data(hexString:
+            "0800632001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x2063)
+    }
+
+    /// [039] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=aduka secondary=random
+    @Test func pkt039_roomSelectTankRequest_aduka() throws {
+        let data = Data(hexString:
+            "08007BFB00320DFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xFB7B)
+    }
+
+    /// [040] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt040_roomSelectTankResponse_aduka() throws {
+        let data = Data(hexString:
+            "08004B4001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x404B)
+    }
+
+    /// [041] RECV>> [cmd=0x0032] [8 bytes]
+    /// primary=random secondary=random
+    @Test func pkt041_roomSelectTankRequest_random() throws {
+        let data = Data(hexString:
+            "0800631B0032FFFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x1B63)
+    }
+
+    /// [042] SEND>> [cmd=0x0132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt042_roomSelectTankResponse_random() throws {
+        let data = Data(hexString:
+            "0800336001320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x6033)
+    }
+
+    /// [043] RECV>> [cmd=0x1032] [7 bytes]
+    /// team=b(1)
+    @Test func pkt043_roomSelectTeamRequest_b() throws {
+        let data = Data(hexString:
+            "07004EF7103201"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamRequest)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xF74E)
+    }
+
+    /// [044] SEND>> [cmd=0x1132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt044_roomSelectTeamResponse_b() throws {
+        let data = Data(hexString:
+            "08001B8011320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x801B)
+    }
+
+    /// [045] RECV>> [cmd=0x1032] [7 bytes]
+    /// team=a(0)
+    @Test func pkt045_roomSelectTeamRequest_a() throws {
+        let data = Data(hexString:
+            "070039D3103200"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamRequest)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xD339)
+    }
+
+    /// [046] SEND>> [cmd=0x1132] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt046_roomSelectTeamResponse_a() throws {
+        let data = Data(hexString:
+            "080003A011320000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamResponse)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xA003)
+    }
+
+    /// [047] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x004462B2
+    @Test func pkt047_roomChangeOption_047() throws {
+        let data = Data(hexString:
+            "0A001B7B0131B2624400"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x7B1B)
+    }
+
+    /// [048] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt048_roomUpdateNotif_048() throws {
+        let data = Data(hexString:
+            "0800EBBF05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xBFEB)
+    }
+
+    /// [049] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000862B2
+    @Test func pkt049_roomChangeOption_049() throws {
+        let data = Data(hexString:
+            "0A00FD220131B2620800"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x22FD)
+    }
+
+    /// [050] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt050_roomUpdateNotif_050() throws {
+        let data = Data(hexString:
+            "0800D3DF05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xDFD3)
+    }
+
+    /// [051] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000C62B2
+    @Test func pkt051_roomChangeOption_051() throws {
+        let data = Data(hexString:
+            "0A00DFCA0131B2620C00"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0xCADF)
+    }
+
+    /// [052] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt052_roomUpdateNotif_052() throws {
+        let data = Data(hexString:
+            "0800BBFF05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xFFBB)
+    }
+
+    /// [053] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000062B2
+    @Test func pkt053_roomChangeOption_053() throws {
+        let data = Data(hexString:
+            "0A00C1720131B2620000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x72C1)
+    }
+
+    /// [054] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt054_roomUpdateNotif_054() throws {
+        let data = Data(hexString:
+            "0800A31F05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x1FA3)
+    }
+
+    /// [055] RECV>> [cmd=0x0331] [7 bytes]
+    /// capacity=04=_2_2
+    @Test func pkt055_roomChangeCapacity__2_2() throws {
+        let data = Data(hexString:
+            "0700AC4E033104"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x4EAC)
+    }
+
+    /// [056] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt056_roomUpdateNotif_056() throws {
+        let data = Data(hexString:
+            "08008B3F05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x3F8B)
+    }
+
+    /// [057] RECV>> [cmd=0x0331] [7 bytes]
+    /// capacity=06=_3_3
+    @Test func pkt057_roomChangeCapacity__3_3() throws {
+        let data = Data(hexString:
+            "0700972A033106"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x2A97)
+    }
+
+    /// [058] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt058_roomUpdateNotif_058() throws {
+        let data = Data(hexString:
+            "0800735F05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x5F73)
+    }
+
+    /// [059] RECV>> [cmd=0x0331] [7 bytes]
+    /// capacity=08=_4_4
+    @Test func pkt059_roomChangeCapacity__4_4() throws {
+        let data = Data(hexString:
+            "07008206033108"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x0682)
+    }
+
+    /// [060] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt060_roomUpdateNotif_060() throws {
+        let data = Data(hexString:
+            "08005B7F05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x7F5B)
+    }
+
+    /// [061] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000162B2
+    @Test func pkt061_roomChangeOption_061() throws {
+        let data = Data(hexString:
+            "0A0064AE0131B2620100"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0xAE64)
+    }
+
+    /// [062] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt062_roomUpdateNotif_062() throws {
+        let data = Data(hexString:
+            "0800439F05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x9F43)
+    }
+
+    /// [063] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000062B2
+    @Test func pkt063_roomChangeOption_063() throws {
+        let data = Data(hexString:
+            "0A0046560131B2620000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x5646)
+    }
+
+    /// [064] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt064_roomUpdateNotif_064() throws {
+        let data = Data(hexString:
+            "08002BBF05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xBF2B)
+    }
+
+    /// [065] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000063B2
+    @Test func pkt065_roomChangeOption_065() throws {
+        let data = Data(hexString:
+            "0A0028FE0131B2630000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0xFE28)
+    }
+
+    /// [066] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt066_roomUpdateNotif_066() throws {
+        let data = Data(hexString:
+            "080013DF05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xDF13)
+    }
+
+    /// [067] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000060B2
+    @Test func pkt067_roomChangeOption_067() throws {
+        let data = Data(hexString:
+            "0A000AA60131B2600000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0xA60A)
+    }
+
+    /// [068] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt068_roomUpdateNotif_068() throws {
+        let data = Data(hexString:
+            "0800FBFE05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xFEFB)
+    }
+
+    /// [069] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000061B2
+    @Test func pkt069_roomChangeOption_069() throws {
+        let data = Data(hexString:
+            "0A00EC4D0131B2610000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x4DEC)
+    }
+
+    /// [070] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt070_roomUpdateNotif_070() throws {
+        let data = Data(hexString:
+            "0800E31E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x1EE3)
+    }
+
+    /// [071] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000062B2
+    @Test func pkt071_roomChangeOption_071() throws {
+        let data = Data(hexString:
+            "0A00CEF50131B2620000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0xF5CE)
+    }
+
+    /// [072] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt072_roomUpdateNotif_072() throws {
+        let data = Data(hexString:
+            "0800CB3E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x3ECB)
+    }
+
+    /// [073] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x0000A2B2
+    @Test func pkt073_roomChangeOption_073() throws {
+        let data = Data(hexString:
+            "0A00B09D0131B2A20000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x9DB0)
+    }
+
+    /// [074] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt074_roomUpdateNotif_074() throws {
+        let data = Data(hexString:
+            "0800B35E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x5EB3)
+    }
+
+    /// [075] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000062B2
+    @Test func pkt075_roomChangeOption_075() throws {
+        let data = Data(hexString:
+            "0A0092450131B2620000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x4592)
+    }
+
+    /// [076] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt076_roomUpdateNotif_076() throws {
+        let data = Data(hexString:
+            "08009B7E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x7E9B)
+    }
+
+    /// [077] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000072B2
+    @Test func pkt077_roomChangeOption_077() throws {
+        let data = Data(hexString:
+            "0A0074ED0131B2720000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0xED74)
+    }
+
+    /// [078] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt078_roomUpdateNotif_078() throws {
+        let data = Data(hexString:
+            "0800839E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x9E83)
+    }
+
+    /// [079] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000052B2
+    @Test func pkt079_roomChangeOption_079() throws {
+        let data = Data(hexString:
+            "0A0056950131B2520000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x9556)
+    }
+
+    /// [080] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt080_roomUpdateNotif_080() throws {
+        let data = Data(hexString:
+            "08006BBE05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xBE6B)
+    }
+
+    /// [081] RECV>> [cmd=0x0131] [10 bytes]
+    /// settings=0x000062B2
+    @Test func pkt081_roomChangeOption_081() throws {
+        let data = Data(hexString:
+            "0A00383D0131B2620000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x3D38)
+    }
+
+    /// [082] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt082_roomUpdateNotif_082() throws {
+        let data = Data(hexString:
+            "080053DE05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xDE53)
+    }
+
+    /// [083] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=miramoTown
+    @Test func pkt083_roomChangeStage_miramoTown() throws {
+        let data = Data(hexString:
+            "07002319003101"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x1923)
+    }
+
+    /// [084] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt084_roomUpdateNotif_084() throws {
+        let data = Data(hexString:
+            "08003BFE05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xFE3B)
+    }
+
+    /// [085] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=nirvana
+    @Test func pkt085_roomChangeStage_nirvana() throws {
+        let data = Data(hexString:
+            "07000EF5003102"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xF50E)
+    }
+
+    /// [086] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt086_roomUpdateNotif_086() throws {
+        let data = Data(hexString:
+            "0800231E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x1E23)
+    }
+
+    /// [087] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=metropolis
+    @Test func pkt087_roomChangeStage_metropolis() throws {
+        let data = Data(hexString:
+            "0700F9D0003103"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xD0F9)
+    }
+
+    /// [088] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt088_roomUpdateNotif_088() throws {
+        let data = Data(hexString:
+            "08000B3E05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x3E0B)
+    }
+
+    /// [089] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=seaHero
+    @Test func pkt089_roomChangeStage_seaHero() throws {
+        let data = Data(hexString:
+            "0700E4AC003104"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xACE4)
+    }
+
+    /// [090] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt090_roomUpdateNotif_090() throws {
+        let data = Data(hexString:
+            "0800F35D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x5DF3)
+    }
+
+    /// [091] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=adiumroot
+    @Test func pkt091_roomChangeStage_adiumroot() throws {
+        let data = Data(hexString:
+            "0700CF88003105"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x88CF)
+    }
+
+    /// [092] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt092_roomUpdateNotif_092() throws {
+        let data = Data(hexString:
+            "0800DB7D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x7DDB)
+    }
+
+    /// [093] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=dragon
+    @Test func pkt093_roomChangeStage_dragon() throws {
+        let data = Data(hexString:
+            "0700BA64003106"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x64BA)
+    }
+
+    /// [094] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt094_roomUpdateNotif_094() throws {
+        let data = Data(hexString:
+            "0800C39D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x9DC3)
+    }
+
+    /// [095] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=cozytower
+    @Test func pkt095_roomChangeStage_cozytower() throws {
+        let data = Data(hexString:
+            "0700A540003107"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x40A5)
+    }
+
+    /// [096] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt096_roomUpdateNotif_096() throws {
+        let data = Data(hexString:
+            "0800ABBD05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xBDAB)
+    }
+
+    /// [097] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=dummySlope
+    @Test func pkt097_roomChangeStage_dummySlope() throws {
+        let data = Data(hexString:
+            "0700901C003108"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x1C90)
+    }
+
+    /// [098] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt098_roomUpdateNotif_098() throws {
+        let data = Data(hexString:
+            "080093DD05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xDD93)
+    }
+
+    /// [099] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=stardust
+    @Test func pkt099_roomChangeStage_stardust() throws {
+        let data = Data(hexString:
+            "07007BF8003109"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xF87B)
+    }
+
+    /// [100] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt100_roomUpdateNotif_100() throws {
+        let data = Data(hexString:
+            "08007BFD05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0xFD7B)
+    }
+
+    /// [101] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=metaMine
+    @Test func pkt101_roomChangeStage_metaMine() throws {
+        let data = Data(hexString:
+            "070066D400310A"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xD466)
+    }
+
+    /// [102] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt102_roomUpdateNotif_102() throws {
+        let data = Data(hexString:
+            "0800631D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x1D63)
+    }
+
+    /// [103] RECV>> [cmd=0x0031] [7 bytes]
+    /// map=random
+    @Test func pkt103_roomChangeStage_random() throws {
+        let data = Data(hexString:
+            "070051B0003100"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0xB051)
+    }
+
+    /// [104] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt104_roomUpdateNotif_104() throws {
+        let data = Data(hexString:
+            "08004B3D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x3D4B)
+    }
+
+    /// [105] RECV>> [cmd=0x0431] [11 bytes]
+    /// title=test2
+    @Test func pkt105_roomSetTitle_test2() throws {
+        let data = Data(hexString:
+            "0B00309C04317465737432"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSetTitleCommand)
+        #expect(packet.size   == 11)
+        #expect(packet.id     == 0x9C30)
+    }
+
+    /// [106] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt106_roomUpdateNotif_title() throws {
+        let data = Data(hexString:
+            "0800335D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x5D33)
+    }
+
+    /// [107] RECV>> [cmd=0x0331] [7 bytes]
+    /// capacity=02=_1_1
+    @Test func pkt107_roomChangeCapacity__1_1() throws {
+        let data = Data(hexString:
+            "07001B78033102"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.size   == 7)
+        #expect(packet.id     == 0x781B)
+    }
+
+    /// [108] SEND>> [cmd=0x0531] [8 bytes]
+    /// rtc=0x0000
+    @Test func pkt108_roomUpdateNotif_108() throws {
+        let data = Data(hexString:
+            "08001B7D05310000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x7D1B)
+    }
+
+    /// [109] RECV>> [cmd=0x0020] [8 bytes]
+    /// triggers room cleanup channel=0xFFFF
+    @Test func pkt109_joinChannelRequest_2() throws {
+        let data = Data(hexString:
+            "080003980020FFFF"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelRequest)
+        #expect(packet.size   == 8)
+        #expect(packet.id     == 0x9803)
+    }
+
+    /// [110] SEND>> [cmd=0x0120] [265 bytes]
+    /// 5 users after room cleanup
+    @Test func pkt110_joinChannelResponse_2() throws {
+        let data = Data(hexString:
+            "090100DE012000000000040500757300"
+        + "00000000000000000000800080008000"
+        + "007669727475616C0013001300016A67"
+        + "00000000000000000000008000800080"
+        + "00007669727475616C000C000C000261"
+        + "646D696E000000000000000080008000"
+        + "8000007669727475616C001400140003"
+        + "636F6C656D616E636461000001000000"
+        + "01000300746573740000000000001400"
+        + "04636F6C656D616E6364610000010000"
+        + "00010003007465737400000000140014"
+        + "00244368616E6E656C204D4F54440D0A"
+        + "52657175657374696E67205356435F43"
+        + "48414E4E454C5F4A4F494E2030206174"
+        + "20323032362D30332D32352032323A34"
+        + "313A32300D0A436C69656E7420566572"
+        + "73696F6E3A20323830"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelResponse)
+        #expect(packet.size   == 265)
+        #expect(packet.id     == 0xDE00)
+    }
+
+    /// [111] RECV>> [cmd=0x0021] [10 bytes]
+    /// filter=waiting identical bytes to first request
+    @Test func pkt111_roomListRequest_2() throws {
+        let data = Data(hexString:
+            "0A00E53F002102000000"
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomListRequest)
+        #expect(packet.size   == 10)
+        #expect(packet.id     == 0x3FE5)
+    }
 }
 
 // MARK: - Extensions
