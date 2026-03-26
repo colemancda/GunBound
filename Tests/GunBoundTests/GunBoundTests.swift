@@ -918,6 +918,511 @@ import Testing
             #expect(packet.parameters == parameters)
         }
     }
+
+    // MARK: - Handshake
+
+    /// RECV>> [cmd=0x1000] [6 bytes]
+    /// 0000  06 00 B1 36 00 10
+    @Test func nonceRequest_fromLog() throws {
+        let data = Data([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .nonceRequest)
+        #expect(packet.size == 6)
+        #expect(packet.id == 0x36B1)
+        #expect(packet.parametersSize == 0)
+        assertDecode(NonceRequest(), packet)
+    }
+
+    /// SEND>> [cmd=0x1001] [10 bytes]
+    /// 0000  0A 00 E5 53 01 10 DB 6A 9A F6
+    ///
+    /// The four parameter bytes DB 6A 9A F6 are the nonce stored big-endian,
+    /// so Nonce.rawValue == 0xDB6A9AF6.
+    @Test func nonceResponse_fromLog() throws {
+        let data = Data([0x0A, 0x00, 0xE5, 0x53, 0x01, 0x10, 0xDB, 0x6A, 0x9A, 0xF6])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .nonceResponse)
+        #expect(packet.size == 10)
+        #expect(packet.id == 0x53E5)
+        #expect(packet.parametersSize == 4)
+        assertEncode(NonceResponse(nonce: 0xDB6A9AF6), packet)
+    }
+
+    // MARK: - Authentication
+
+    /// RECV>> [cmd=0x1010] [86 bytes]
+    /// Full encrypted login packet from the log.
+    /// Server log confirms: Username=colemancda, Password=1234, ClientVersion=280.
+    @Test func authenticationRequest_fromLog() throws {
+        let data = Data(hexString:
+            "5600AF0D1010" +
+            "218ABED7FA38086ECC02" +              // encrypted username block (16 bytes)
+            "A15A4D3010F1E2DA03985C6E99D1496C" +  // unknown block (16 bytes)
+            "BD2DA584FA8CAF1C01BB5032237E9EB4" +  // encrypted payload block 1
+            "70A7257E0C5F47F47346A2D11FF06E0D" +  // encrypted payload block 2
+            "1368B0FCB40574009D44E1871A6FA816" +  // encrypted payload block 3
+            "4D67C0F863BD"                         // encrypted payload remainder
+        )!
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .authenticationRequest)
+        #expect(packet.size == 86)
+        #expect(packet.id == 0x0DAF)
+
+        var decoder = GunBoundDecoder()
+        let request = try decoder.decodePacket(AuthenticationRequest.self, from: data)
+        #expect(request.username == "colemancda")
+
+        // Derive session key: username + password + nonce
+        let key = Key(username: "colemancda", password: "1234", nonce: 0xDB6A9AF6)
+        let decryptedData = try Crypto.AES.decrypt(
+            request.encryptedData,
+            key: key,
+            opcode: AuthenticationRequest.opcode
+        )
+        let decryptedPayload = try decoder.decode(
+            AuthenticationRequest.EncryptedData.self,
+            from: decryptedData
+        )
+        #expect(decryptedPayload.password == "1234")
+        #expect(decryptedPayload.clientVersion == 280)
+    }
+
+    // MARK: - Channel
+
+    /// RECV>> [cmd=0x2000] [8 bytes]
+    /// 0000  08 00 97 2D 00 20 FF FF
+    /// channel=0xFFFF means "route me to the default channel".
+    @Test func joinChannelRequest_defaultChannel() throws {
+        let data = Data([0x08, 0x00, 0x97, 0x2D, 0x00, 0x20, 0xFF, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelRequest)
+        #expect(packet.size == 8)
+        #expect(packet.id == 0x2D97)
+        assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
+    }
+
+    /// Second RECV>> [cmd=0x2000] at the end of the session (room cleanup trigger).
+    /// 0000  08 00 03 98 00 20 FF FF
+    @Test func joinChannelRequest_secondRequest() throws {
+        let data = Data([0x08, 0x00, 0x03, 0x98, 0x00, 0x20, 0xFF, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelRequest)
+        #expect(packet.id == 0x9803)
+        assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
+    }
+
+    // MARK: - Room list
+
+    /// RECV>> [cmd=0x2100] [10 bytes]
+    /// 0000  0A 00 E5 3F 00 21 02 00 00 00
+    /// filter byte = 0x02 = RoomFilter.waiting
+    @Test func roomListRequest_waitingFilter() throws {
+        let data = Data([0x0A, 0x00, 0xE5, 0x3F, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomListRequest)
+        #expect(packet.size == 10)
+        #expect(packet.id == 0x3FE5)
+        assertDecode(RoomListRequest(filter: .waiting), packet)
+    }
+
+    /// Second room list request (same filter, different packet ID).
+    /// 0000  0A 00 E5 3F 00 21 02 00 00 00  (appears again after re-join)
+    @Test func roomListRequest_waitingFilter_secondOccurrence() throws {
+        let data = Data([0x0A, 0x00, 0xE5, 0x3F, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomListRequest)
+        #expect(packet.id == 0x3FE5)
+        assertDecode(RoomListRequest(filter: .waiting), packet)
+    }
+
+    // MARK: - Room creation
+
+    /// RECV>> [cmd=0x2120] [20 bytes]
+    /// 0000  14 00 CB 3C 20 21 04 74 65 73 74 B2 62 00 00 31
+    /// 0010  32 33 34 02
+    ///
+    /// name="test" (4 chars), settings=0x000062B2, password="1234", capacity=2 (1:1)
+    @Test func createRoomRequest_fromLog() throws {
+        let data = Data([
+            0x14, 0x00, 0xCB, 0x3C, 0x20, 0x21,
+            0x04,                                   // name length
+            0x74, 0x65, 0x73, 0x74,                 // "test"
+            0xB2, 0x62, 0x00, 0x00,                 // settings LE = 0x000062B2
+            0x31, 0x32, 0x33, 0x34,                 // "1234"
+            0x02                                    // capacity = 2 (1:1)
+        ])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .createRoomRequest)
+        #expect(packet.size == 20)
+        #expect(packet.id == 0x3CCB)
+        let expected = CreateRoomRequest(
+            name: "test",
+            settings: 0x0000_62B2,
+            password: "1234",
+            capacity: ._1_1
+        )
+        assertDecode(expected, packet)
+    }
+
+    /// SEND>> [cmd=0x2121] [21 bytes]
+    /// 0000  15 00 9B 81 21 21 00 00 00 03 00 24 52 6F 6F 6D
+    /// 0010  20 4D 4F 54 44
+    ///
+    /// room id = 0x0003, message = "$Room MOTD"
+    @Test func createRoomResponse_fromLog() throws {
+        let data = Data([
+            0x15, 0x00, 0x9B, 0x81, 0x21, 0x21,
+            0x00, 0x00, 0x00,                       // 3-byte prefix
+            0x03, 0x00,                             // room id LE = 3
+            0x24, 0x52, 0x6F, 0x6F, 0x6D, 0x20, 0x4D, 0x4F, 0x54, 0x44  // "$Room MOTD"
+        ])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .createRoomResponse)
+        #expect(packet.size == 21)
+        #expect(packet.id == 0x819B)
+        assertEncode(CreateRoomResponse(room: 3, message: "$Room MOTD"), packet)
+    }
+
+    // MARK: - Tank selection (exhaustive cycle from log)
+
+    /// RECV>> [cmd=0x3200] — client cycles through every mobile index.
+    /// Each entry: primary tank index, secondary = 0xFF (random).
+    @Test func roomSelectTank_armorRandom() throws {
+        // 08 00 B3 5C 00 32 00 FF
+        let data = Data([0x08, 0x00, 0xB3, 0x5C, 0x00, 0x32, 0x00, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x5CB3)
+        assertDecode(RoomSelectTankRequest(primary: .armor, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_mageRandom() throws {
+        // 08 00 9B 7C 00 32 01 FF
+        let data = Data([0x08, 0x00, 0x9B, 0x7C, 0x00, 0x32, 0x01, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x7C9B)
+        assertDecode(RoomSelectTankRequest(primary: .mage, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_nakRandom() throws {
+        // 08 00 83 9C 00 32 02 FF
+        let data = Data([0x08, 0x00, 0x83, 0x9C, 0x00, 0x32, 0x02, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x9C83)
+        assertDecode(RoomSelectTankRequest(primary: .nak, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_tricoRandom() throws {
+        // 08 00 6B BC 00 32 03 FF
+        let data = Data([0x08, 0x00, 0x6B, 0xBC, 0x00, 0x32, 0x03, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0xBC6B)
+        assertDecode(RoomSelectTankRequest(primary: .trico, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_bigFootRandom() throws {
+        // 08 00 53 DC 00 32 04 FF
+        let data = Data([0x08, 0x00, 0x53, 0xDC, 0x00, 0x32, 0x04, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0xDC53)
+        assertDecode(RoomSelectTankRequest(primary: .bigFoot, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_boomerRandom() throws {
+        // 08 00 3B FC 00 32 05 FF
+        let data = Data([0x08, 0x00, 0x3B, 0xFC, 0x00, 0x32, 0x05, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0xFC3B)
+        assertDecode(RoomSelectTankRequest(primary: .boomer, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_raonRandom() throws {
+        // 08 00 23 1C 00 32 06 FF
+        let data = Data([0x08, 0x00, 0x23, 0x1C, 0x00, 0x32, 0x06, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x1C23)
+        assertDecode(RoomSelectTankRequest(primary: .raon, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_lightningRandom() throws {
+        // 08 00 0B 3C 00 32 07 FF
+        let data = Data([0x08, 0x00, 0x0B, 0x3C, 0x00, 0x32, 0x07, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x3C0B)
+        assertDecode(RoomSelectTankRequest(primary: .lightning, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_jdRandom() throws {
+        // 08 00 F3 5B 00 32 08 FF
+        let data = Data([0x08, 0x00, 0xF3, 0x5B, 0x00, 0x32, 0x08, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x5BF3)
+        assertDecode(RoomSelectTankRequest(primary: .jd, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_asateRandom() throws {
+        // 08 00 DB 7B 00 32 09 FF
+        let data = Data([0x08, 0x00, 0xDB, 0x7B, 0x00, 0x32, 0x09, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x7BDB)
+        assertDecode(RoomSelectTankRequest(primary: .asate, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_iceRandom() throws {
+        // 08 00 C3 9B 00 32 0A FF
+        let data = Data([0x08, 0x00, 0xC3, 0x9B, 0x00, 0x32, 0x0A, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x9BC3)
+        assertDecode(RoomSelectTankRequest(primary: .ice, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_turtleRandom() throws {
+        // 08 00 AB BB 00 32 0B FF
+        let data = Data([0x08, 0x00, 0xAB, 0xBB, 0x00, 0x32, 0x0B, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0xBBAB)
+        assertDecode(RoomSelectTankRequest(primary: .turtle, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_grubRandom() throws {
+        // 08 00 93 DB 00 32 0C FF
+        let data = Data([0x08, 0x00, 0x93, 0xDB, 0x00, 0x32, 0x0C, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0xDB93)
+        assertDecode(RoomSelectTankRequest(primary: .grub, secondary: .random), packet)
+    }
+
+    @Test func roomSelectTank_adukaRandom() throws {
+        // 08 00 7B FB 00 32 0D FF
+        let data = Data([0x08, 0x00, 0x7B, 0xFB, 0x00, 0x32, 0x0D, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0xFB7B)
+        assertDecode(RoomSelectTankRequest(primary: .aduka, secondary: .random), packet)
+    }
+
+    /// Final tank selection in the cycle: primary=0xFF=random, secondary=0xFF=random
+    @Test func roomSelectTank_randomRandom() throws {
+        // 08 00 63 1B 00 32 FF FF
+        let data = Data([0x08, 0x00, 0x63, 0x1B, 0x00, 0x32, 0xFF, 0xFF])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankRequest)
+        #expect(packet.id == 0x1B63)
+        assertDecode(RoomSelectTankRequest(primary: .random, secondary: .random), packet)
+    }
+
+    // MARK: - Team selection
+
+    /// RECV>> [cmd=0x3210] — change to team B (value 1)
+    /// 0000  07 00 1B 80 10 32 01
+    @Test func roomSelectTeam_teamB() throws {
+        let data = Data([0x07, 0x00, 0x1B, 0x80, 0x10, 0x32, 0x01])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamRequest)
+        #expect(packet.size == 7)
+        #expect(packet.id == 0x801B)
+        assertDecode(RoomSelectTeamRequest(team: .b), packet)
+    }
+
+    /// RECV>> [cmd=0x3210] — change back to team A (value 0)
+    /// 0000  07 00 39 D3 10 32 00
+    @Test func roomSelectTeam_teamA() throws {
+        let data = Data([0x07, 0x00, 0x39, 0xD3, 0x10, 0x32, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamRequest)
+        #expect(packet.id == 0xD339)
+        assertDecode(RoomSelectTeamRequest(team: .a), packet)
+    }
+
+    // MARK: - Map / stage cycling
+
+    /// RECV>> [cmd=0x3100] — map set to 1 (Miramo Town)
+    /// 0000  07 00 23 19 00 31 01
+    @Test func roomChangeStage_miramoTown() throws {
+        let data = Data([0x07, 0x00, 0x23, 0x19, 0x00, 0x31, 0x01])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.id == 0x1923)
+        assertDecode(RoomChangeStageCommand(map: .miramoTown), packet)
+        assertEncode(RoomChangeStageCommand(map: .miramoTown), packet)
+    }
+
+    /// RECV>> [cmd=0x3100] — map set to 2 (Nirvana)
+    @Test func roomChangeStage_nirvana() throws {
+        let data = Data([0x07, 0x00, 0x0E, 0xF5, 0x00, 0x31, 0x02])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.id == 0xF50E)
+        assertDecode(RoomChangeStageCommand(map: .nirvana), packet)
+    }
+
+    /// RECV>> [cmd=0x3100] — map set to 5 (Adiumroot)
+    @Test func roomChangeStage_adiumroot() throws {
+        let data = Data([0x07, 0x00, 0xCF, 0x88, 0x00, 0x31, 0x05])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.id == 0x88CF)
+        assertDecode(RoomChangeStageCommand(map: .adiumroot), packet)
+    }
+
+    /// RECV>> [cmd=0x3100] — map set to 10 (Meta Mine)
+    @Test func roomChangeStage_metaMine() throws {
+        let data = Data([0x07, 0x00, 0x66, 0xD4, 0x00, 0x31, 0x0A])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.id == 0xD466)
+        assertDecode(RoomChangeStageCommand(map: .metaMine), packet)
+    }
+
+    /// RECV>> [cmd=0x3100] — map reset to 0 (random)
+    /// 0000  07 00 51 B0 00 31 00
+    @Test func roomChangeStage_random() throws {
+        let data = Data([0x07, 0x00, 0x51, 0xB0, 0x00, 0x31, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeStageCommand)
+        #expect(packet.id == 0xB051)
+        assertDecode(RoomChangeStageCommand(map: .random), packet)
+        assertEncode(RoomChangeStageCommand(map: .random), packet)
+    }
+
+    // MARK: - Capacity cycling
+
+    /// RECV>> [cmd=0x3103] — capacity changed to 4 (2:2)
+    /// 0000  07 00 AC 4E 03 31 04
+    @Test func roomChangeCapacity_2v2() throws {
+        let data = Data([0x07, 0x00, 0xAC, 0x4E, 0x03, 0x31, 0x04])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.size == 7)
+        #expect(packet.id == 0x4EAC)
+        assertEncode(RoomChangeCapacityCommand(capacity: ._2_2), packet)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._2_2), packet)
+    }
+
+    /// RECV>> [cmd=0x3103] — capacity changed to 6 (3:3)
+    /// 0000  07 00 97 2A 03 31 06
+    @Test func roomChangeCapacity_3v3() throws {
+        let data = Data([0x07, 0x00, 0x97, 0x2A, 0x03, 0x31, 0x06])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.id == 0x2A97)
+        assertEncode(RoomChangeCapacityCommand(capacity: ._3_3), packet)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._3_3), packet)
+    }
+
+    /// RECV>> [cmd=0x3103] — capacity changed to 8 (4:4)
+    /// 0000  07 00 82 06 03 31 08
+    @Test func roomChangeCapacity_4v4() throws {
+        let data = Data([0x07, 0x00, 0x82, 0x06, 0x03, 0x31, 0x08])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.id == 0x0682)
+        assertEncode(RoomChangeCapacityCommand(capacity: ._4_4), packet)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._4_4), packet)
+    }
+
+    /// RECV>> [cmd=0x3103] — capacity reset to 2 (1:1, original)
+    /// 0000  07 00 1B 78 03 31 02
+    @Test func roomChangeCapacity_1v1() throws {
+        let data = Data([0x07, 0x00, 0x1B, 0x78, 0x03, 0x31, 0x02])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeCapacityCommand)
+        #expect(packet.id == 0x781B)
+        assertEncode(RoomChangeCapacityCommand(capacity: ._1_1), packet)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._1_1), packet)
+    }
+
+    // MARK: - Room options
+
+    /// RECV>> [cmd=0x3101] — first option change in the session
+    /// 0000  0A 00 1B 7B 01 31 B2 62 44 00
+    /// settings LE = 0x00_44_62_B2
+    @Test func roomChangeOption_firstInSession() throws {
+        let data = Data([0x0A, 0x00, 0x1B, 0x7B, 0x01, 0x31, 0xB2, 0x62, 0x44, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.size == 10)
+        #expect(packet.id == 0x7B1B)
+        assertEncode(RoomChangeOptionCommand(settings: 0x0044_62B2), packet)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0044_62B2), packet)
+    }
+
+    /// RECV>> [cmd=0x3101]
+    /// 0000  0A 00 FD 22 01 31 B2 62 08 00
+    /// settings LE = 0x00_08_62_B2
+    @Test func roomChangeOption_soloMode() throws {
+        let data = Data([0x0A, 0x00, 0xFD, 0x22, 0x01, 0x31, 0xB2, 0x62, 0x08, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.id == 0x22FD)
+        assertEncode(RoomChangeOptionCommand(settings: 0x0008_62B2), packet)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0008_62B2), packet)
+    }
+
+    /// RECV>> [cmd=0x3101]
+    /// 0000  0A 00 28 FE 01 31 B2 63 00 00
+    /// settings LE = 0x00_00_63_B2
+    @Test func roomChangeOption_changedByte() throws {
+        let data = Data([0x0A, 0x00, 0x28, 0xFE, 0x01, 0x31, 0xB2, 0x63, 0x00, 0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomChangeOptionCommand)
+        #expect(packet.id == 0xFE28)
+        assertEncode(RoomChangeOptionCommand(settings: 0x0000_63B2), packet)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_63B2), packet)
+    }
+
+    // MARK: - Room title
+
+    /// RECV>> [cmd=0x3104] [11 bytes]
+    /// 0000  0B 00 30 9C 04 31 74 65 73 74 32
+    /// title = "test2" (5 ASCII bytes, no null terminator in payload)
+    @Test func roomSetTitle_test2() throws {
+        let data = Data([0x0B, 0x00, 0x30, 0x9C, 0x04, 0x31, 0x74, 0x65, 0x73, 0x74, 0x32])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSetTitleCommand)
+        #expect(packet.size == 11)
+        #expect(packet.id == 0x9C30)
+        assertDecode(RoomSetTitleCommand(title: "test2"), packet)
+    }
+
+    // MARK: - Key derivation
+
+    /// Verify the session key derived from the log's credentials and nonce.
+    /// username="colemancda", password="1234", nonce=0xDB6A9AF6
+    /// Any packet that passes crypto round-trips with this key is implicitly
+    /// confirmed by the login test above; this test makes the key contract explicit.
+    @Test func sessionKeyDerivation() {
+        let key = Key(username: "colemancda", password: "1234", nonce: 0xDB6A9AF6)
+        // Key is 16 bytes (AES-128)
+        #expect(key.data.count == 16)
+        // Key must be stable (deterministic SHA-0 + mixing)
+        let key2 = Key(username: "colemancda", password: "1234", nonce: 0xDB6A9AF6)
+        #expect(key.data == key2.data)
+        // A different nonce must yield a different key
+        let keyOther = Key(username: "colemancda", password: "1234", nonce: 0x0001_0203)
+        #expect(key.data != keyOther.data)
+    }
+
+    // MARK: - Packet ID counter
+
+    /// The server sets packet.id = PacketID(serverPacketLength: sentBytes).
+    /// The nonce response (10 bytes) is the very first server packet, so sentBytes=10.
+    @Test func packetID_nonceResponse_sentBytes() {
+        let id = Packet.ID(serverPacketLength: 10)
+        #expect(id.rawValue == 0x53E5)
+    }
 }
 
 // MARK: - Extensions
