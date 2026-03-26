@@ -1957,6 +1957,8 @@ import Testing
         #expect(packet.opcode == .nonceRequest)
         #expect(packet.size   == 6)
         #expect(packet.id     == 0x36B1)
+        let value = NonceRequest()
+        assertDecode(value, packet)
     }
 
     /// [001] SEND>> [cmd=0x0110] [10 bytes]
@@ -1969,6 +1971,8 @@ import Testing
         #expect(packet.opcode == .nonceResponse)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x53E5)
+        let response = NonceResponse(nonce: 0xDB6A9AF6)
+        assertEncode(response, packet)
     }
 
     /// [002] RECV>> [cmd=0x1010] [86 bytes]
@@ -1986,6 +1990,25 @@ import Testing
         #expect(packet.opcode == .authenticationRequest)
         #expect(packet.size   == 86)
         #expect(packet.id     == 0x0DAF)
+        
+        // Decode and verify the encrypted authentication request
+        let decoder = GunBoundDecoder()
+        let request = try decoder.decodePacket(AuthenticationRequest.self, from: data)
+        #expect(request.username == "colemancda")
+        
+        // Derive session key: username + password + nonce
+        let key = Key(username: "colemancda", password: "1234", nonce: 0xDB6A9AF6)
+        let decryptedData = try Crypto.AES.decrypt(
+            request.encryptedData,
+            key: key,
+            opcode: AuthenticationRequest.opcode
+        )
+        let decryptedPayload = try decoder.decode(
+            AuthenticationRequest.EncryptedData.self,
+            from: decryptedData
+        )
+        #expect(decryptedPayload.password == "1234")
+        #expect(decryptedPayload.clientVersion == 280)
     }
 
     /// [003] SEND>> [cmd=0x1210] [419 bytes]
