@@ -2072,6 +2072,7 @@ import Testing
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x2D97)
+        assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
     }
 
     /// [006] SEND>> [cmd=0x0120] [265 bytes]
@@ -2112,6 +2113,7 @@ import Testing
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x3FE5)
+        assertDecode(RoomListRequest(filter: .waiting), packet)
     }
 
     /// [008] SEND>> [cmd=0x0321] [79 bytes]
@@ -2171,6 +2173,7 @@ import Testing
         #expect(packet.opcode == .createRoomRequest)
         #expect(packet.size   == 20)
         #expect(packet.id     == 0x3CCB)
+        assertDecode(CreateRoomRequest(name: "test", settings: 0x000062B2, password: "1234", capacity: 2), packet)
     }
 
     /// [012] SEND>> [cmd=0x2121] [21 bytes]
@@ -2184,6 +2187,7 @@ import Testing
         #expect(packet.opcode == .createRoomResponse)
         #expect(packet.size   == 21)
         #expect(packet.id     == 0x819B)
+        assertEncode(CreateRoomResponse(room: 3, message: "$Room MOTD"), packet)
     }
 
     /// [013] RECV>> [cmd=0x0032] [8 bytes]
@@ -2196,6 +2200,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x5CB3)
+        assertDecode(RoomSelectTankRequest(primary: .armor, secondary: .random), packet)
     }
 
     /// [014] SEND>> [cmd=0x0132] [8 bytes]
@@ -2208,6 +2213,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x83A1)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [015] RECV>> [cmd=0x0032] [8 bytes]
@@ -2220,6 +2226,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x7C9B)
+        assertDecode(RoomSelectTankRequest(primary: .mage, secondary: .random), packet)
     }
 
     /// [016] SEND>> [cmd=0x0132] [8 bytes]
@@ -2232,6 +2239,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xC16B)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [017] RECV>> [cmd=0x0032] [8 bytes]
@@ -2244,6 +2252,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x9C83)
+        assertDecode(RoomSelectTankRequest(primary: .nak, secondary: .random), packet)
     }
 
     /// [018] SEND>> [cmd=0x0132] [8 bytes]
@@ -2256,6 +2265,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xE153)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [019] RECV>> [cmd=0x0032] [8 bytes]
@@ -2268,6 +2278,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xBC6B)
+        assertDecode(RoomSelectTankRequest(primary: .trico, secondary: .random), packet)
     }
 
     /// [020] SEND>> [cmd=0x0132] [8 bytes]
@@ -2280,6 +2291,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x013B)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [021] RECV>> [cmd=0x0032] [8 bytes]
@@ -2292,6 +2304,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xDC53)
+        assertDecode(RoomSelectTankRequest(primary: .bigFoot, secondary: .random), packet)
     }
 
     /// [022] SEND>> [cmd=0x0132] [8 bytes]
@@ -2304,6 +2317,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x2123)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [023] RECV>> [cmd=0x0032] [8 bytes]
@@ -2316,6 +2330,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xFC3B)
+        assertDecode(RoomSelectTankRequest(primary: .boomer, secondary: .random), packet)
     }
 
     /// [024] SEND>> [cmd=0x0132] [8 bytes]
@@ -2328,6 +2343,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x410B)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [025] RECV>> [cmd=0x0032] [8 bytes]
@@ -2340,6 +2356,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x1C23)
+        assertDecode(RoomSelectTankRequest(primary: .raon, secondary: .random), packet)
     }
 
     /// [026] SEND>> [cmd=0x0132] [8 bytes]
@@ -2352,6 +2369,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x60F3)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [027] RECV>> [cmd=0x0032] [8 bytes]
@@ -2364,6 +2382,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x3C0B)
+        assertDecode(RoomSelectTankRequest(primary: .lightning, secondary: .random), packet)
     }
 
     /// [028] SEND>> [cmd=0x0132] [8 bytes]
@@ -2376,6 +2395,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x80DB)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [029] RECV>> [cmd=0x0032] [8 bytes]
@@ -2388,6 +2408,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x5BF3)
+        assertDecode(RoomSelectTankRequest(primary: .jd, secondary: .random), packet)
     }
 
     /// [030] SEND>> [cmd=0x0132] [8 bytes]
@@ -2400,6 +2421,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xA0C3)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [031] RECV>> [cmd=0x0032] [8 bytes]
@@ -2412,6 +2434,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x7BDB)
+        assertDecode(RoomSelectTankRequest(primary: .asate, secondary: .random), packet)
     }
 
     /// [032] SEND>> [cmd=0x0132] [8 bytes]
@@ -2424,6 +2447,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xC0AB)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [033] RECV>> [cmd=0x0032] [8 bytes]
@@ -2436,6 +2460,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x9BC3)
+        assertDecode(RoomSelectTankRequest(primary: .ice, secondary: .random), packet)
     }
 
     /// [034] SEND>> [cmd=0x0132] [8 bytes]
@@ -2448,6 +2473,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xE093)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [035] RECV>> [cmd=0x0032] [8 bytes]
@@ -2460,6 +2486,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xBBAB)
+        assertDecode(RoomSelectTankRequest(primary: .turtle, secondary: .random), packet)
     }
 
     /// [036] SEND>> [cmd=0x0132] [8 bytes]
@@ -2472,6 +2499,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x007B)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [037] RECV>> [cmd=0x0032] [8 bytes]
@@ -2484,6 +2512,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xDB93)
+        assertDecode(RoomSelectTankRequest(primary: .grub, secondary: .random), packet)
     }
 
     /// [038] SEND>> [cmd=0x0132] [8 bytes]
@@ -2496,6 +2525,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x2063)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [039] RECV>> [cmd=0x0032] [8 bytes]
@@ -2508,6 +2538,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xFB7B)
+        assertDecode(RoomSelectTankRequest(primary: .aduka, secondary: .random), packet)
     }
 
     /// [040] SEND>> [cmd=0x0132] [8 bytes]
@@ -2520,6 +2551,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x404B)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [041] RECV>> [cmd=0x0032] [8 bytes]
@@ -2532,6 +2564,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x1B63)
+        assertDecode(RoomSelectTankRequest(primary: .random, secondary: .random), packet)
     }
 
     /// [042] SEND>> [cmd=0x0132] [8 bytes]
@@ -2544,6 +2577,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x6033)
+        assertEncode(RoomSelectTankResponse(), packet)
     }
 
     /// [043] RECV>> [cmd=0x1032] [7 bytes]
@@ -2556,6 +2590,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTeamRequest)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xF74E)
+        assertDecode(RoomSelectTeamRequest(team: .b), packet)
     }
 
     /// [044] SEND>> [cmd=0x1132] [8 bytes]
@@ -2568,6 +2603,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTeamResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x801B)
+        assertEncode(RoomSelectTeamResponse(), packet)
     }
 
     /// [045] RECV>> [cmd=0x1032] [7 bytes]
@@ -2580,6 +2616,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTeamRequest)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xD339)
+        assertDecode(RoomSelectTeamRequest(team: .a), packet)
     }
 
     /// [046] SEND>> [cmd=0x1132] [8 bytes]
@@ -2592,6 +2629,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTeamResponse)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xA003)
+        assertEncode(RoomSelectTeamResponse(), packet)
     }
 
     /// [047] RECV>> [cmd=0x0131] [10 bytes]
@@ -2604,6 +2642,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x7B1B)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0044_62B2), packet)
     }
 
     /// [048] SEND>> [cmd=0x0531] [8 bytes]
@@ -2616,6 +2655,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xBFEB)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [049] RECV>> [cmd=0x0131] [10 bytes]
@@ -2628,6 +2668,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x22FD)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0008_62B2), packet)
     }
 
     /// [050] SEND>> [cmd=0x0531] [8 bytes]
@@ -2640,6 +2681,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xDFD3)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [051] RECV>> [cmd=0x0131] [10 bytes]
@@ -2652,6 +2694,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0xCADF)
+        assertDecode(RoomChangeOptionCommand(settings: 0x000C_62B2), packet)
     }
 
     /// [052] SEND>> [cmd=0x0531] [8 bytes]
@@ -2664,6 +2707,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xFFBB)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [053] RECV>> [cmd=0x0131] [10 bytes]
@@ -2676,6 +2720,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x72C1)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_62B2), packet)
     }
 
     /// [054] SEND>> [cmd=0x0531] [8 bytes]
@@ -2688,6 +2733,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x1FA3)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [055] RECV>> [cmd=0x0331] [7 bytes]
@@ -2700,6 +2746,7 @@ import Testing
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x4EAC)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._2_2), packet)
     }
 
     /// [056] SEND>> [cmd=0x0531] [8 bytes]
@@ -2712,6 +2759,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x3F8B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [057] RECV>> [cmd=0x0331] [7 bytes]
@@ -2724,6 +2772,7 @@ import Testing
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x2A97)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._3_3), packet)
     }
 
     /// [058] SEND>> [cmd=0x0531] [8 bytes]
@@ -2736,6 +2785,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x5F73)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [059] RECV>> [cmd=0x0331] [7 bytes]
@@ -2748,6 +2798,7 @@ import Testing
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x0682)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._4_4), packet)
     }
 
     /// [060] SEND>> [cmd=0x0531] [8 bytes]
@@ -2760,6 +2811,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x7F5B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [061] RECV>> [cmd=0x0131] [10 bytes]
@@ -2772,6 +2824,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0xAE64)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0001_62B2), packet)
     }
 
     /// [062] SEND>> [cmd=0x0531] [8 bytes]
@@ -2784,6 +2837,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x9F43)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [063] RECV>> [cmd=0x0131] [10 bytes]
@@ -2796,6 +2850,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x5646)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_62B2), packet)
     }
 
     /// [064] SEND>> [cmd=0x0531] [8 bytes]
@@ -2808,6 +2863,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xBF2B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [065] RECV>> [cmd=0x0131] [10 bytes]
@@ -2820,6 +2876,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0xFE28)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_63B2), packet)
     }
 
     /// [066] SEND>> [cmd=0x0531] [8 bytes]
@@ -2832,6 +2889,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xDF13)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [067] RECV>> [cmd=0x0131] [10 bytes]
@@ -2844,6 +2902,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0xA60A)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_60B2), packet)
     }
 
     /// [068] SEND>> [cmd=0x0531] [8 bytes]
@@ -2856,6 +2915,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xFEFB)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [069] RECV>> [cmd=0x0131] [10 bytes]
@@ -2868,6 +2928,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x4DEC)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_61B2), packet)
     }
 
     /// [070] SEND>> [cmd=0x0531] [8 bytes]
@@ -2880,6 +2941,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x1EE3)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [071] RECV>> [cmd=0x0131] [10 bytes]
@@ -2892,6 +2954,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0xF5CE)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_62B2), packet)
     }
 
     /// [072] SEND>> [cmd=0x0531] [8 bytes]
@@ -2904,6 +2967,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x3ECB)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [073] RECV>> [cmd=0x0131] [10 bytes]
@@ -2916,6 +2980,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x9DB0)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_A2B2), packet)
     }
 
     /// [074] SEND>> [cmd=0x0531] [8 bytes]
@@ -2928,6 +2993,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x5EB3)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [075] RECV>> [cmd=0x0131] [10 bytes]
@@ -2940,6 +3006,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x4592)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_62B2), packet)
     }
 
     /// [076] SEND>> [cmd=0x0531] [8 bytes]
@@ -2952,6 +3019,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x7E9B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [077] RECV>> [cmd=0x0131] [10 bytes]
@@ -2964,6 +3032,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0xED74)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_72B2), packet)
     }
 
     /// [078] SEND>> [cmd=0x0531] [8 bytes]
@@ -2976,6 +3045,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x9E83)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [079] RECV>> [cmd=0x0131] [10 bytes]
@@ -2988,6 +3058,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x9556)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_52B2), packet)
     }
 
     /// [080] SEND>> [cmd=0x0531] [8 bytes]
@@ -3000,6 +3071,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xBE6B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [081] RECV>> [cmd=0x0131] [10 bytes]
@@ -3012,6 +3084,7 @@ import Testing
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x3D38)
+        assertDecode(RoomChangeOptionCommand(settings: 0x0000_62B2), packet)
     }
 
     /// [082] SEND>> [cmd=0x0531] [8 bytes]
@@ -3024,6 +3097,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xDE53)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [083] RECV>> [cmd=0x0031] [7 bytes]
@@ -3036,6 +3110,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x1923)
+        assertDecode(RoomChangeStageCommand(map: .miramoTown), packet)
     }
 
     /// [084] SEND>> [cmd=0x0531] [8 bytes]
@@ -3048,6 +3123,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xFE3B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [085] RECV>> [cmd=0x0031] [7 bytes]
@@ -3060,6 +3136,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xF50E)
+        assertDecode(RoomChangeStageCommand(map: .nirvana), packet)
     }
 
     /// [086] SEND>> [cmd=0x0531] [8 bytes]
@@ -3072,6 +3149,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x1E23)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [087] RECV>> [cmd=0x0031] [7 bytes]
@@ -3084,6 +3162,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xD0F9)
+        assertDecode(RoomChangeStageCommand(map: .metropolis), packet)
     }
 
     /// [088] SEND>> [cmd=0x0531] [8 bytes]
@@ -3096,6 +3175,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x3E0B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [089] RECV>> [cmd=0x0031] [7 bytes]
@@ -3108,6 +3188,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xACE4)
+        assertDecode(RoomChangeStageCommand(map: .seaHero), packet)
     }
 
     /// [090] SEND>> [cmd=0x0531] [8 bytes]
@@ -3120,6 +3201,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x5DF3)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [091] RECV>> [cmd=0x0031] [7 bytes]
@@ -3132,6 +3214,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x88CF)
+        assertDecode(RoomChangeStageCommand(map: .adiumroot), packet)
     }
 
     /// [092] SEND>> [cmd=0x0531] [8 bytes]
@@ -3144,6 +3227,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x7DDB)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [093] RECV>> [cmd=0x0031] [7 bytes]
@@ -3156,6 +3240,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x64BA)
+        assertDecode(RoomChangeStageCommand(map: .dragon), packet)
     }
 
     /// [094] SEND>> [cmd=0x0531] [8 bytes]
@@ -3168,6 +3253,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x9DC3)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [095] RECV>> [cmd=0x0031] [7 bytes]
@@ -3180,6 +3266,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x40A5)
+        assertDecode(RoomChangeStageCommand(map: .cozytower), packet)
     }
 
     /// [096] SEND>> [cmd=0x0531] [8 bytes]
@@ -3192,6 +3279,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xBDAB)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [097] RECV>> [cmd=0x0031] [7 bytes]
@@ -3204,6 +3292,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x1C90)
+        assertDecode(RoomChangeStageCommand(map: .dummySlope), packet)
     }
 
     /// [098] SEND>> [cmd=0x0531] [8 bytes]
@@ -3216,6 +3305,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xDD93)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [099] RECV>> [cmd=0x0031] [7 bytes]
@@ -3228,6 +3318,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xF87B)
+        assertDecode(RoomChangeStageCommand(map: .stardust), packet)
     }
 
     /// [100] SEND>> [cmd=0x0531] [8 bytes]
@@ -3240,6 +3331,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0xFD7B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [101] RECV>> [cmd=0x0031] [7 bytes]
@@ -3252,6 +3344,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xD466)
+        assertDecode(RoomChangeStageCommand(map: .metaMine), packet)
     }
 
     /// [102] SEND>> [cmd=0x0531] [8 bytes]
@@ -3264,6 +3357,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x1D63)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [103] RECV>> [cmd=0x0031] [7 bytes]
@@ -3276,6 +3370,7 @@ import Testing
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0xB051)
+        assertDecode(RoomChangeStageCommand(map: .random), packet)
     }
 
     /// [104] SEND>> [cmd=0x0531] [8 bytes]
@@ -3288,6 +3383,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x3D4B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [105] RECV>> [cmd=0x0431] [11 bytes]
@@ -3312,6 +3408,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x5D33)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [107] RECV>> [cmd=0x0331] [7 bytes]
@@ -3324,6 +3421,7 @@ import Testing
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.size   == 7)
         #expect(packet.id     == 0x781B)
+        assertDecode(RoomChangeCapacityCommand(capacity: ._1_1), packet)
     }
 
     /// [108] SEND>> [cmd=0x0531] [8 bytes]
@@ -3336,6 +3434,7 @@ import Testing
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x7D1B)
+        assertEncode(RoomUpdateNotification(), packet)
     }
 
     /// [109] RECV>> [cmd=0x0020] [8 bytes]
@@ -3348,6 +3447,7 @@ import Testing
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.size   == 8)
         #expect(packet.id     == 0x9803)
+        assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
     }
 
     /// [110] SEND>> [cmd=0x0120] [265 bytes]
@@ -3388,6 +3488,7 @@ import Testing
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x3FE5)
+        assertDecode(RoomListRequest(filter: .waiting), packet)
     }
 }
 
