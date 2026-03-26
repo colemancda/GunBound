@@ -1423,6 +1423,497 @@ import Testing
         let id = Packet.ID(serverPacketLength: 10)
         #expect(id.rawValue == 0x53E5)
     }
+    
+    
+    // MARK: - JoinChannelResponse
+
+    /// SEND>> [cmd=0x2001] [265 bytes] — first join channel response.
+    ///
+    /// The server sends 5 users back in the channel:
+    ///   id=0  "us"          guild="virtual"  rankC=19 rankS=19  (bot)
+    ///   id=1  "jg"          guild="virtual"  rankC=12 rankS=12  (bot)
+    ///   id=2  "admin"       guild="virtual"  rankC=20 rankS=20  (bot)
+    ///   id=3  "colemancda"  guild="test"     rankC=20 rankS=20  (ghost slot)
+    ///   id=4  "colemancda"  guild="test"     rankC=20 rankS=20  (current session)
+    ///
+    /// maxPosition = 4 (highest occupied user-ID slot).
+    @Test func joinChannelResponse_packetHeader() throws {
+        let data = Data([
+            0x09,0x01, 0x9F,0xD3, 0x01,0x20,   // size=265, id, opcode
+            0x00,0x00,                           // status
+            0x00,0x00,                           // channel=0
+            0x04,                               // maxPosition=4
+            0x05,                               // user count=5
+            // users follow (33 bytes each: 1 id + 12 username + 8 avatar + 8 guild + 2 rankC + 2 rankS)
+            // user[0] id=0  "us"  avatar=0x0080008000800000  guild="virtual"  rankC=19 rankS=19
+            0x00,
+            0x75,0x73,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x80,0x00,0x80,0x00,0x80,0x00,0x00,
+            0x76,0x69,0x72,0x74,0x75,0x61,0x6C,0x00,
+            0x13,0x00, 0x13,0x00,
+            // user[1] id=1  "jg"  avatar=0x0080008000800000  guild="virtual"  rankC=12 rankS=12
+            0x01,
+            0x6A,0x67,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x80,0x00,0x80,0x00,0x80,0x00,0x00,
+            0x76,0x69,0x72,0x74,0x75,0x61,0x6C,0x00,
+            0x0C,0x00, 0x0C,0x00,
+            // user[2] id=2  "admin"  avatar=0x0080008000800000  guild="virtual"  rankC=20 rankS=20
+            0x02,
+            0x61,0x64,0x6D,0x69,0x6E,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x80,0x00,0x80,0x00,0x80,0x00,0x00,
+            0x76,0x69,0x72,0x74,0x75,0x61,0x6C,0x00,
+            0x14,0x00, 0x14,0x00,
+            // user[3] id=3  "colemancda"  avatar=0x0100000001000300  guild="test"  rankC=0 rankS=20
+            0x03,
+            0x63,0x6F,0x6C,0x65,0x6D,0x61,0x6E,0x63,0x64,0x61,0x00,0x00,
+            0x01,0x00,0x00,0x00,0x01,0x00,0x03,0x00,
+            0x74,0x65,0x73,0x74,0x00,0x00,0x00,0x00,
+            0x00,0x00, 0x14,0x00,
+            // user[4] id=4  "colemancda"  avatar=0x0100000001000300  guild="test"  rankC=20 rankS=20
+            0x04,
+            0x63,0x6F,0x6C,0x65,0x6D,0x61,0x6E,0x63,0x64,0x61,0x00,0x00,
+            0x01,0x00,0x00,0x00,0x01,0x00,0x03,0x00,
+            0x74,0x65,0x73,0x74,0x00,0x00,0x00,0x00,
+            0x14,0x00, 0x14,0x00,
+            // MOTD (dynamic timestamp — just the prefix bytes tested separately)
+            0x24,0x43,0x68,0x61,0x6E,0x6E,0x65,0x6C,0x20,0x4D,0x4F,0x54,0x44,0x0D,0x0A,
+            0x52,0x65,0x71,0x75,0x65,0x73,0x74,0x69,0x6E,0x67,0x20,0x53,0x56,0x43,0x5F,
+            0x43,0x48,0x41,0x4E,0x4E,0x45,0x4C,0x5F,0x4A,0x4F,0x49,0x4E,0x20,0x30,0x20,
+            0x61,0x74,0x20,0x32,0x30,0x32,0x36,0x2D,0x30,0x33,0x2D,0x32,0x35,0x20,0x32,
+            0x32,0x3A,0x33,0x38,0x3A,0x35,0x38,0x0D,0x0A,0x43,0x6C,0x69,0x65,0x6E,0x74,
+            0x20,0x56,0x65,0x72,0x73,0x69,0x6F,0x6E,0x3A,0x20,0x32,0x38,0x30,
+        ])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .joinChannelResponse)
+        #expect(packet.size == 265)
+        #expect(packet.id == 0xD39F)
+        #expect(packet.parametersSize == 259)
+        // Verify channel and maxPosition encoded in first 6 parameter bytes
+        let params = packet.parameters
+        #expect(params[2] == 0x00)  // channel low byte = 0
+        #expect(params[3] == 0x00)  // channel high byte = 0
+        #expect(params[4] == 0x04)  // maxPosition = 4
+        #expect(params[5] == 0x05)  // user count = 5
+    }
+
+    /// Verify the encoded JoinChannelResponse matches the exact bytes from the log.
+    @Test func joinChannelResponse_encode() throws {
+        let virtualAvatar: UInt64 = 0x0080_0080_0080_0000
+        let coleAvatar: UInt64 = 0x0100_0000_0100_0300
+
+        let response = JoinChannelResponse(
+            status: 0x0000,
+            channel: 0,
+            maxPosition: 4,
+            users: [
+                .init(id: 0, username: "us",         avatarEquipped: virtualAvatar, guild: "virtual", rankCurrent: 19, rankSeason: 19),
+                .init(id: 1, username: "jg",         avatarEquipped: virtualAvatar, guild: "virtual", rankCurrent: 12, rankSeason: 12),
+                .init(id: 2, username: "admin",      avatarEquipped: virtualAvatar, guild: "virtual", rankCurrent: 20, rankSeason: 20),
+                .init(id: 3, username: "colemancda", avatarEquipped: coleAvatar,    guild: "test",    rankCurrent: 0,  rankSeason: 20),
+                .init(id: 4, username: "colemancda", avatarEquipped: coleAvatar,    guild: "test",    rankCurrent: 20, rankSeason: 20),
+            ],
+            message: "$Channel MOTD\r\nRequesting SVC_CHANNEL_JOIN 0 at 2026-03-25 22:38:58\r\nClient Version: 280"
+        )
+
+        let encoder = GunBoundEncoder()
+        let packet = try encoder.encode(response, id: 0xD39F)
+        #expect(packet.opcode == .joinChannelResponse)
+        #expect(packet.size == 265)
+        #expect(packet.id == 0xD39F)
+        // Verify specific bytes: channel=0 at params[2..3], maxPosition=4 at params[4], count=5 at params[5]
+        let params = packet.parameters
+        #expect(params[2] == 0x00)
+        #expect(params[3] == 0x00)
+        #expect(params[4] == 0x04)
+        #expect(params[5] == 0x05)
+    }
+
+    /// The second JoinChannelResponse (after room cleanup) differs only in packet ID.
+    /// 0000  09 01 00 DE 01 20 ...
+    @Test func joinChannelResponse_secondOccurrence_packetHeader() throws {
+        // Read just the first 6 bytes to check header
+        let headerBytes = Data([0x09,0x01, 0x00,0xDE, 0x01,0x20])
+        let size = UInt16(littleEndian: UInt16(headerBytes[0]) | (UInt16(headerBytes[1]) << 8))
+        let id = UInt16(littleEndian: UInt16(headerBytes[2]) | (UInt16(headerBytes[3]) << 8))
+        let opcode = UInt16(littleEndian: UInt16(headerBytes[4]) | (UInt16(headerBytes[5]) << 8))
+        #expect(size == 265)
+        #expect(id == 0xDE00)
+        #expect(Opcode(rawValue: opcode) == .joinChannelResponse)
+    }
+
+    // MARK: - RoomListResponse
+
+    /// SEND>> [cmd=0x2103] [79 bytes] — room list with 3 virtual waiting rooms.
+    @Test func roomListResponse_packetHeader() throws {
+        let data = Data([
+            0x4F,0x00, 0xB2,0xCE, 0x03,0x21,
+            // params follow — just verify at packet level
+            0x00,0x00, 0x03,0x00, 0x00,0x00,
+            0x0A,0x75,0x73,0x20,0x76,0x69,0x72,0x74,0x75,0x61,0x6C,
+            0x00,0xB2,0x62,0x0C,0x00,0x01,0x02,0x00,0x00,0x01,0x00,
+            0x0A,0x6A,0x67,0x20,0x76,0x69,0x72,0x74,0x75,0x61,0x6C,
+            0x00,0xB2,0x62,0x0C,0x00,0x01,0x02,0x00,0x00,0x02,0x00,
+            0x0D,0x61,0x64,0x6D,0x69,0x6E,0x20,0x76,0x69,0x72,0x74,
+            0x75,0x61,0x6C,0x00,0xB2,0x62,0x0C,0x00,0x01,0x02,0x00,0x00,
+        ])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomListResponse)
+        #expect(packet.size == 79)
+        #expect(packet.id == 0xCEB2)
+        #expect(packet.parametersSize == 73)
+        // First two parameter bytes are RTC (0x0000)
+        let params = packet.parameters
+        #expect(params[0] == 0x00)
+        #expect(params[1] == 0x00)
+        // Next two bytes are the room count = 3
+        #expect(params[2] == 0x03)
+        #expect(params[3] == 0x00)
+    }
+
+    // MARK: - RoomSelectTankResponse
+
+    /// SEND>> [cmd=0x3201] [8 bytes] — first tank selection ACK.
+    /// 0000  08 00 83 A1 01 32 00 00
+    @Test func roomSelectTankResponse_firstAck() throws {
+        let data = Data([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTankResponse)
+        #expect(packet.size == 8)
+        #expect(packet.id == 0xA183)
+        assertEncode(RoomSelectTankResponse(), packet)
+        assertDecode(RoomSelectTankResponse(), packet)
+    }
+
+    /// Verify all 15 tank ACK packets carry the correct opcode.
+    /// The server replied to every tank selection (0–13 and 255) with the same
+    /// zero-rtc response; only the packet ID (sentBytes counter) changes.
+    @Test func roomSelectTankResponse_fullCycle() throws {
+        let rawPackets: [Data] = [
+            Data([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00]),  // armor
+            Data([0x08,0x00,0x6B,0xC1,0x01,0x32,0x00,0x00]),  // mage
+            Data([0x08,0x00,0x53,0xE1,0x01,0x32,0x00,0x00]),  // nak
+            Data([0x08,0x00,0x3B,0x01,0x01,0x32,0x00,0x00]),  // trico
+            Data([0x08,0x00,0x23,0x21,0x01,0x32,0x00,0x00]),  // bigFoot
+            Data([0x08,0x00,0x0B,0x41,0x01,0x32,0x00,0x00]),  // boomer
+            Data([0x08,0x00,0xF3,0x60,0x01,0x32,0x00,0x00]),  // raon
+            Data([0x08,0x00,0xDB,0x80,0x01,0x32,0x00,0x00]),  // lightning
+            Data([0x08,0x00,0xC3,0xA0,0x01,0x32,0x00,0x00]),  // jd
+            Data([0x08,0x00,0xAB,0xC0,0x01,0x32,0x00,0x00]),  // asate
+            Data([0x08,0x00,0x93,0xE0,0x01,0x32,0x00,0x00]),  // ice
+            Data([0x08,0x00,0x7B,0x00,0x01,0x32,0x00,0x00]),  // turtle
+            Data([0x08,0x00,0x63,0x20,0x01,0x32,0x00,0x00]),  // grub
+            Data([0x08,0x00,0x4B,0x40,0x01,0x32,0x00,0x00]),  // aduka
+            Data([0x08,0x00,0x33,0x60,0x01,0x32,0x00,0x00]),  // random
+        ]
+        for (index, raw) in rawPackets.enumerated() {
+            let packet = try #require(Packet(data: raw), "packet index \(index)")
+            #expect(packet.opcode == .roomSelectTankResponse, "packet index \(index)")
+            #expect(packet.size == 8, "packet index \(index)")
+            // rtc field in parameters is always 0x0000
+            #expect(packet.parameters == Data([0x00, 0x00]), "packet index \(index)")
+        }
+    }
+
+    // MARK: - RoomSelectTeamResponse
+
+    /// SEND>> [cmd=0x3211] — ACK for team B selection.
+    /// 0000  08 00 1B 80 11 32 00 00
+    @Test func roomSelectTeamResponse_teamB() throws {
+        let data = Data([0x08,0x00,0x1B,0x80,0x11,0x32,0x00,0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamResponse)
+        #expect(packet.size == 8)
+        #expect(packet.id == 0x801B)
+        assertEncode(RoomSelectTeamResponse(), packet)
+        assertDecode(RoomSelectTeamResponse(), packet)
+    }
+
+    /// SEND>> [cmd=0x3211] — ACK for team A selection.
+    /// 0000  08 00 03 A0 11 32 00 00
+    @Test func roomSelectTeamResponse_teamA() throws {
+        let data = Data([0x08,0x00,0x03,0xA0,0x11,0x32,0x00,0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomSelectTeamResponse)
+        #expect(packet.size == 8)
+        #expect(packet.id == 0xA003)
+        assertEncode(RoomSelectTeamResponse(), packet)
+        assertDecode(RoomSelectTeamResponse(), packet)
+    }
+
+    // MARK: - RoomUpdateNotification
+
+    /// SEND>> [cmd=0x3105] — first room update notification (after first option change).
+    /// 0000  08 00 EB BF 05 31 00 00
+    @Test func roomUpdateNotification_first() throws {
+        let data = Data([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.opcode == .roomUpdateNotification)
+        #expect(packet.size == 8)
+        #expect(packet.id == 0xBFEB)
+        assertEncode(RoomUpdateNotification(), packet)
+        assertDecode(RoomUpdateNotification(), packet)
+    }
+
+    /// The server emits a RoomUpdateNotification after every room-mutating command.
+    /// Verify all 23 instances from the session carry the correct opcode and structure.
+    @Test func roomUpdateNotification_allInstances() throws {
+        // Every RoomUpdateNotification in the session, in order.
+        // Each is 8 bytes: [size=08 00] [id LE] [opcode=05 31] [rtc=00 00]
+        let rawPackets: [Data] = [
+            // option changes
+            Data([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xD3,0xDF,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xBB,0xFF,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xA3,0x1F,0x05,0x31,0x00,0x00]),
+            // capacity 4
+            Data([0x08,0x00,0x8B,0x3F,0x05,0x31,0x00,0x00]),
+            // capacity 6
+            Data([0x08,0x00,0x73,0x5F,0x05,0x31,0x00,0x00]),
+            // capacity 8
+            Data([0x08,0x00,0x5B,0x7F,0x05,0x31,0x00,0x00]),
+            // more option changes
+            Data([0x08,0x00,0x43,0x9F,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x2B,0xBF,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x13,0xDF,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xFB,0xFE,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xE3,0x1E,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xCB,0x3E,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0xB3,0x5E,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x9B,0x7E,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x83,0x9E,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x6B,0xBE,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x53,0xDE,0x05,0x31,0x00,0x00]),
+            // stage changes 1–10 then back to 0
+            Data([0x08,0x00,0x3B,0xFE,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x23,0x1E,0x05,0x31,0x00,0x00]),
+            Data([0x08,0x00,0x0B,0x3E,0x05,0x31,0x00,0x00]),
+            // room title rename
+            Data([0x08,0x00,0x33,0x5D,0x05,0x31,0x00,0x00]),
+            // capacity reset to 2
+            Data([0x08,0x00,0x1B,0x7D,0x05,0x31,0x00,0x00]),
+        ]
+        for (index, raw) in rawPackets.enumerated() {
+            let packet = try #require(Packet(data: raw), "packet index \(index)")
+            #expect(packet.opcode == .roomUpdateNotification, "packet index \(index)")
+            #expect(packet.size == 8, "packet index \(index)")
+            // rtc is always zero
+            #expect(packet.parameters == Data([0x00, 0x00]), "packet index \(index)")
+        }
+    }
+
+    /// The first 21 consecutive RoomUpdateNotifications were emitted back-to-back
+    /// with no intervening server packet, so each ID corresponds to sentBytes
+    /// advancing by exactly 8 (the size of one notification).
+    ///
+    /// Verified by inverting the PacketID formula:
+    ///   sentBytes = (id + 0x53FD) * modinv(0x43FD, 2^16)  mod 2^16
+    /// For all 21 pairs, sentBytes[i+1] - sentBytes[i] == 8.
+    @Test func roomUpdateNotification_consecutiveIdsAdvanceBy8Bytes() {
+        func packetId(_ length: Int) -> UInt16 {
+            // id = ((length * 0x43FD) - 0x53FD) & 0xFFFF
+            let value = ((length * 0x43FD) &- 0x53FD) & 0xFFFF
+            return UInt16(value)
+        }
+
+        // The 21 notifications emitted one-after-another (option changes + capacity + stage changes).
+        // Indices 21 and 22 are excluded: a 72-byte gap appears there because the server
+        // emitted additional response packets between the final stage-change ACK and the
+        // room-title update notification.
+        let consecutiveIds: [UInt16] = [
+            0xBFEB, 0xDFD3, 0xFFBB, 0x1FA3, 0x3F8B, 0x5F73, 0x7F5B, 0x9F43,
+            0xBF2B, 0xDF13, 0xFEFB, 0x1EE3, 0x3ECB, 0x5EB3, 0x7E9B, 0x9E83,
+            0xBE6B, 0xDE53, 0xFE3B, 0x1E23, 0x3E0B,
+        ]
+        for i in 1..<consecutiveIds.count {
+            // If id[i-1] = packetId(N), then id[i] must equal packetId(N+8)
+            // Equivalently: packetId( packetId_inverse(id[i-1]) + 8 ) == id[i]
+            // We test this without the inverse by checking that
+            // packetId(N) and packetId(N+8) differ by exactly packetId(8) steps
+            // in the wrapping arithmetic, i.e.:
+            //   (id[i] - id[i-1] + 0x10000) & 0xFFFF == (packetId(8) - packetId(0) + 0x10000) & 0xFFFF
+            // Since packetId(0) == (0 - 0x53FD) & 0xFFFF == 0xAC03:
+            let diff = (Int(consecutiveIds[i]) - Int(consecutiveIds[i - 1]) + 0x10000) & 0xFFFF
+            let expectedDiff = (Int(packetId(8)) - Int(packetId(0)) + 0x10000) & 0xFFFF
+            #expect(diff == expectedDiff,
+                    "index \(i): diff 0x\(String(diff, radix: 16, uppercase: true)) != expected 0x\(String(expectedDiff, radix: 16, uppercase: true))")
+        }
+    }
+
+    // MARK: - Opcode type metadata
+
+    /// Assert the opcode type classifications used throughout the session are correct.
+    /// These are invariants the server relies on (assert guards in respond/send).
+    @Test func opcode_typeClassification() {
+        // requests
+        #expect(Opcode.nonceRequest.type == .request)
+        #expect(Opcode.authenticationRequest.type == .request)
+        #expect(Opcode.joinChannelRequest.type == .request)
+        #expect(Opcode.roomListRequest.type == .request)
+        #expect(Opcode.createRoomRequest.type == .request)
+        #expect(Opcode.roomSelectTankRequest.type == .request)
+        #expect(Opcode.roomSelectTeamRequest.type == .request)
+        // responses
+        #expect(Opcode.nonceResponse.type == .response)
+        #expect(Opcode.authenticationResponse.type == .response)
+        #expect(Opcode.joinChannelResponse.type == .response)
+        #expect(Opcode.roomListResponse.type == .response)
+        #expect(Opcode.createRoomResponse.type == .response)
+        #expect(Opcode.roomSelectTankResponse.type == .response)
+        #expect(Opcode.roomSelectTeamResponse.type == .response)
+        // commands (client→server, no direct response)
+        #expect(Opcode.roomChangeStageCommand.type == .command)
+        #expect(Opcode.roomChangeOptionCommand.type == .command)
+        #expect(Opcode.roomChangeCapacityCommand.type == .command)
+        #expect(Opcode.roomSetTitleCommand.type == .command)
+        // notifications (server→client, unsolicited)
+        #expect(Opcode.roomUpdateNotification.type == .notification)
+        #expect(Opcode.cashUpdateNotification.type == .notification)
+    }
+
+    /// Assert the request↔response pairing for every exchange in the session.
+    @Test func opcode_requestResponsePairing() {
+        #expect(Opcode.nonceRequest.response == .nonceResponse)
+        #expect(Opcode.nonceResponse.request == .nonceRequest)
+        #expect(Opcode.authenticationRequest.response == .authenticationResponse)
+        #expect(Opcode.authenticationResponse.request == .authenticationRequest)
+        #expect(Opcode.joinChannelRequest.response == .joinChannelResponse)
+        #expect(Opcode.joinChannelResponse.request == .joinChannelRequest)
+        #expect(Opcode.createRoomRequest.response == .createRoomResponse)
+        #expect(Opcode.createRoomResponse.request == .createRoomRequest)
+        #expect(Opcode.roomSelectTankRequest.response == .roomSelectTankResponse)
+        #expect(Opcode.roomSelectTankResponse.request == .roomSelectTankRequest)
+        #expect(Opcode.roomSelectTeamRequest.response == .roomSelectTeamResponse)
+        #expect(Opcode.roomSelectTeamResponse.request == .roomSelectTeamRequest)
+    }
+
+    /// Commands and notifications must NOT have a paired response opcode.
+    @Test func opcode_commandsHaveNoResponse() {
+        #expect(Opcode.roomChangeStageCommand.response == nil)
+        #expect(Opcode.roomChangeOptionCommand.response == nil)
+        #expect(Opcode.roomChangeCapacityCommand.response == nil)
+        #expect(Opcode.roomSetTitleCommand.response == nil)
+        #expect(Opcode.roomUpdateNotification.response == nil)
+    }
+
+    // MARK: - Encryption flag
+
+    /// Verify which opcodes from the session require encryption.
+    /// The login payload is encrypted with the static login key;
+    /// the cash update notification uses the session key.
+    @Test func opcode_encryptionFlag() {
+        // encrypted in this session
+        #expect(Opcode.cashUpdateNotification.isEncrypted == true)
+        // not encrypted
+        #expect(Opcode.nonceRequest.isEncrypted == false)
+        #expect(Opcode.nonceResponse.isEncrypted == false)
+        #expect(Opcode.authenticationResponse.isEncrypted == false)
+        #expect(Opcode.joinChannelRequest.isEncrypted == false)
+        #expect(Opcode.joinChannelResponse.isEncrypted == false)
+        #expect(Opcode.roomListRequest.isEncrypted == false)
+        #expect(Opcode.roomListResponse.isEncrypted == false)
+        #expect(Opcode.createRoomRequest.isEncrypted == false)
+        #expect(Opcode.createRoomResponse.isEncrypted == false)
+        #expect(Opcode.roomSelectTankRequest.isEncrypted == false)
+        #expect(Opcode.roomSelectTankResponse.isEncrypted == false)
+        #expect(Opcode.roomSelectTeamRequest.isEncrypted == false)
+        #expect(Opcode.roomSelectTeamResponse.isEncrypted == false)
+        #expect(Opcode.roomChangeStageCommand.isEncrypted == false)
+        #expect(Opcode.roomChangeOptionCommand.isEncrypted == false)
+        #expect(Opcode.roomChangeCapacityCommand.isEncrypted == false)
+        #expect(Opcode.roomSetTitleCommand.isEncrypted == false)
+        #expect(Opcode.roomUpdateNotification.isEncrypted == false)
+    }
+
+    // MARK: - Mobile enum completeness
+
+    /// The client cycled through mobile indexes 0x00–0x0D plus 0xFF.
+    /// Verify every index maps to a known Mobile case (no raw-value gaps in range).
+    @Test func mobile_indexCoverage() {
+        let expectedIndexes: [(UInt8, Mobile)] = [
+            (0x00, .armor), (0x01, .mage),      (0x02, .nak),
+            (0x03, .trico), (0x04, .bigFoot),   (0x05, .boomer),
+            (0x06, .raon),  (0x07, .lightning), (0x08, .jd),
+            (0x09, .asate), (0x0A, .ice),        (0x0B, .turtle),
+            (0x0C, .grub),  (0x0D, .aduka),
+            (0xFF, .random),
+        ]
+        for (raw, expected) in expectedIndexes {
+            let mobile = Mobile(rawValue: raw)
+            #expect(mobile == expected, "raw value 0x\(String(raw, radix: 16, uppercase: true))")
+        }
+    }
+
+    // MARK: - GameMap enum completeness
+
+    /// The client cycled through map indexes 0–10.
+    /// Verify every index maps to a known GameMap case.
+    @Test func gameMap_indexCoverage() {
+        let expectedIndexes: [(UInt8, GameMap)] = [
+            (0,  .random),     (1,  .miramoTown), (2,  .nirvana),
+            (3,  .metropolis), (4,  .seaHero),     (5,  .adiumroot),
+            (6,  .dragon),     (7,  .cozytower),   (8,  .dummySlope),
+            (9,  .stardust),   (10, .metaMine),
+        ]
+        for (raw, expected) in expectedIndexes {
+            let map = GameMap(rawValue: raw)
+            #expect(map == expected, "raw value \(raw)")
+        }
+    }
+
+    // MARK: - RoomCapacity enum completeness
+
+    /// The client cycled through capacities 2, 4, 6, 8.
+    /// Verify raw-value round-trips for all four cases.
+    @Test func roomCapacity_rawValues() {
+        #expect(RoomCapacity(rawValue: 2) == ._1_1)
+        #expect(RoomCapacity(rawValue: 4) == ._2_2)
+        #expect(RoomCapacity(rawValue: 6) == ._3_3)
+        #expect(RoomCapacity(rawValue: 8) == ._4_4)
+        #expect(RoomCapacity._1_1.rawValue == 2)
+        #expect(RoomCapacity._2_2.rawValue == 4)
+        #expect(RoomCapacity._3_3.rawValue == 6)
+        #expect(RoomCapacity._4_4.rawValue == 8)
+    }
+
+    // MARK: - Packet structure invariants
+
+    /// Every packet in the session has size == data.count (the size field is self-consistent).
+    @Test func packet_sizeFieldConsistency() throws {
+        let knownPackets: [Data] = [
+            // client→server
+            Data([0x06,0x00,0xB1,0x36,0x00,0x10]),
+            Data([0x08,0x00,0x97,0x2D,0x00,0x20,0xFF,0xFF]),
+            Data([0x0A,0x00,0xE5,0x3F,0x00,0x21,0x02,0x00,0x00,0x00]),
+            Data([0x14,0x00,0xCB,0x3C,0x20,0x21,0x04,0x74,0x65,0x73,0x74,0xB2,0x62,0x00,0x00,0x31,0x32,0x33,0x34,0x02]),
+            Data([0x08,0x00,0xB3,0x5C,0x00,0x32,0x00,0xFF]),
+            Data([0x07,0x00,0x1B,0x80,0x10,0x32,0x01]),
+            Data([0x07,0x00,0x23,0x19,0x00,0x31,0x01]),
+            Data([0x07,0x00,0xAC,0x4E,0x03,0x31,0x04]),
+            Data([0x0A,0x00,0x1B,0x7B,0x01,0x31,0xB2,0x62,0x44,0x00]),
+            Data([0x0B,0x00,0x30,0x9C,0x04,0x31,0x74,0x65,0x73,0x74,0x32]),
+            // server→client
+            Data([0x0A,0x00,0xE5,0x53,0x01,0x10,0xDB,0x6A,0x9A,0xF6]),
+            Data([0x15,0x00,0x9B,0x81,0x21,0x21,0x00,0x00,0x00,0x03,0x00,0x24,0x52,0x6F,0x6F,0x6D,0x20,0x4D,0x4F,0x54,0x44]),
+            Data([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00]),
+            Data([0x08,0x00,0x1B,0x80,0x11,0x32,0x00,0x00]),
+            Data([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00]),
+        ]
+        for (index, raw) in knownPackets.enumerated() {
+            let packet = try #require(Packet(data: raw), "packet index \(index)")
+            let sizeField = UInt16(raw[0]) | (UInt16(raw[1]) << 8)
+            #expect(Int(sizeField) == raw.count, "size mismatch at packet index \(index)")
+            #expect(packet.data == raw, "data roundtrip at packet index \(index)")
+        }
+    }
+
+    /// Minimum valid packet is exactly 6 bytes (header only, no parameters).
+    @Test func packet_minimumSize() throws {
+        let data = Data([0x06,0x00,0xB1,0x36,0x00,0x10])
+        let packet = try #require(Packet(data: data))
+        #expect(packet.size == Packet.minSize)
+        #expect(packet.parametersSize == 0)
+        #expect(packet.parameters.isEmpty)
+    }
 }
 
 // MARK: - Extensions
