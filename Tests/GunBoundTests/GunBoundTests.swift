@@ -3476,6 +3476,21 @@ import Testing
         #expect(packet.opcode == .joinChannelResponse)
         #expect(packet.size   == 265)
         #expect(packet.id     == 0xDE00)
+        let virtualAvatar: UInt64 = 0x0000_8000_8000_8000
+        let colemanAvatar: UInt64 = 0x0003_0001_0000_0001
+        assertEncode(JoinChannelResponse(
+            status: 0x0000,
+            channel: 0,
+            maxPosition: 4,
+            users: [
+                .init(id: 0, username: "us",         avatarEquipped: virtualAvatar, guild: "virtual", rankCurrent: 19, rankSeason: 19),
+                .init(id: 1, username: "jg",         avatarEquipped: virtualAvatar, guild: "virtual", rankCurrent: 12, rankSeason: 12),
+                .init(id: 2, username: "admin",      avatarEquipped: virtualAvatar, guild: "virtual", rankCurrent: 20, rankSeason: 20),
+                .init(id: 3, username: "colemancda", avatarEquipped: colemanAvatar,    guild: "test",    rankCurrent: 0,  rankSeason: 20),
+                .init(id: 4, username: "colemancda", avatarEquipped: colemanAvatar,    guild: "test",    rankCurrent: 20, rankSeason: 20),
+            ],
+            message: "$Channel MOTD\r\nRequesting SVC_CHANNEL_JOIN 0 at 2026-03-25 22:41:20\r\nClient Version: 280"
+        ), packet)
     }
 
     /// [111] RECV>> [cmd=0x0021] [10 bytes]
