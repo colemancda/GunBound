@@ -38,6 +38,7 @@ import Testing
         #expect(packet.parametersSize == 4)
         #expect(packet.parameters == Data([0x00, 0x00, 0x00, 0x00]))
         assertEncode(ServerDirectoryRequest(), packet)
+        assertDecode(ServerDirectoryRequest(), packet)
     }
 
     @Test func serverDirectoryResponse() throws {
@@ -154,6 +155,7 @@ import Testing
         #expect(packet.data.count == numericCast(Packet.minSize))
         #expect(packet.id == 0x36B1)
         #expect(packet.parametersSize == 0)
+        assertEncode(NonceRequest(), packet)
         assertDecode(NonceRequest(), packet)
     }
 
@@ -261,6 +263,7 @@ import Testing
         #expect(packet.size == numericCast(packet.data.count))
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.id == 0x2D97)
+        assertEncode(JoinChannelRequest(channel: 0xFFFF), packet)
         assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
     }
 
@@ -311,6 +314,7 @@ import Testing
             rankSeason: 0
         )
         assertEncode(value, packet)
+        assertDecode(value, packet)
     }
 
     @Test func roomListRequest() throws {
@@ -593,6 +597,7 @@ import Testing
         #expect(packet.size == numericCast(packet.data.count))
         #expect(packet.opcode == .roomUserReadyRequest)
         #expect(packet.id == 0x0128)
+        assertEncode(UserReadyRequest(isReady: true), packet)
         assertDecode(UserReadyRequest(isReady: true), packet)
     }
 
@@ -605,6 +610,7 @@ import Testing
         #expect(packet.opcode == .roomUserReadyResponse)
         #expect(packet.id == 0xE35A)
         assertEncode(UserReadyResponse(), packet)
+        assertDecode(UserReadyResponse(), packet)
     }
 
     @Test func channelChatCommand() throws {
@@ -629,6 +635,7 @@ import Testing
         #expect(packet.id == 0x5FC6)
         let key = Key(username: "colemancda", password: "1234", nonce: 0x0001_0203)
         assertEncode(ChannelChatBroadcast(position: 0x01, username: "colemancda", message: "hi test"), packet, key: key)
+        assertDecode(ChannelChatBroadcast(position: 0x01, username: "colemancda", message: "hi test"), packet, key: key)
     }
 
     @Test func clientCommand() throws {
@@ -652,6 +659,7 @@ import Testing
         #expect(packet.opcode.type == .request)
         #expect(packet.opcode.response == .userDeadResponse)
         #expect(packet.id == 0x4CBF)
+        assertEncode(UserDeathRequest(value0: 01, value1: 0x0000_0000), packet)
         assertDecode(UserDeathRequest(value0: 01, value1: 0x0000_0000), packet)
     }
 
@@ -666,6 +674,7 @@ import Testing
         #expect(packet.opcode.request == .userDeadRequest)
         #expect(packet.id == 0xA430)
         assertEncode(UserDeathResponse(), packet)
+        assertDecode(UserDeathResponse(), packet)
     }
 
     @Test func startGameCommand() throws {
@@ -760,6 +769,7 @@ import Testing
         #expect(packet.opcode == .roomReturnResultRequest)
         #expect(packet.opcode.type == .request)
         #expect(packet.id == 0xF4A1)
+        assertEncode(RoomReturnResultRequest(), packet)
         assertDecode(RoomReturnResultRequest(), packet)
     }
 
@@ -930,6 +940,7 @@ import Testing
         #expect(packet.size == 6)
         #expect(packet.id == 0x36B1)
         #expect(packet.parametersSize == 0)
+        assertEncode(NonceRequest(), packet)
         assertDecode(NonceRequest(), packet)
     }
 
@@ -998,6 +1009,7 @@ import Testing
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.size == 8)
         #expect(packet.id == 0x2D97)
+        assertEncode(JoinChannelRequest(channel: 0xFFFF), packet)
         assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
     }
 
@@ -1008,6 +1020,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.id == 0x9803)
+        assertEncode(JoinChannelRequest(channel: 0xFFFF), packet)
         assertDecode(JoinChannelRequest(channel: 0xFFFF), packet)
     }
 
@@ -1093,6 +1106,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x5CB3)
+        assertEncode(RoomSelectTankRequest(primary: .armor, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .armor, secondary: .random), packet)
     }
 
@@ -1102,6 +1116,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x7C9B)
+        assertEncode(RoomSelectTankRequest(primary: .mage, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .mage, secondary: .random), packet)
     }
 
@@ -1111,6 +1126,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x9C83)
+        assertEncode(RoomSelectTankRequest(primary: .nak, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .nak, secondary: .random), packet)
     }
 
@@ -1120,6 +1136,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xBC6B)
+        assertEncode(RoomSelectTankRequest(primary: .trico, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .trico, secondary: .random), packet)
     }
 
@@ -1129,6 +1146,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xDC53)
+        assertEncode(RoomSelectTankRequest(primary: .bigFoot, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .bigFoot, secondary: .random), packet)
     }
 
@@ -1138,6 +1156,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xFC3B)
+        assertEncode(RoomSelectTankRequest(primary: .boomer, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .boomer, secondary: .random), packet)
     }
 
@@ -1147,6 +1166,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x1C23)
+        assertEncode(RoomSelectTankRequest(primary: .raon, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .raon, secondary: .random), packet)
     }
 
@@ -1156,6 +1176,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x3C0B)
+        assertEncode(RoomSelectTankRequest(primary: .lightning, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .lightning, secondary: .random), packet)
     }
 
@@ -1165,6 +1186,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x5BF3)
+        assertEncode(RoomSelectTankRequest(primary: .jd, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .jd, secondary: .random), packet)
     }
 
@@ -1174,6 +1196,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x7BDB)
+        assertEncode(RoomSelectTankRequest(primary: .asate, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .asate, secondary: .random), packet)
     }
 
@@ -1183,6 +1206,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x9BC3)
+        assertEncode(RoomSelectTankRequest(primary: .ice, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .ice, secondary: .random), packet)
     }
 
@@ -1192,6 +1216,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xBBAB)
+        assertEncode(RoomSelectTankRequest(primary: .turtle, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .turtle, secondary: .random), packet)
     }
 
@@ -1201,6 +1226,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xDB93)
+        assertEncode(RoomSelectTankRequest(primary: .grub, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .grub, secondary: .random), packet)
     }
 
@@ -1210,6 +1236,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xFB7B)
+        assertEncode(RoomSelectTankRequest(primary: .aduka, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .aduka, secondary: .random), packet)
     }
 
@@ -1220,6 +1247,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x1B63)
+        assertEncode(RoomSelectTankRequest(primary: .random, secondary: .random), packet)
         assertDecode(RoomSelectTankRequest(primary: .random, secondary: .random), packet)
     }
 
@@ -1233,6 +1261,7 @@ import Testing
         #expect(packet.opcode == .roomSelectTeamRequest)
         #expect(packet.size == 7)
         #expect(packet.id == 0x801B)
+        assertEncode(RoomSelectTeamRequest(team: .b), packet)
         assertDecode(RoomSelectTeamRequest(team: .b), packet)
     }
 
@@ -1243,6 +1272,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTeamRequest)
         #expect(packet.id == 0xD339)
+        assertEncode(RoomSelectTeamRequest(team: .a), packet)
         assertDecode(RoomSelectTeamRequest(team: .a), packet)
     }
 
@@ -1265,6 +1295,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0xF50E)
+        assertEncode(RoomChangeStageCommand(map: .nirvana), packet)
         assertDecode(RoomChangeStageCommand(map: .nirvana), packet)
     }
 
@@ -1274,6 +1305,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0x88CF)
+        assertEncode(RoomChangeStageCommand(map: .adiumroot), packet)
         assertDecode(RoomChangeStageCommand(map: .adiumroot), packet)
     }
 
@@ -1283,6 +1315,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0xD466)
+        assertEncode(RoomChangeStageCommand(map: .metaMine), packet)
         assertDecode(RoomChangeStageCommand(map: .metaMine), packet)
     }
 
