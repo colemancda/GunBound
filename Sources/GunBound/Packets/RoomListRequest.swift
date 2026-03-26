@@ -23,7 +23,7 @@ import Foundation
 ///
 /// **Note:** Clients typically send this periodically to keep the room list
 /// up to date with current player counts and room states.
-public struct RoomListRequest: GunBoundPacket, Equatable, Hashable, Codable {
+public struct RoomListRequest: GunBoundPacket, Equatable, Hashable, Decodable {
 
     public static var opcode: Opcode { .roomListRequest }
 
