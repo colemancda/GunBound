@@ -260,6 +260,22 @@ public enum LZHUF {
         }
     }
 
+    /// Decompresses an LZHUF-compressed block read from a `ParserSpan`.
+    ///
+    /// - Parameters:
+    ///   - input: A parser span positioned at the start of the compressed
+    ///     bytes. The remainder of the span is consumed.
+    ///   - decodedSize: The expected decompressed byte count. The original
+    ///     format has no other way to know when to stop decoding (the
+    ///     Huffman-coded stream carries no end marker), so this must be
+    ///     supplied by the caller (from container metadata or a known
+    ///     constant for the asset type).
+    /// - Returns: The decompressed bytes.
+    public static func decompress(parsing input: inout ParserSpan, decodedSize: Int) -> [UInt8] {
+        let bytes = [UInt8](parsingRemainingBytes: &input)
+        return decompress(bytes, decodedSize: decodedSize)
+    }
+
     /// Decompresses an LZHUF-compressed block.
     ///
     /// - Parameters:

@@ -22,4 +22,9 @@ public enum DatFile {
     public static func decompress(_ data: [UInt8], decodedSize: Int) -> [UInt8] {
         LZHUF.decompress(data, decodedSize: decodedSize)
     }
+
+    /// Decompresses a `.dat` file's contents from a `ParserSpan`.
+    public static func decompress(parsing input: inout ParserSpan, decodedSize: Int) -> [UInt8] {
+        LZHUF.decompress(parsing: &input, decodedSize: decodedSize)
+    }
 }

@@ -11,11 +11,9 @@ public enum XFSArchive {
 
     /// The container's magic bytes, `"XFS2"`, read from the front of the
     /// decompressed table-of-contents blob.
-    public static let magic: [UInt8] = Array("XFS2".utf8)
+    public static let magic: [UInt8] = [0x58, 0x46, 0x53, 0x32]
 
     public enum Error: Swift.Error, Equatable {
-        case fileTooSmall
-        case invalidTOCOffset
         case invalidMagic
     }
 
@@ -29,20 +27,19 @@ public enum XFSArchive {
 
     /// Reads the footer (TOC offset + compressed size) from the end of an
     /// archive file's raw bytes.
-    public static func readFooter(_ data: [UInt8]) throws -> Footer {
-        guard data.count >= 4 else { throw Error.fileTooSmall }
-        let tocOffset = UInt32(data[data.count - 4])
-            | (UInt32(data[data.count - 3]) << 8)
-            | (UInt32(data[data.count - 2]) << 16)
-            | (UInt32(data[data.count - 1]) << 24)
-        guard tocOffset >= 4, Int(tocOffset) + 4 <= data.count else {
-            throw Error.invalidTOCOffset
+    public static func readFooter(_ data: [UInt8]) throws(ParsingError) -> Footer {
+        try data.withParserSpan { input throws(ParsingError) in
+            try readFooter(parsing: &input)
         }
-        let sizeOffset = Int(tocOffset)
-        let tocCompressedSize = UInt32(data[sizeOffset])
-            | (UInt32(data[sizeOffset + 1]) << 8)
-            | (UInt32(data[sizeOffset + 2]) << 16)
-            | (UInt32(data[sizeOffset + 3]) << 24)
+    }
+
+    /// Reads the footer from a `ParserSpan` covering the whole archive file.
+    public static func readFooter(parsing input: inout ParserSpan) throws(ParsingError) -> Footer {
+        var footerSpan = try input.seeking(toOffsetFromEnd: 4)
+        let tocOffset = try UInt32(parsingLittleEndian: &footerSpan)
+
+        var tocSpan = try input.seeking(toAbsoluteOffset: tocOffset)
+        let tocCompressedSize = try UInt32(parsingLittleEndian: &tocSpan)
         return Footer(tocOffset: tocOffset, tocCompressedSize: tocCompressedSize)
     }
 
@@ -57,11 +54,22 @@ public enum XFSArchive {
         footer: Footer,
         decodedTOCSize: Int
     ) throws -> [UInt8] {
-        let start = Int(footer.tocOffset) + 4
-        let end = start + Int(footer.tocCompressedSize)
-        guard end <= data.count else { throw Error.fileTooSmall }
-        let compressed = Array(data[start..<end])
-        let decoded = LZHUF.decompress(compressed, decodedSize: decodedTOCSize)
+        try data.withParserSpan { input in
+            try readTableOfContents(parsing: &input, footer: footer, decodedTOCSize: decodedTOCSize)
+        }
+    }
+
+    /// Decompresses the table-of-contents blob from a `ParserSpan` covering
+    /// the whole archive file.
+    public static func readTableOfContents(
+        parsing input: inout ParserSpan,
+        footer: Footer,
+        decodedTOCSize: Int
+    ) throws -> [UInt8] {
+        var tocSpan = try input.seeking(toAbsoluteOffset: footer.tocOffset)
+        _ = try UInt32(parsingLittleEndian: &tocSpan) // compressed size, already known from the footer
+        var blobSpan = try tocSpan.sliceSpan(byteCount: footer.tocCompressedSize)
+        let decoded = LZHUF.decompress(parsing: &blobSpan, decodedSize: decodedTOCSize)
         guard decoded.count >= magic.count, Array(decoded.prefix(magic.count)) == magic else {
             throw Error.invalidMagic
         }
@@ -84,24 +92,19 @@ public enum XFSArchive {
         public let compressedData: [UInt8]
     }
 
-    public static func readEntryBlock(_ data: [UInt8], at offset: Int) throws -> EntryBlock {
-        guard offset + 8 <= data.count else { throw Error.fileTooSmall }
-        let compressedSize = UInt32(data[offset])
-            | (UInt32(data[offset + 1]) << 8)
-            | (UInt32(data[offset + 2]) << 16)
-            | (UInt32(data[offset + 3]) << 24)
-        let checksum = UInt32(data[offset + 4])
-            | (UInt32(data[offset + 5]) << 8)
-            | (UInt32(data[offset + 6]) << 16)
-            | (UInt32(data[offset + 7]) << 24)
-        let dataStart = offset + 8
-        let dataEnd = dataStart + Int(compressedSize)
-        guard dataEnd <= data.count else { throw Error.fileTooSmall }
-        return EntryBlock(
-            compressedSize: compressedSize,
-            checksum: checksum,
-            compressedData: Array(data[dataStart..<dataEnd])
-        )
+    public static func readEntryBlock(_ data: [UInt8], at offset: Int) throws(ParsingError) -> EntryBlock {
+        try data.withParserSpan { input throws(ParsingError) in
+            var entrySpan = try input.seeking(toAbsoluteOffset: offset)
+            return try readEntryBlock(parsing: &entrySpan)
+        }
+    }
+
+    /// Reads an entry block from a `ParserSpan` positioned at its start.
+    public static func readEntryBlock(parsing input: inout ParserSpan) throws(ParsingError) -> EntryBlock {
+        let compressedSize = try UInt32(parsingLittleEndian: &input)
+        let checksum = try UInt32(parsingLittleEndian: &input)
+        let compressedData = try [UInt8](parsing: &input, byteCount: Int(compressedSize))
+        return EntryBlock(compressedSize: compressedSize, checksum: checksum, compressedData: compressedData)
     }
 
     /// Decompresses an archive entry's block.
