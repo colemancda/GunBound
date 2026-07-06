@@ -1,74 +1,98 @@
 /// `itemdata.dat`'s decoded record layout.
 ///
-/// **Note:** Reconstructed from static analysis of the original client —
-/// specifically, from pattern-matching the real decompressed file's bytes
-/// (a scan for printable-string offsets confirming a consistent stride),
-/// not from tracing `LoadGameDataFiles`'s consumer loop field-by-field.
-/// The `flags` field's individual bit/byte meanings and the exact
-/// description-offset rule are **not** confirmed for every record — treat
-/// `descriptionText` as best-effort.
+/// **Note:** Reconstructed from static analysis of the original client's
+/// `LoadGameDataFiles` consumer code directly (an earlier pass had only
+/// pattern-matched the decoded bytes, which got the name field's exact
+/// width and the flags/description-boundary breakdown slightly wrong —
+/// this corrects both). The name/description/three boolean-flag fields
+/// are confirmed copied into a persistent per-item structure; the
+/// `field0x20`/`field0x30` fields are confirmed read and checksummed but
+/// not confirmed copied anywhere under a named field, so their purpose
+/// remains unconfirmed.
 public enum ItemDataFile {
 
-    /// Every record is this many bytes; static analysis confirmed this via
-    /// a full-file scan for printable-string offsets landing on a
-    /// consistent stride (an earlier, smaller sample had suggested `0x130`,
-    /// which turned out to be wrong).
+    /// Every record is this many bytes; confirmed via a full-file scan for
+    /// printable-string offsets landing on a consistent stride.
     public static let recordSize = 0x134
 
     /// One parsed `itemdata.dat` record.
     public struct ItemRecord: Equatable, Hashable, Sendable {
 
-        /// Item name (NUL-terminated ASCII/text within a 0x24-byte budget
-        /// at the start of the record). A handful of items in some client
-        /// builds contain untranslated Korean text, which reads as mojibake
-        /// under a Latin-1/ASCII decode.
+        /// Item name (NUL-terminated ASCII/text within a confirmed 0x20-byte
+        /// budget at the start of the record, copied into a persistent
+        /// per-item structure). A handful of items in some client builds
+        /// contain untranslated Korean text, which reads as mojibake under
+        /// a Latin-1/ASCII decode.
         public let name: String
+
+        /// `uint32` at record offset `0x20`. Read and fed through the
+        /// packet-checksum accumulator, but not confirmed copied to a named
+        /// persistent field — purpose unconfirmed. Often `0` in practice.
+        public let field0x20: UInt32
 
         /// Price/value at record offset `0x24`. A value of `0` was
         /// observed for some entries, suggesting not every item is
         /// purchasable (possibly quest/event-only items).
         public let price: UInt32
 
-        /// Item type/index ID at record offset `0x28` (also duplicated as
-        /// a single byte at `0x30`, kept here as `itemTypeIDByte`).
-        /// Observed shared across item "families" (e.g. "Energy up 1" and
-        /// "Energy up 2" shared the same value), so this is likely a
-        /// category ID, not a unique per-item ID.
+        /// Item type/index ID at record offset `0x28`. Observed shared
+        /// across item "families" (e.g. "Energy up 1" and "Energy up 2"
+        /// shared the same value), so this is likely a category ID, not a
+        /// unique per-item ID.
         public let itemTypeID: UInt32
 
-        /// Unidentified 4-byte field at record offset `0x2c`. Varies per
-        /// record; a `0x2e` byte of `1` seemed to correlate with the
-        /// presence of a description, but this wasn't rigorously confirmed.
-        public let flags: [UInt8]
+        /// Boolean flag at record offset `0x2c`. Individually
+        /// XOR/`rand()`-obfuscated when copied into persistent storage — an
+        /// anti-memory-editing measure applied to exactly this and the next
+        /// two flags, no other item field. The on-disk value here is the
+        /// plain (pre-obfuscation) byte.
+        public let flag1: UInt8
 
-        /// Duplicate of `itemTypeID`'s low byte, at record offset `0x30`.
-        public let itemTypeIDByte: UInt8
+        /// Boolean flag at record offset `0x2d`, same obfuscation-on-copy
+        /// treatment as `flag1`, independently.
+        public let flag2: UInt8
 
-        /// Marker byte at record offset `0x31`: `0xff` when a description
-        /// follows, `0x00` observed on records without one. The exact
-        /// offset a description starts at isn't perfectly fixed across
-        /// every record, so `descriptionText` is best-effort.
-        public let descriptionMarker: UInt8
+        /// Boolean flag at record offset `0x2e`, same obfuscation-on-copy
+        /// treatment as `flag1`/`flag2`, independently.
+        public let flag3: UInt8
 
-        /// Raw trailing bytes from record offset `0x32` through the end of
-        /// the record. May contain a NUL-terminated localized description
-        /// when `descriptionMarker == 0xff` — see `descriptionText`.
-        public let trailingData: [UInt8]
+        /// `uint16` at record offset `0x30`. Read and checksummed, purpose
+        /// beyond that unconfirmed.
+        public let field0x30: UInt16
 
-        /// Best-effort NUL-terminated decode of `trailingData` as the
-        /// item's localized description, when `descriptionMarker` suggests
-        /// one is present. `nil` otherwise.
-        public var descriptionText: String? {
-            guard descriptionMarker == 0xff else { return nil }
-            let bytes = trailingData
-            let end = bytes.firstIndex(of: 0) ?? bytes.count
-            return String(decoding: bytes[..<end], as: UTF8.self)
+        /// Localized item description, NUL-terminated, confirmed to start
+        /// at exactly record offset `0x32` and copied into persistent
+        /// storage independent of the other fields. Empty for items with
+        /// no description (the byte at `0x32` is `0x00` in that case).
+        public let descriptionText: String
+
+        public init(
+            name: String,
+            field0x20: UInt32 = 0,
+            price: UInt32,
+            itemTypeID: UInt32,
+            flag1: UInt8 = 0,
+            flag2: UInt8 = 0,
+            flag3: UInt8 = 0,
+            field0x30: UInt16 = 0,
+            descriptionText: String = ""
+        ) {
+            self.name = name
+            self.field0x20 = field0x20
+            self.price = price
+            self.itemTypeID = itemTypeID
+            self.flag1 = flag1
+            self.flag2 = flag2
+            self.flag3 = flag3
+            self.field0x30 = field0x30
+            self.descriptionText = descriptionText
         }
     }
 
     /// Parses every fixed-size record from a decompressed `itemdata.dat`
-    /// buffer (see `DatFile.decompress(_:decodedSize:)`). Unused/empty
-    /// slots decode to a record with an empty `name`.
+    /// buffer (see `DatFile.decompress(_:decodedSize:)` with
+    /// `DatFile.itemDataDecodedSize`). Unused/empty slots decode to a
+    /// record with an empty `name`.
     public static func readRecords(_ decodedData: [UInt8]) throws -> [ItemRecord] {
         var records = [ItemRecord]()
         var offset = 0
@@ -83,26 +107,33 @@ public enum ItemDataFile {
     static func parseRecord(_ record: [UInt8]) throws -> ItemRecord {
         precondition(record.count == recordSize)
         return try record.withParserSpan { input in
-            var nameSpan = try input.sliceSpan(byteCount: 0x24)
+            var nameSpan = try input.sliceSpan(byteCount: 0x20)
             let nameBytes = [UInt8](parsingRemainingBytes: &nameSpan)
             let nameEnd = nameBytes.firstIndex(of: 0) ?? nameBytes.count
             let name = String(decoding: nameBytes[..<nameEnd], as: UTF8.self)
 
+            let field0x20 = try UInt32(parsingLittleEndian: &input)
             let price = try UInt32(parsingLittleEndian: &input)
             let itemTypeID = try UInt32(parsingLittleEndian: &input)
-            let flags = try [UInt8](parsing: &input, byteCount: 4)
-            let itemTypeIDByte = try UInt8(parsing: &input)
-            let descriptionMarker = try UInt8(parsing: &input)
-            let trailingData = [UInt8](parsingRemainingBytes: &input)
+            let flag1 = try UInt8(parsing: &input)
+            let flag2 = try UInt8(parsing: &input)
+            let flag3 = try UInt8(parsing: &input)
+            _ = try UInt8(parsing: &input) // 0x2f: unaccounted gap, not read by the client
+            let field0x30 = try UInt16(parsingLittleEndian: &input)
+            let descriptionBytes = [UInt8](parsingRemainingBytes: &input)
+            let descriptionEnd = descriptionBytes.firstIndex(of: 0) ?? descriptionBytes.count
+            let descriptionText = String(decoding: descriptionBytes[..<descriptionEnd], as: UTF8.self)
 
             return ItemRecord(
                 name: name,
+                field0x20: field0x20,
                 price: price,
                 itemTypeID: itemTypeID,
-                flags: flags,
-                itemTypeIDByte: itemTypeIDByte,
-                descriptionMarker: descriptionMarker,
-                trailingData: trailingData
+                flag1: flag1,
+                flag2: flag2,
+                flag3: flag3,
+                field0x30: field0x30,
+                descriptionText: descriptionText
             )
         }
     }
