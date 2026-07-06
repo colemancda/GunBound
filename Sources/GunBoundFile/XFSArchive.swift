@@ -177,11 +177,17 @@ public enum XFSArchive {
         _ = try UInt32(parsingLittleEndian: &tocSpan) // header compressed size, already known from the footer
         var headerBlobSpan = try tocSpan.sliceSpan(byteCount: footer.tocCompressedSize)
         let header = LZHUF.decompress(parsing: &headerBlobSpan, decodedSize: tocHeaderDecodedSize)
-        guard header.count >= magic.count + 4, Array(header.prefix(magic.count)) == magic else {
+        guard header.count >= magic.count + 8, Array(header.prefix(magic.count)) == magic else {
             throw Error.invalidMagic
         }
+        // The uint32_t immediately after the magic is a still-unidentified
+        // field (observed value `999` across multiple real archives); the
+        // *actual* total entry count is the uint32_t after that one —
+        // confirmed against real `graphics.xfs`/`avatar.xfs` bytes, where
+        // this field's value matches `entryCount >> 10` chunks plus an
+        // `entryCount & 0x3ff` remainder.
         let entryCount = try header.withParserSpan { (headerInput: inout ParserSpan) -> Int in
-            _ = try [UInt8](parsing: &headerInput, byteCount: magic.count)
+            _ = try [UInt8](parsing: &headerInput, byteCount: magic.count + 4)
             return Int(try UInt32(parsingLittleEndian: &headerInput))
         }
 
