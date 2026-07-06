@@ -7,18 +7,30 @@
 /// *compressed* blob, not directly-parseable records. The decompressed
 /// output is validated in the original client via a packet-checksum-style
 /// accumulator, a mechanism this decoder does not reproduce (the exact
-/// checksum inputs weren't recovered); the record layout for each file's
-/// decompressed content is not documented here either — only the
-/// compression container is handled.
+/// checksum inputs weren't recovered).
+///
+/// **Each file has its own decompressed target size** — an earlier pass
+/// incorrectly assumed all four `.dat` files shared `characterdata.dat`'s
+/// size; decompiling `LoadGameDataFiles` directly corrected this for three
+/// of the four files (see the constants below). `specialdata.dat`'s loader
+/// wasn't located, so its target size remains unconfirmed.
 public enum DatFile {
+
+    /// Confirmed target decompressed size for `characterdata.dat`.
+    public static let characterDataDecodedSize = 0x14c0 // 5,312 bytes
+
+    /// Confirmed target decompressed size for `stage.dat`.
+    public static let stageDataDecodedSize = 0x3c80 // 15,488 bytes
+
+    /// Confirmed target decompressed size for `itemdata.dat`.
+    public static let itemDataDecodedSize = 0x7850 // 30,800 bytes
 
     /// Decompresses a `.dat` file's full contents.
     ///
     /// - Parameter decodedSize: The expected decompressed byte count. `.dat`
     ///   files carry no embedded size header — the original client passes a
-    ///   constant known ahead of time for each asset type (static analysis
-    ///   observed `0x14c0` used across `characterdata.dat`/`itemdata.dat`/
-    ///   `stage.dat`/`specialdata.dat`).
+    ///   constant known ahead of time, different per file (see
+    ///   `characterDataDecodedSize`/`stageDataDecodedSize`/`itemDataDecodedSize`).
     public static func decompress(_ data: [UInt8], decodedSize: Int) -> [UInt8] {
         LZHUF.decompress(data, decodedSize: decodedSize)
     }
