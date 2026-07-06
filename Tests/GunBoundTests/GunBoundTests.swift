@@ -8,14 +8,15 @@
 import Foundation
 import Testing
 @testable import GunBound
+@testable import GunBoundProtocol
 
 @Suite struct GunBoundTests {
 
     @Test func address() {
-        #expect(GunBoundAddress(rawValue: "192.168.1.1:1234")?.address == "192.168.1.1")
-        #expect(GunBoundAddress(rawValue: "192.168.1.1:1234")?.port == 1234)
-        #expect(GunBoundAddress(rawValue: "192.168.1.1:1234")?.rawValue == "192.168.1.1:1234")
-        #expect(GunBoundAddress(rawValue: "192.168.1.1") == nil)
+        #expect(GunBound.GunBoundAddress(rawValue: "192.168.1.1:1234")?.address == "192.168.1.1")
+        #expect(GunBound.GunBoundAddress(rawValue: "192.168.1.1:1234")?.port == 1234)
+        #expect(GunBound.GunBoundAddress(rawValue: "192.168.1.1:1234")?.rawValue == "192.168.1.1:1234")
+        #expect(GunBound.GunBoundAddress(rawValue: "192.168.1.1") == nil)
     }
 
     @Test func serverDirectoryRequest() throws {
@@ -23,7 +24,7 @@ import Testing
          0a 00 a5 46 00 11 00 00 00 00
          Server Directory Request
          */
-        let data = Data([
+        let data = [UInt8]([
             0x0a, 0x00,
             0xa5, 0x46,
             0x00, 0x11,
@@ -36,14 +37,14 @@ import Testing
         #expect(packet.opcode == .serverDirectoryRequest)
         #expect(packet.id == 0x46A5)
         #expect(packet.parametersSize == 4)
-        #expect(packet.parameters == Data([0x00, 0x00, 0x00, 0x00]))
+        #expect(packet.parameters == [UInt8]([0x00, 0x00, 0x00, 0x00]))
         assertEncode(ServerDirectoryRequest(), packet)
         assertDecode(ServerDirectoryRequest(), packet)
     }
 
     @Test func serverDirectoryResponse() throws {
         do {
-            let data = Data([
+            let data = [UInt8]([
                 0x48, 0x00, 0x2b, 0xcb, 0x02, 0x11, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x4a, 0x47, 0x20, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x72, 0x6f, 0x6b, 0x65, 0x72, 0x1e, 0x42,
                 0x72, 0x6f, 0x6b, 0x65, 0x72, 0x20, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x5c, 0x6e, 0x20, 0x67, 0x6f, 0x65, 0x73, 0x20, 0x68, 0x65, 0x72, 0x65, 0xc0,
                 0xa8, 0x01, 0x01, 0x20, 0xb2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x01
@@ -71,11 +72,11 @@ import Testing
             #expect(serverDirectory.count == 1)
             #expect(serverDirectory[0].name == "JG Test Broker")
             #expect(serverDirectory[0].descriptionText == #"Broker description\n goes here"#)
-            assertEncode(ServerDirectoryResponse(directory: serverDirectory), packet)
+            assertEncode(ServerDirectoryResponse(directory: serverDirectory.map { $0.wireServer }), packet)
         }
 
         do {
-            let data = Data([
+            let data = [UInt8]([
                 0x18, 0x01, 0xbb, 0x08, 0x02, 0x11, 0x00, 0x00, 0x01, 0x05, 0x00, 0x00, 0x00, 0x0e, 0x4a, 0x47, 0x20, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x72, 0x6f, 0x6b, 0x65, 0x72, 0x1e, 0x42,
                 0x72, 0x6f, 0x6b, 0x65, 0x72, 0x20, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x5c, 0x6e, 0x20, 0x67, 0x6f, 0x65, 0x73, 0x20, 0x68, 0x65, 0x72, 0x65, 0xc0,
                 0xa8, 0x01, 0x01, 0x20, 0xb2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x01, 0x01, 0x00, 0x00, 0x09, 0x46, 0x72, 0x65, 0x65, 0x20, 0x50, 0x6c, 0x61, 0x79, 0x16, 0x52, 0x6f, 0x6f, 0x6b,
@@ -142,12 +143,12 @@ import Testing
             #expect(serverDirectory.count == 5)
             #expect(serverDirectory[0].name == "JG Test Broker")
             #expect(serverDirectory[0].descriptionText == #"Broker description\n goes here"#)
-            assertEncode(ServerDirectoryResponse(directory: serverDirectory), packet)
+            assertEncode(ServerDirectoryResponse(directory: serverDirectory.map { $0.wireServer }), packet)
         }
     }
 
     @Test func nonceRequest() throws {
-        let data = Data([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
+        let data = [UInt8]([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.opcode == .nonceRequest)
@@ -160,7 +161,7 @@ import Testing
     }
 
     @Test func nonceResponse() throws {
-        let data = Data(hexString: "0A00E553011000010203")!
+        let data = [UInt8](hexString: "0A00E553011000010203")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.opcode == .nonceResponse)
@@ -174,7 +175,7 @@ import Testing
         decoder.log = { print("Decoder:", $0) }
 
         do {
-            let data = Data(
+            let data = [UInt8](
                 hexString:
                     "5600AF0D101015E9A289210936868CB9FADA26CB0C0BAAE7BFEBC24041E8BDB5D88036C22C22B714950242A6420520009FB4D5982F206B95BFE48F126A515F6E33136935548222053C9135FFCB7742D8DFBD0AE23082")!
             let packet = try #require(Packet(data: data))
@@ -184,16 +185,17 @@ import Testing
             #expect(packet.opcode == .authenticationRequest)
             #expect(packet.id == 0x0DAF)
             let decodedValue = try decoder.decodePacket(AuthenticationRequest.self, from: data)
-            #expect(decodedValue.username == "testusername")
-            let key = Key(username: decodedValue.username, password: "testpassword", nonce: 0xEA7B_8AE3)
-            let decryptedData = try Crypto.AES.decrypt(decodedValue.encryptedData, key: key, opcode: type(of: decodedValue).opcode)
-            let decryptedValue = try decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
+            let username = try parseDecryptedUsername(try Crypto.AES.decrypt(Data(decodedValue.encryptedUsername), key: .login))
+            #expect(username == "testusername")
+            let key = Key(username: username, password: "testpassword", nonce: 0xEA7B_8AE3)
+            let decryptedData = try Crypto.AES.decrypt(Data(decodedValue.encryptedData), key: key, opcode: type(of: decodedValue).opcode)
+            let decryptedValue = try parseDecryptedAuthenticationData(decryptedData)
             #expect(decryptedValue.password == "testpassword")
             #expect(decryptedValue.clientVersion == 280)
         }
 
         do {
-            let data = Data(
+            let data = [UInt8](
                 hexString:
                     "5600AF0D101015E9A289210936868CB9FADA26CB0C0B6932CC16C212E1E782457DDCD75E6542855F4B1102A6670C211C615FD886DFA72B0AB1164CC75A3DA8EBE5CBD3856EB75B47E9A28C2CA0A3A0ED467A12CBE942")!
             let packet = try #require(Packet(data: data))
@@ -202,10 +204,11 @@ import Testing
             #expect(packet.size == numericCast(packet.data.count))
             #expect(packet.opcode == .authenticationRequest)
             let decodedValue = try decoder.decodePacket(AuthenticationRequest.self, from: data)
-            #expect(decodedValue.username == "testusername")
-            let key = Key(username: decodedValue.username, password: "testpassword", nonce: 0x0001_0203)
-            let decryptedData = try Crypto.AES.decrypt(decodedValue.encryptedData, key: key, opcode: type(of: decodedValue).opcode)
-            let decryptedValue = try decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
+            let username = try parseDecryptedUsername(try Crypto.AES.decrypt(Data(decodedValue.encryptedUsername), key: .login))
+            #expect(username == "testusername")
+            let key = Key(username: username, password: "testpassword", nonce: 0x0001_0203)
+            let decryptedData = try Crypto.AES.decrypt(Data(decodedValue.encryptedData), key: key, opcode: type(of: decodedValue).opcode)
+            let decryptedValue = try parseDecryptedAuthenticationData(decryptedData)
             #expect(decryptedValue.password == "testpassword")
             #expect(decryptedValue.clientVersion == 280)
         }
@@ -214,7 +217,7 @@ import Testing
     @Test func loginResponse() throws {
         var encoder = GunBoundEncoder()
         encoder.log = { print("Encoder:", $0) }
-        let data = Data(
+        let data = [UInt8](
             hexString:
                 "A301FC9A12100000698C621461646D696E0000000000000000800080008000007669727475616C0014001400050D3905000039050000040D00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038900D0038900D003F420F00000000000000000000000000000000000000000400"
         )!
@@ -245,7 +248,7 @@ import Testing
     }
 
     @Test func cashUpdate() throws {
-        let data = Data(hexString: "1600BA723210A791BE6CECA91C106A641B509550A630")!
+        let data = [UInt8](hexString: "1600BA723210A791BE6CECA91C106A641B509550A630")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 22)
@@ -256,7 +259,7 @@ import Testing
     }
 
     @Test func joinChannelRequest() throws {
-        let data = Data([0x08, 0x00, 0x97, 0x2D, 0x00, 0x20, 0xFF, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x97, 0x2D, 0x00, 0x20, 0xFF, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 8)
@@ -268,7 +271,7 @@ import Testing
     }
 
     @Test func joinChannelResponse() throws {
-        let data = Data(hexString: "3100277601200000000000010061646D696E0000000000000000800080008000007669727475616C00140014006D6F7464")!
+        let data = [UInt8](hexString: "3100277601200000000000010061646D696E0000000000000000800080008000007669727475616C00140014006D6F7464")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 49)
@@ -295,7 +298,7 @@ import Testing
     }
 
     @Test func joinChannelNotification() throws {
-        let data = Data([
+        let data = [UInt8]([
             0x27, 0x00, 0xC2, 0x0A, 0x0E, 0x20, 0x00, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         ])
@@ -319,7 +322,7 @@ import Testing
 
     @Test func roomListRequest() throws {
         do {
-            let data = Data([0x0A, 0x00, 0x79, 0xD5, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+            let data = [UInt8]([0x0A, 0x00, 0x79, 0xD5, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
             let packet = try #require(Packet(data: data))
             #expect(packet.data == data)
             #expect(packet.size == 10)
@@ -329,7 +332,7 @@ import Testing
             assertDecode(RoomListRequest(filter: .waiting), packet)
         }
         do {
-            let data = Data(hexString: "0A002BBD002101000000")!
+            let data = [UInt8](hexString: "0A002BBD002101000000")!
             let packet = try #require(Packet(data: data))
             #expect(packet.data == data)
             #expect(packet.size == 10)
@@ -342,7 +345,7 @@ import Testing
 
     @Test func roomListResponse() throws {
         do {
-            let data = Data(hexString: "0A00D1B9032100000000")!
+            let data = [UInt8](hexString: "0A00D1B9032100000000")!
             let packet = try #require(Packet(data: data))
             #expect(packet.data == data)
             #expect(packet.size == 10)
@@ -353,7 +356,7 @@ import Testing
             assertEncode(value, packet)
         }
         do {
-            let data = Data(hexString: "23005FD403210000010000000D61646D696E207669727475616C00B2620C0001020000")!
+            let data = [UInt8](hexString: "23005FD403210000010000000D61646D696E207669727475616C00B2620C0001020000")!
             let packet = try #require(Packet(data: data))
             #expect(packet.data == data)
             #expect(packet.size == 35)
@@ -377,7 +380,7 @@ import Testing
     }
 
     @Test func joinRoomRequest() throws {
-        let data = Data([0x0C, 0x00, 0x55, 0x05, 0x10, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        let data = [UInt8]([0x0C, 0x00, 0x55, 0x05, 0x10, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 12)
@@ -392,7 +395,7 @@ import Testing
     }
 
     @Test func joinRoomResponse() throws {
-        let data = Data(
+        let data = [UInt8](
             hexString:
                 "8C000EFA1121000000010100047465737400B2620000FFFFFFFFFFFFFFFF08020061646D696E00000000000000C0A8017720ABC0A8017720AB0CFF000101000000010003007669727475616C001400140001636F6C656D616E6364610000C0A801C020ABC0A801C020ABFFFF0101000000000000000000000000000000001400140024526F6F6D204D4F5444"
         )!
@@ -447,7 +450,7 @@ import Testing
     }
 
     @Test func joinRoomNotification() throws {
-        let data = Data(hexString: "36007EBF103001636F6C656D616E6364610000C0A801C020ABC0A801C020ABFFFF010000000000000000000000000000000014001400")!
+        let data = [UInt8](hexString: "36007EBF103001636F6C656D616E6364610000C0A801C020ABC0A801C020ABFFFF010000000000000000000000000000000014001400")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 54)
@@ -472,7 +475,7 @@ import Testing
     }
 
     @Test func joinRoomNotificationSelf() throws {
-        let data = Data(hexString: "09001695F521000003")!
+        let data = [UInt8](hexString: "09001695F521000003")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 9)
@@ -483,7 +486,7 @@ import Testing
     }
 
     @Test func createRoomRequest() throws {
-        let data = Data(hexString: "14003D2520210474657374B26200003132333408")!
+        let data = [UInt8](hexString: "14003D2520210474657374B26200003132333408")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 20)
@@ -495,7 +498,7 @@ import Testing
     }
 
     @Test func createRoomResponse() throws {
-        let data = Data(hexString: "150020682121000000010024526F6F6D204D4F5444")!
+        let data = [UInt8](hexString: "150020682121000000010024526F6F6D204D4F5444")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 21)
@@ -506,7 +509,7 @@ import Testing
     }
 
     @Test func roomSelectTankRequest() throws {
-        let data = Data([0x08, 0x00, 0x2E, 0x79, 0x00, 0x32, 0x04, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x2E, 0x79, 0x00, 0x32, 0x04, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 8)
@@ -519,7 +522,7 @@ import Testing
     }
 
     @Test func roomSelectTankResponse() throws {
-        let data = Data([0x08, 0x00, 0xC3, 0xA3, 0x01, 0x32, 0x00, 0x00])
+        let data = [UInt8]([0x08, 0x00, 0xC3, 0xA3, 0x01, 0x32, 0x00, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 8)
@@ -531,7 +534,7 @@ import Testing
     }
 
     @Test func roomSelectTeamRequest() throws {
-        let data = Data([0x07, 0x00, 0xD4, 0x70, 0x10, 0x32, 0x01])
+        let data = [UInt8]([0x07, 0x00, 0xD4, 0x70, 0x10, 0x32, 0x01])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 7)
@@ -543,7 +546,7 @@ import Testing
     }
 
     @Test func roomChangeStageCommand() throws {
-        let data = Data([0x07, 0x00, 0x07, 0xED, 0x00, 0x31, 0x01])
+        let data = [UInt8]([0x07, 0x00, 0x07, 0xED, 0x00, 0x31, 0x01])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 7)
@@ -555,7 +558,7 @@ import Testing
     }
 
     @Test func roomChangeOptionCommand() throws {
-        let data = Data([0x0A, 0x00, 0x10, 0x21, 0x01, 0x31, 0xB2, 0x62, 0x44, 0x00])
+        let data = [UInt8]([0x0A, 0x00, 0x10, 0x21, 0x01, 0x31, 0xB2, 0x62, 0x44, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 10)
@@ -567,7 +570,7 @@ import Testing
     }
 
     @Test func roomChangeCapacityCommand() throws {
-        let data = Data([0x07, 0x00, 0x2E, 0x79, 0x03, 0x31, 0x02])
+        let data = [UInt8]([0x07, 0x00, 0x2E, 0x79, 0x03, 0x31, 0x02])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 7)
@@ -579,7 +582,7 @@ import Testing
     }
 
     @Test func roomSetTitleCommand() throws {
-        let data = Data([0x0B, 0x00, 0x22, 0x89, 0x04, 0x31, 0x68, 0x69, 0x31, 0x32, 0x33])
+        let data = [UInt8]([0x0B, 0x00, 0x22, 0x89, 0x04, 0x31, 0x68, 0x69, 0x31, 0x32, 0x33])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 11)
@@ -590,7 +593,7 @@ import Testing
     }
 
     @Test func userReadyRequest() throws {
-        let data = Data([0x07, 0x00, 0x28, 0x01, 0x30, 0x32, 0x01])
+        let data = [UInt8]([0x07, 0x00, 0x28, 0x01, 0x30, 0x32, 0x01])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 7)
@@ -602,7 +605,7 @@ import Testing
     }
 
     @Test func userReadyResponse() throws {
-        let data = Data(hexString: "08005AE331320000")!
+        let data = [UInt8](hexString: "08005AE331320000")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 8)
@@ -614,7 +617,7 @@ import Testing
     }
 
     @Test func channelChatCommand() throws {
-        let data = Data(hexString: "160037AD1020B9ED2802B33711762492AE38FF2DD39C")!
+        let data = [UInt8](hexString: "160037AD1020B9ED2802B33711762492AE38FF2DD39C")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 22)
@@ -626,7 +629,7 @@ import Testing
     }
 
     @Test func channelChatBroadcast() throws {
-        let data = Data(hexString: "2600C65F1F2042896EF758AF8ED739E8B5D10AA5FA588080ACAAA1BBBDF08C561A631B3596E1")!
+        let data = [UInt8](hexString: "2600C65F1F2042896EF758AF8ED739E8B5D10AA5FA588080ACAAA1BBBDF08C561A631B3596E1")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 38)
@@ -639,7 +642,7 @@ import Testing
     }
 
     @Test func clientCommand() throws {
-        let data = Data([0x0E, 0x00, 0x4F, 0x8D, 0x00, 0x51, 0x2F, 0x74, 0x65, 0x73, 0x74, 0x20, 0x68, 0x69])
+        let data = [UInt8]([0x0E, 0x00, 0x4F, 0x8D, 0x00, 0x51, 0x2F, 0x74, 0x65, 0x73, 0x74, 0x20, 0x68, 0x69])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 14)
@@ -650,7 +653,7 @@ import Testing
     }
 
     @Test func userDeathRequest() throws {
-        let data = Data(hexString: "0B00BF4C00410100000000")!
+        let data = [UInt8](hexString: "0B00BF4C00410100000000")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 11)
@@ -664,7 +667,7 @@ import Testing
     }
 
     @Test func userDeadResponse() throws {
-        let data = Data(hexString: "060030A40141")!
+        let data = [UInt8](hexString: "060030A40141")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 6)
@@ -678,7 +681,7 @@ import Testing
     }
 
     @Test func startGameCommand() throws {
-        let data = Data(hexString: "0A0004313034F6749000")!
+        let data = [UInt8](hexString: "0A0004313034F6749000")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 10)
@@ -699,9 +702,9 @@ import Testing
          x: 253 y 0
          x: 936 y 0
          */
-        let data = Data(
+        let data = [UInt8](
             hexString: "5600017A3234A34D16EBFBA6F065ACC095DEA8FEB8356893D0E6E4A889D997E8CF18BEE510BE396B45F40AD9D2A62015DBBE6359208B16F7630BC23041311B1EF4DB1B74E729816BD533773BC813DA67AF8C392FD2EC")!
-        let plainText = Data(hexString: "00020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000")!
+        let plainText = [UInt8](hexString: "00020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 86)
@@ -746,7 +749,7 @@ import Testing
     }
 
     @Test func gameResultCommand() throws {
-        let data = Data([
+        let data = [UInt8]([
             0x46, 0x00, 0xDC, 0x0E, 0x12, 0x44, 0x9E, 0xEE, 0xC7, 0x7E, 0x68, 0x00, 0x62, 0x0D, 0x03, 0x19, 0xE1, 0x02, 0x7F, 0x1C, 0x97, 0x1C, 0xA8, 0xB3, 0x38, 0xE9, 0x5D, 0x36, 0xC8, 0x3C, 0x8A,
             0x84, 0x49, 0x6E, 0xFA, 0x78, 0xAD, 0x45, 0xB3, 0x46, 0xDD, 0x71, 0x58, 0x10, 0xB8, 0x27, 0xA8, 0x7D, 0xF4, 0x6F, 0xA1, 0x88, 0xF1, 0x24, 0x38, 0x4F, 0xD9, 0xB7, 0xA2, 0x4A, 0x89, 0x09,
             0x23, 0x9D, 0x72, 0xFF, 0x11, 0x33, 0xC0, 0x2F
@@ -761,7 +764,7 @@ import Testing
     }
 
     @Test func roomReturnResultRequest() throws {
-        let data = Data([0x06, 0x00, 0xA1, 0xF4, 0x32, 0x32])
+        let data = [UInt8]([0x06, 0x00, 0xA1, 0xF4, 0x32, 0x32])
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 6)
@@ -781,12 +784,12 @@ import Testing
         let packet = Packet(
             opcode: .nonceResponse,
             id: 0x53E5,
-            parameters: Data([0x12, 0x6D, 0xB4, 0x07])
+            parameters: [UInt8]([0x12, 0x6D, 0xB4, 0x07])
         )
         #expect(packet.opcode == .nonceResponse)
         #expect(packet.id == 0x53E5)
         #expect(packet.size == 10)
-        #expect(packet.parameters == Data([0x12, 0x6D, 0xB4, 0x07]))
+        #expect(packet.parameters == [UInt8]([0x12, 0x6D, 0xB4, 0x07]))
     }
 
     @Test func joinChannelResponseFromLog() throws {
@@ -816,7 +819,7 @@ import Testing
     @Test func roomListResponseEmptyFromLog() throws {
         // Server log: SEND>> [SS=011BC818 SQ=ED6D CD=2103 RTC=0000] 00 00
         // Empty room list response
-        let data = Data(hexString: "0A006DED032100000000")!
+        let data = [UInt8](hexString: "0A006DED032100000000")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.size == 10)
@@ -833,7 +836,7 @@ import Testing
         let packet = Packet(
             opcode: .cashUpdateNotification,
             id: 0x72BA,
-            parameters: Data([0x0E, 0x1F, 0xC3, 0x40, 0xE9, 0x4B, 0x62, 0xE1, 0xED, 0x39, 0xB1, 0xC2, 0x0E, 0x59, 0x2A, 0xE1])
+            parameters: [UInt8]([0x0E, 0x1F, 0xC3, 0x40, 0xE9, 0x4B, 0x62, 0xE1, 0xED, 0x39, 0xB1, 0xC2, 0x0E, 0x59, 0x2A, 0xE1])
         )
         #expect(packet.opcode == .cashUpdateNotification)
         #expect(packet.id == 0x72BA)
@@ -846,7 +849,7 @@ import Testing
     @Test func nonceResponseAdditionalLog1() throws {
         // Server log: SEND>> [SS=00347340 SQ=53E5 CD=1001] 88 4C 2D 1F
         // Nonce bytes: 88 4C 2D 1F (big-endian) = 0x1F2D4C88
-        let data = Data(hexString: "0A00E55301101F2D4C88")!
+        let data = [UInt8](hexString: "0A00E55301101F2D4C88")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.opcode == .nonceResponse)
@@ -858,7 +861,7 @@ import Testing
     @Test func nonceResponseAdditionalLog2() throws {
         // Server log: SEND>> [SS=00347340 SQ=53E5 CD=1001] 7C 7F 3F 13
         // Nonce bytes: 7C 7F 3F 13 (big-endian) = 0x133F7F7C
-        let data = Data(hexString: "0A00E5530110133F7F7C")!
+        let data = [UInt8](hexString: "0A00E5530110133F7F7C")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.opcode == .nonceResponse)
@@ -870,7 +873,7 @@ import Testing
     @Test func nonceResponseAdditionalLog3() throws {
         // Server log: SEND>> [SS=00347340 SQ=53E5 CD=1001] A4 CD F9 36
         // Nonce bytes: A4 CD F9 36 (big-endian) = 0x36F9CDA4
-        let data = Data(hexString: "0A00E553011036F9CDA4")!
+        let data = [UInt8](hexString: "0A00E553011036F9CDA4")!
         let packet = try #require(Packet(data: data))
         #expect(packet.data == data)
         #expect(packet.opcode == .nonceResponse)
@@ -915,7 +918,7 @@ import Testing
         ]
 
         for (hexParams, expectedId) in packets {
-            let parameters = Data(hexString: hexParams)!
+            let parameters = [UInt8](hexString: hexParams)!
             let packetId = Packet.ID(rawValue: UInt16(expectedId))
             let packet = Packet(
                 opcode: .cashUpdateNotification,
@@ -934,7 +937,7 @@ import Testing
     /// RECV>> [cmd=0x1000] [6 bytes]
     /// 0000  06 00 B1 36 00 10
     @Test func nonceRequest_fromLog() throws {
-        let data = Data([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
+        let data = [UInt8]([0x06, 0x00, 0xB1, 0x36, 0x00, 0x10])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .nonceRequest)
         #expect(packet.size == 6)
@@ -950,7 +953,7 @@ import Testing
     /// The four parameter bytes DB 6A 9A F6 are the nonce stored big-endian,
     /// so Nonce.rawValue == 0xDB6A9AF6.
     @Test func nonceResponse_fromLog() throws {
-        let data = Data([0x0A, 0x00, 0xE5, 0x53, 0x01, 0x10, 0xDB, 0x6A, 0x9A, 0xF6])
+        let data = [UInt8]([0x0A, 0x00, 0xE5, 0x53, 0x01, 0x10, 0xDB, 0x6A, 0x9A, 0xF6])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .nonceResponse)
         #expect(packet.size == 10)
@@ -965,7 +968,7 @@ import Testing
     /// Full encrypted login packet from the log.
     /// Server log confirms: Username=colemancda, Password=1234, ClientVersion=280.
     @Test func authenticationRequest_fromLog() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "5600AF0D1010" +
             "218ABED7FA38086ECC02" +              // encrypted username block (16 bytes)
             "A15A4D3010F1E2DA03985C6E99D1496C" +  // unknown block (16 bytes)
@@ -981,19 +984,17 @@ import Testing
 
         var decoder = GunBoundDecoder()
         let request = try decoder.decodePacket(AuthenticationRequest.self, from: data)
-        #expect(request.username == "colemancda")
+        let username = try parseDecryptedUsername(try Crypto.AES.decrypt(Data(request.encryptedUsername), key: .login))
+        #expect(username == "colemancda")
 
         // Derive session key: username + password + nonce
         let key = Key(username: "colemancda", password: "1234", nonce: 0xDB6A9AF6)
         let decryptedData = try Crypto.AES.decrypt(
-            request.encryptedData,
+            Data(request.encryptedData),
             key: key,
             opcode: AuthenticationRequest.opcode
         )
-        let decryptedPayload = try decoder.decode(
-            AuthenticationRequest.EncryptedData.self,
-            from: decryptedData
-        )
+        let decryptedPayload = try parseDecryptedAuthenticationData(decryptedData)
         #expect(decryptedPayload.password == "1234")
         #expect(decryptedPayload.clientVersion == 280)
     }
@@ -1004,7 +1005,7 @@ import Testing
     /// 0000  08 00 97 2D 00 20 FF FF
     /// channel=0xFFFF means "route me to the default channel".
     @Test func joinChannelRequest_defaultChannel() throws {
-        let data = Data([0x08, 0x00, 0x97, 0x2D, 0x00, 0x20, 0xFF, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x97, 0x2D, 0x00, 0x20, 0xFF, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.size == 8)
@@ -1016,7 +1017,7 @@ import Testing
     /// Second RECV>> [cmd=0x2000] at the end of the session (room cleanup trigger).
     /// 0000  08 00 03 98 00 20 FF FF
     @Test func joinChannelRequest_secondRequest() throws {
-        let data = Data([0x08, 0x00, 0x03, 0x98, 0x00, 0x20, 0xFF, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x03, 0x98, 0x00, 0x20, 0xFF, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .joinChannelRequest)
         #expect(packet.id == 0x9803)
@@ -1030,7 +1031,7 @@ import Testing
     /// 0000  0A 00 E5 3F 00 21 02 00 00 00
     /// filter byte = 0x02 = RoomFilter.waiting
     @Test func roomListRequest_waitingFilter() throws {
-        let data = Data([0x0A, 0x00, 0xE5, 0x3F, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+        let data = [UInt8]([0x0A, 0x00, 0xE5, 0x3F, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.size == 10)
@@ -1041,7 +1042,7 @@ import Testing
     /// Second room list request (same filter, different packet ID).
     /// 0000  0A 00 E5 3F 00 21 02 00 00 00  (appears again after re-join)
     @Test func roomListRequest_waitingFilter_secondOccurrence() throws {
-        let data = Data([0x0A, 0x00, 0xE5, 0x3F, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
+        let data = [UInt8]([0x0A, 0x00, 0xE5, 0x3F, 0x00, 0x21, 0x02, 0x00, 0x00, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.id == 0x3FE5)
@@ -1056,7 +1057,7 @@ import Testing
     ///
     /// name="test" (4 chars), settings=0x000062B2, password="1234", capacity=2 (1:1)
     @Test func createRoomRequest_fromLog() throws {
-        let data = Data([
+        let data = [UInt8]([
             0x14, 0x00, 0xCB, 0x3C, 0x20, 0x21,
             0x04,                                   // name length
             0x74, 0x65, 0x73, 0x74,                 // "test"
@@ -1083,7 +1084,7 @@ import Testing
     ///
     /// room id = 0x0003, message = "$Room MOTD"
     @Test func createRoomResponse_fromLog() throws {
-        let data = Data([
+        let data = [UInt8]([
             0x15, 0x00, 0x9B, 0x81, 0x21, 0x21,
             0x00, 0x00, 0x00,                       // 3-byte prefix
             0x03, 0x00,                             // room id LE = 3
@@ -1102,7 +1103,7 @@ import Testing
     /// Each entry: primary tank index, secondary = 0xFF (random).
     @Test func roomSelectTank_armorRandom() throws {
         // 08 00 B3 5C 00 32 00 FF
-        let data = Data([0x08, 0x00, 0xB3, 0x5C, 0x00, 0x32, 0x00, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0xB3, 0x5C, 0x00, 0x32, 0x00, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x5CB3)
@@ -1112,7 +1113,7 @@ import Testing
 
     @Test func roomSelectTank_mageRandom() throws {
         // 08 00 9B 7C 00 32 01 FF
-        let data = Data([0x08, 0x00, 0x9B, 0x7C, 0x00, 0x32, 0x01, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x9B, 0x7C, 0x00, 0x32, 0x01, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x7C9B)
@@ -1122,7 +1123,7 @@ import Testing
 
     @Test func roomSelectTank_nakRandom() throws {
         // 08 00 83 9C 00 32 02 FF
-        let data = Data([0x08, 0x00, 0x83, 0x9C, 0x00, 0x32, 0x02, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x83, 0x9C, 0x00, 0x32, 0x02, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x9C83)
@@ -1132,7 +1133,7 @@ import Testing
 
     @Test func roomSelectTank_tricoRandom() throws {
         // 08 00 6B BC 00 32 03 FF
-        let data = Data([0x08, 0x00, 0x6B, 0xBC, 0x00, 0x32, 0x03, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x6B, 0xBC, 0x00, 0x32, 0x03, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xBC6B)
@@ -1142,7 +1143,7 @@ import Testing
 
     @Test func roomSelectTank_bigFootRandom() throws {
         // 08 00 53 DC 00 32 04 FF
-        let data = Data([0x08, 0x00, 0x53, 0xDC, 0x00, 0x32, 0x04, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x53, 0xDC, 0x00, 0x32, 0x04, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xDC53)
@@ -1152,7 +1153,7 @@ import Testing
 
     @Test func roomSelectTank_boomerRandom() throws {
         // 08 00 3B FC 00 32 05 FF
-        let data = Data([0x08, 0x00, 0x3B, 0xFC, 0x00, 0x32, 0x05, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x3B, 0xFC, 0x00, 0x32, 0x05, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xFC3B)
@@ -1162,7 +1163,7 @@ import Testing
 
     @Test func roomSelectTank_raonRandom() throws {
         // 08 00 23 1C 00 32 06 FF
-        let data = Data([0x08, 0x00, 0x23, 0x1C, 0x00, 0x32, 0x06, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x23, 0x1C, 0x00, 0x32, 0x06, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x1C23)
@@ -1172,7 +1173,7 @@ import Testing
 
     @Test func roomSelectTank_lightningRandom() throws {
         // 08 00 0B 3C 00 32 07 FF
-        let data = Data([0x08, 0x00, 0x0B, 0x3C, 0x00, 0x32, 0x07, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x0B, 0x3C, 0x00, 0x32, 0x07, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x3C0B)
@@ -1182,7 +1183,7 @@ import Testing
 
     @Test func roomSelectTank_jdRandom() throws {
         // 08 00 F3 5B 00 32 08 FF
-        let data = Data([0x08, 0x00, 0xF3, 0x5B, 0x00, 0x32, 0x08, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0xF3, 0x5B, 0x00, 0x32, 0x08, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x5BF3)
@@ -1192,7 +1193,7 @@ import Testing
 
     @Test func roomSelectTank_asateRandom() throws {
         // 08 00 DB 7B 00 32 09 FF
-        let data = Data([0x08, 0x00, 0xDB, 0x7B, 0x00, 0x32, 0x09, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0xDB, 0x7B, 0x00, 0x32, 0x09, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x7BDB)
@@ -1202,7 +1203,7 @@ import Testing
 
     @Test func roomSelectTank_iceRandom() throws {
         // 08 00 C3 9B 00 32 0A FF
-        let data = Data([0x08, 0x00, 0xC3, 0x9B, 0x00, 0x32, 0x0A, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0xC3, 0x9B, 0x00, 0x32, 0x0A, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x9BC3)
@@ -1212,7 +1213,7 @@ import Testing
 
     @Test func roomSelectTank_turtleRandom() throws {
         // 08 00 AB BB 00 32 0B FF
-        let data = Data([0x08, 0x00, 0xAB, 0xBB, 0x00, 0x32, 0x0B, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0xAB, 0xBB, 0x00, 0x32, 0x0B, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xBBAB)
@@ -1222,7 +1223,7 @@ import Testing
 
     @Test func roomSelectTank_grubRandom() throws {
         // 08 00 93 DB 00 32 0C FF
-        let data = Data([0x08, 0x00, 0x93, 0xDB, 0x00, 0x32, 0x0C, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x93, 0xDB, 0x00, 0x32, 0x0C, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xDB93)
@@ -1232,7 +1233,7 @@ import Testing
 
     @Test func roomSelectTank_adukaRandom() throws {
         // 08 00 7B FB 00 32 0D FF
-        let data = Data([0x08, 0x00, 0x7B, 0xFB, 0x00, 0x32, 0x0D, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x7B, 0xFB, 0x00, 0x32, 0x0D, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0xFB7B)
@@ -1243,7 +1244,7 @@ import Testing
     /// Final tank selection in the cycle: primary=0xFF=random, secondary=0xFF=random
     @Test func roomSelectTank_randomRandom() throws {
         // 08 00 63 1B 00 32 FF FF
-        let data = Data([0x08, 0x00, 0x63, 0x1B, 0x00, 0x32, 0xFF, 0xFF])
+        let data = [UInt8]([0x08, 0x00, 0x63, 0x1B, 0x00, 0x32, 0xFF, 0xFF])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankRequest)
         #expect(packet.id == 0x1B63)
@@ -1256,7 +1257,7 @@ import Testing
     /// RECV>> [cmd=0x3210] — change to team B (value 1)
     /// 0000  07 00 1B 80 10 32 01
     @Test func roomSelectTeam_teamB() throws {
-        let data = Data([0x07, 0x00, 0x1B, 0x80, 0x10, 0x32, 0x01])
+        let data = [UInt8]([0x07, 0x00, 0x1B, 0x80, 0x10, 0x32, 0x01])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTeamRequest)
         #expect(packet.size == 7)
@@ -1268,7 +1269,7 @@ import Testing
     /// RECV>> [cmd=0x3210] — change back to team A (value 0)
     /// 0000  07 00 39 D3 10 32 00
     @Test func roomSelectTeam_teamA() throws {
-        let data = Data([0x07, 0x00, 0x39, 0xD3, 0x10, 0x32, 0x00])
+        let data = [UInt8]([0x07, 0x00, 0x39, 0xD3, 0x10, 0x32, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTeamRequest)
         #expect(packet.id == 0xD339)
@@ -1281,7 +1282,7 @@ import Testing
     /// RECV>> [cmd=0x3100] — map set to 1 (Miramo Town)
     /// 0000  07 00 23 19 00 31 01
     @Test func roomChangeStage_miramoTown() throws {
-        let data = Data([0x07, 0x00, 0x23, 0x19, 0x00, 0x31, 0x01])
+        let data = [UInt8]([0x07, 0x00, 0x23, 0x19, 0x00, 0x31, 0x01])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0x1923)
@@ -1291,7 +1292,7 @@ import Testing
 
     /// RECV>> [cmd=0x3100] — map set to 2 (Nirvana)
     @Test func roomChangeStage_nirvana() throws {
-        let data = Data([0x07, 0x00, 0x0E, 0xF5, 0x00, 0x31, 0x02])
+        let data = [UInt8]([0x07, 0x00, 0x0E, 0xF5, 0x00, 0x31, 0x02])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0xF50E)
@@ -1301,7 +1302,7 @@ import Testing
 
     /// RECV>> [cmd=0x3100] — map set to 5 (Adiumroot)
     @Test func roomChangeStage_adiumroot() throws {
-        let data = Data([0x07, 0x00, 0xCF, 0x88, 0x00, 0x31, 0x05])
+        let data = [UInt8]([0x07, 0x00, 0xCF, 0x88, 0x00, 0x31, 0x05])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0x88CF)
@@ -1311,7 +1312,7 @@ import Testing
 
     /// RECV>> [cmd=0x3100] — map set to 10 (Meta Mine)
     @Test func roomChangeStage_metaMine() throws {
-        let data = Data([0x07, 0x00, 0x66, 0xD4, 0x00, 0x31, 0x0A])
+        let data = [UInt8]([0x07, 0x00, 0x66, 0xD4, 0x00, 0x31, 0x0A])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0xD466)
@@ -1322,7 +1323,7 @@ import Testing
     /// RECV>> [cmd=0x3100] — map reset to 0 (random)
     /// 0000  07 00 51 B0 00 31 00
     @Test func roomChangeStage_random() throws {
-        let data = Data([0x07, 0x00, 0x51, 0xB0, 0x00, 0x31, 0x00])
+        let data = [UInt8]([0x07, 0x00, 0x51, 0xB0, 0x00, 0x31, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeStageCommand)
         #expect(packet.id == 0xB051)
@@ -1335,7 +1336,7 @@ import Testing
     /// RECV>> [cmd=0x3103] — capacity changed to 4 (2:2)
     /// 0000  07 00 AC 4E 03 31 04
     @Test func roomChangeCapacity_2v2() throws {
-        let data = Data([0x07, 0x00, 0xAC, 0x4E, 0x03, 0x31, 0x04])
+        let data = [UInt8]([0x07, 0x00, 0xAC, 0x4E, 0x03, 0x31, 0x04])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.size == 7)
@@ -1347,7 +1348,7 @@ import Testing
     /// RECV>> [cmd=0x3103] — capacity changed to 6 (3:3)
     /// 0000  07 00 97 2A 03 31 06
     @Test func roomChangeCapacity_3v3() throws {
-        let data = Data([0x07, 0x00, 0x97, 0x2A, 0x03, 0x31, 0x06])
+        let data = [UInt8]([0x07, 0x00, 0x97, 0x2A, 0x03, 0x31, 0x06])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.id == 0x2A97)
@@ -1358,7 +1359,7 @@ import Testing
     /// RECV>> [cmd=0x3103] — capacity changed to 8 (4:4)
     /// 0000  07 00 82 06 03 31 08
     @Test func roomChangeCapacity_4v4() throws {
-        let data = Data([0x07, 0x00, 0x82, 0x06, 0x03, 0x31, 0x08])
+        let data = [UInt8]([0x07, 0x00, 0x82, 0x06, 0x03, 0x31, 0x08])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.id == 0x0682)
@@ -1369,7 +1370,7 @@ import Testing
     /// RECV>> [cmd=0x3103] — capacity reset to 2 (1:1, original)
     /// 0000  07 00 1B 78 03 31 02
     @Test func roomChangeCapacity_1v1() throws {
-        let data = Data([0x07, 0x00, 0x1B, 0x78, 0x03, 0x31, 0x02])
+        let data = [UInt8]([0x07, 0x00, 0x1B, 0x78, 0x03, 0x31, 0x02])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeCapacityCommand)
         #expect(packet.id == 0x781B)
@@ -1383,7 +1384,7 @@ import Testing
     /// 0000  0A 00 1B 7B 01 31 B2 62 44 00
     /// settings LE = 0x00_44_62_B2
     @Test func roomChangeOption_firstInSession() throws {
-        let data = Data([0x0A, 0x00, 0x1B, 0x7B, 0x01, 0x31, 0xB2, 0x62, 0x44, 0x00])
+        let data = [UInt8]([0x0A, 0x00, 0x1B, 0x7B, 0x01, 0x31, 0xB2, 0x62, 0x44, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.size == 10)
@@ -1396,7 +1397,7 @@ import Testing
     /// 0000  0A 00 FD 22 01 31 B2 62 08 00
     /// settings LE = 0x00_08_62_B2
     @Test func roomChangeOption_soloMode() throws {
-        let data = Data([0x0A, 0x00, 0xFD, 0x22, 0x01, 0x31, 0xB2, 0x62, 0x08, 0x00])
+        let data = [UInt8]([0x0A, 0x00, 0xFD, 0x22, 0x01, 0x31, 0xB2, 0x62, 0x08, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.id == 0x22FD)
@@ -1408,7 +1409,7 @@ import Testing
     /// 0000  0A 00 28 FE 01 31 B2 63 00 00
     /// settings LE = 0x00_00_63_B2
     @Test func roomChangeOption_changedByte() throws {
-        let data = Data([0x0A, 0x00, 0x28, 0xFE, 0x01, 0x31, 0xB2, 0x63, 0x00, 0x00])
+        let data = [UInt8]([0x0A, 0x00, 0x28, 0xFE, 0x01, 0x31, 0xB2, 0x63, 0x00, 0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomChangeOptionCommand)
         #expect(packet.id == 0xFE28)
@@ -1422,7 +1423,7 @@ import Testing
     /// 0000  0B 00 30 9C 04 31 74 65 73 74 32
     /// title = "test2" (5 ASCII bytes, no null terminator in payload)
     @Test func roomSetTitle_test2() throws {
-        let data = Data([0x0B, 0x00, 0x30, 0x9C, 0x04, 0x31, 0x74, 0x65, 0x73, 0x74, 0x32])
+        let data = [UInt8]([0x0B, 0x00, 0x30, 0x9C, 0x04, 0x31, 0x74, 0x65, 0x73, 0x74, 0x32])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSetTitleCommand)
         #expect(packet.size == 11)
@@ -1471,7 +1472,7 @@ import Testing
     ///
     /// maxPosition = 4 (highest occupied user-ID slot).
     @Test func joinChannelResponse_packetHeader() throws {
-        let data = Data([
+        let data = [UInt8]([
             0x09,0x01, 0x9F,0xD3, 0x01,0x20,   // size=265, id, opcode
             0x00,0x00,                           // status
             0x00,0x00,                           // channel=0
@@ -1565,7 +1566,7 @@ import Testing
     /// 0000  09 01 00 DE 01 20 ...
     @Test func joinChannelResponse_secondOccurrence_packetHeader() throws {
         // Read just the first 6 bytes to check header
-        let headerBytes = Data([0x09,0x01, 0x00,0xDE, 0x01,0x20])
+        let headerBytes = [UInt8]([0x09,0x01, 0x00,0xDE, 0x01,0x20])
         let size = UInt16(littleEndian: UInt16(headerBytes[0]) | (UInt16(headerBytes[1]) << 8))
         let id = UInt16(littleEndian: UInt16(headerBytes[2]) | (UInt16(headerBytes[3]) << 8))
         let opcode = UInt16(littleEndian: UInt16(headerBytes[4]) | (UInt16(headerBytes[5]) << 8))
@@ -1578,7 +1579,7 @@ import Testing
 
     /// SEND>> [cmd=0x2103] [79 bytes] — room list with 3 virtual waiting rooms.
     @Test func roomListResponse_packetHeader() throws {
-        let data = Data([
+        let data = [UInt8]([
             0x4F,0x00, 0xB2,0xCE, 0x03,0x21,
             // params follow — just verify at packet level
             0x00,0x00, 0x03,0x00, 0x00,0x00,
@@ -1608,7 +1609,7 @@ import Testing
     /// SEND>> [cmd=0x3201] [8 bytes] — first tank selection ACK.
     /// 0000  08 00 83 A1 01 32 00 00
     @Test func roomSelectTankResponse_firstAck() throws {
-        let data = Data([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00])
+        let data = [UInt8]([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTankResponse)
         #expect(packet.size == 8)
@@ -1621,29 +1622,29 @@ import Testing
     /// The server replied to every tank selection (0–13 and 255) with the same
     /// zero-rtc response; only the packet ID (sentBytes counter) changes.
     @Test func roomSelectTankResponse_fullCycle() throws {
-        let rawPackets: [Data] = [
-            Data([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00]),  // armor
-            Data([0x08,0x00,0x6B,0xC1,0x01,0x32,0x00,0x00]),  // mage
-            Data([0x08,0x00,0x53,0xE1,0x01,0x32,0x00,0x00]),  // nak
-            Data([0x08,0x00,0x3B,0x01,0x01,0x32,0x00,0x00]),  // trico
-            Data([0x08,0x00,0x23,0x21,0x01,0x32,0x00,0x00]),  // bigFoot
-            Data([0x08,0x00,0x0B,0x41,0x01,0x32,0x00,0x00]),  // boomer
-            Data([0x08,0x00,0xF3,0x60,0x01,0x32,0x00,0x00]),  // raon
-            Data([0x08,0x00,0xDB,0x80,0x01,0x32,0x00,0x00]),  // lightning
-            Data([0x08,0x00,0xC3,0xA0,0x01,0x32,0x00,0x00]),  // jd
-            Data([0x08,0x00,0xAB,0xC0,0x01,0x32,0x00,0x00]),  // asate
-            Data([0x08,0x00,0x93,0xE0,0x01,0x32,0x00,0x00]),  // ice
-            Data([0x08,0x00,0x7B,0x00,0x01,0x32,0x00,0x00]),  // turtle
-            Data([0x08,0x00,0x63,0x20,0x01,0x32,0x00,0x00]),  // grub
-            Data([0x08,0x00,0x4B,0x40,0x01,0x32,0x00,0x00]),  // aduka
-            Data([0x08,0x00,0x33,0x60,0x01,0x32,0x00,0x00]),  // random
+        let rawPackets: [[UInt8]] = [
+            [UInt8]([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00]),  // armor
+            [UInt8]([0x08,0x00,0x6B,0xC1,0x01,0x32,0x00,0x00]),  // mage
+            [UInt8]([0x08,0x00,0x53,0xE1,0x01,0x32,0x00,0x00]),  // nak
+            [UInt8]([0x08,0x00,0x3B,0x01,0x01,0x32,0x00,0x00]),  // trico
+            [UInt8]([0x08,0x00,0x23,0x21,0x01,0x32,0x00,0x00]),  // bigFoot
+            [UInt8]([0x08,0x00,0x0B,0x41,0x01,0x32,0x00,0x00]),  // boomer
+            [UInt8]([0x08,0x00,0xF3,0x60,0x01,0x32,0x00,0x00]),  // raon
+            [UInt8]([0x08,0x00,0xDB,0x80,0x01,0x32,0x00,0x00]),  // lightning
+            [UInt8]([0x08,0x00,0xC3,0xA0,0x01,0x32,0x00,0x00]),  // jd
+            [UInt8]([0x08,0x00,0xAB,0xC0,0x01,0x32,0x00,0x00]),  // asate
+            [UInt8]([0x08,0x00,0x93,0xE0,0x01,0x32,0x00,0x00]),  // ice
+            [UInt8]([0x08,0x00,0x7B,0x00,0x01,0x32,0x00,0x00]),  // turtle
+            [UInt8]([0x08,0x00,0x63,0x20,0x01,0x32,0x00,0x00]),  // grub
+            [UInt8]([0x08,0x00,0x4B,0x40,0x01,0x32,0x00,0x00]),  // aduka
+            [UInt8]([0x08,0x00,0x33,0x60,0x01,0x32,0x00,0x00]),  // random
         ]
         for (index, raw) in rawPackets.enumerated() {
             let packet = try #require(Packet(data: raw), "packet index \(index)")
             #expect(packet.opcode == .roomSelectTankResponse, "packet index \(index)")
             #expect(packet.size == 8, "packet index \(index)")
             // rtc field in parameters is always 0x0000
-            #expect(packet.parameters == Data([0x00, 0x00]), "packet index \(index)")
+            #expect(packet.parameters == [UInt8]([0x00, 0x00]), "packet index \(index)")
         }
     }
 
@@ -1652,7 +1653,7 @@ import Testing
     /// SEND>> [cmd=0x3211] — ACK for team B selection.
     /// 0000  08 00 1B 80 11 32 00 00
     @Test func roomSelectTeamResponse_teamB() throws {
-        let data = Data([0x08,0x00,0x1B,0x80,0x11,0x32,0x00,0x00])
+        let data = [UInt8]([0x08,0x00,0x1B,0x80,0x11,0x32,0x00,0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTeamResponse)
         #expect(packet.size == 8)
@@ -1664,7 +1665,7 @@ import Testing
     /// SEND>> [cmd=0x3211] — ACK for team A selection.
     /// 0000  08 00 03 A0 11 32 00 00
     @Test func roomSelectTeamResponse_teamA() throws {
-        let data = Data([0x08,0x00,0x03,0xA0,0x11,0x32,0x00,0x00])
+        let data = [UInt8]([0x08,0x00,0x03,0xA0,0x11,0x32,0x00,0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomSelectTeamResponse)
         #expect(packet.size == 8)
@@ -1678,7 +1679,7 @@ import Testing
     /// SEND>> [cmd=0x3105] — first room update notification (after first option change).
     /// 0000  08 00 EB BF 05 31 00 00
     @Test func roomUpdateNotification_first() throws {
-        let data = Data([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00])
+        let data = [UInt8]([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00])
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomUpdateNotification)
         #expect(packet.size == 8)
@@ -1692,45 +1693,45 @@ import Testing
     @Test func roomUpdateNotification_allInstances() throws {
         // Every RoomUpdateNotification in the session, in order.
         // Each is 8 bytes: [size=08 00] [id LE] [opcode=05 31] [rtc=00 00]
-        let rawPackets: [Data] = [
+        let rawPackets: [[UInt8]] = [
             // option changes
-            Data([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xD3,0xDF,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xBB,0xFF,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xA3,0x1F,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xD3,0xDF,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xBB,0xFF,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xA3,0x1F,0x05,0x31,0x00,0x00]),
             // capacity 4
-            Data([0x08,0x00,0x8B,0x3F,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x8B,0x3F,0x05,0x31,0x00,0x00]),
             // capacity 6
-            Data([0x08,0x00,0x73,0x5F,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x73,0x5F,0x05,0x31,0x00,0x00]),
             // capacity 8
-            Data([0x08,0x00,0x5B,0x7F,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x5B,0x7F,0x05,0x31,0x00,0x00]),
             // more option changes
-            Data([0x08,0x00,0x43,0x9F,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x2B,0xBF,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x13,0xDF,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xFB,0xFE,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xE3,0x1E,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xCB,0x3E,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0xB3,0x5E,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x9B,0x7E,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x83,0x9E,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x6B,0xBE,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x53,0xDE,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x43,0x9F,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x2B,0xBF,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x13,0xDF,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xFB,0xFE,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xE3,0x1E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xCB,0x3E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xB3,0x5E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x9B,0x7E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x83,0x9E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x6B,0xBE,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x53,0xDE,0x05,0x31,0x00,0x00]),
             // stage changes 1–10 then back to 0
-            Data([0x08,0x00,0x3B,0xFE,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x23,0x1E,0x05,0x31,0x00,0x00]),
-            Data([0x08,0x00,0x0B,0x3E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x3B,0xFE,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x23,0x1E,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x0B,0x3E,0x05,0x31,0x00,0x00]),
             // room title rename
-            Data([0x08,0x00,0x33,0x5D,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x33,0x5D,0x05,0x31,0x00,0x00]),
             // capacity reset to 2
-            Data([0x08,0x00,0x1B,0x7D,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x1B,0x7D,0x05,0x31,0x00,0x00]),
         ]
         for (index, raw) in rawPackets.enumerated() {
             let packet = try #require(Packet(data: raw), "packet index \(index)")
             #expect(packet.opcode == .roomUpdateNotification, "packet index \(index)")
             #expect(packet.size == 8, "packet index \(index)")
             // rtc is always zero
-            #expect(packet.parameters == Data([0x00, 0x00]), "packet index \(index)")
+            #expect(packet.parameters == [UInt8]([0x00, 0x00]), "packet index \(index)")
         }
     }
 
@@ -1912,24 +1913,24 @@ import Testing
 
     /// Every packet in the session has size == data.count (the size field is self-consistent).
     @Test func packet_sizeFieldConsistency() throws {
-        let knownPackets: [Data] = [
+        let knownPackets: [[UInt8]] = [
             // client→server
-            Data([0x06,0x00,0xB1,0x36,0x00,0x10]),
-            Data([0x08,0x00,0x97,0x2D,0x00,0x20,0xFF,0xFF]),
-            Data([0x0A,0x00,0xE5,0x3F,0x00,0x21,0x02,0x00,0x00,0x00]),
-            Data([0x14,0x00,0xCB,0x3C,0x20,0x21,0x04,0x74,0x65,0x73,0x74,0xB2,0x62,0x00,0x00,0x31,0x32,0x33,0x34,0x02]),
-            Data([0x08,0x00,0xB3,0x5C,0x00,0x32,0x00,0xFF]),
-            Data([0x07,0x00,0x1B,0x80,0x10,0x32,0x01]),
-            Data([0x07,0x00,0x23,0x19,0x00,0x31,0x01]),
-            Data([0x07,0x00,0xAC,0x4E,0x03,0x31,0x04]),
-            Data([0x0A,0x00,0x1B,0x7B,0x01,0x31,0xB2,0x62,0x44,0x00]),
-            Data([0x0B,0x00,0x30,0x9C,0x04,0x31,0x74,0x65,0x73,0x74,0x32]),
+            [UInt8]([0x06,0x00,0xB1,0x36,0x00,0x10]),
+            [UInt8]([0x08,0x00,0x97,0x2D,0x00,0x20,0xFF,0xFF]),
+            [UInt8]([0x0A,0x00,0xE5,0x3F,0x00,0x21,0x02,0x00,0x00,0x00]),
+            [UInt8]([0x14,0x00,0xCB,0x3C,0x20,0x21,0x04,0x74,0x65,0x73,0x74,0xB2,0x62,0x00,0x00,0x31,0x32,0x33,0x34,0x02]),
+            [UInt8]([0x08,0x00,0xB3,0x5C,0x00,0x32,0x00,0xFF]),
+            [UInt8]([0x07,0x00,0x1B,0x80,0x10,0x32,0x01]),
+            [UInt8]([0x07,0x00,0x23,0x19,0x00,0x31,0x01]),
+            [UInt8]([0x07,0x00,0xAC,0x4E,0x03,0x31,0x04]),
+            [UInt8]([0x0A,0x00,0x1B,0x7B,0x01,0x31,0xB2,0x62,0x44,0x00]),
+            [UInt8]([0x0B,0x00,0x30,0x9C,0x04,0x31,0x74,0x65,0x73,0x74,0x32]),
             // server→client
-            Data([0x0A,0x00,0xE5,0x53,0x01,0x10,0xDB,0x6A,0x9A,0xF6]),
-            Data([0x15,0x00,0x9B,0x81,0x21,0x21,0x00,0x00,0x00,0x03,0x00,0x24,0x52,0x6F,0x6F,0x6D,0x20,0x4D,0x4F,0x54,0x44]),
-            Data([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00]),
-            Data([0x08,0x00,0x1B,0x80,0x11,0x32,0x00,0x00]),
-            Data([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00]),
+            [UInt8]([0x0A,0x00,0xE5,0x53,0x01,0x10,0xDB,0x6A,0x9A,0xF6]),
+            [UInt8]([0x15,0x00,0x9B,0x81,0x21,0x21,0x00,0x00,0x00,0x03,0x00,0x24,0x52,0x6F,0x6F,0x6D,0x20,0x4D,0x4F,0x54,0x44]),
+            [UInt8]([0x08,0x00,0x83,0xA1,0x01,0x32,0x00,0x00]),
+            [UInt8]([0x08,0x00,0x1B,0x80,0x11,0x32,0x00,0x00]),
+            [UInt8]([0x08,0x00,0xEB,0xBF,0x05,0x31,0x00,0x00]),
         ]
         for (index, raw) in knownPackets.enumerated() {
             let packet = try #require(Packet(data: raw), "packet index \(index)")
@@ -1941,7 +1942,7 @@ import Testing
 
     /// Minimum valid packet is exactly 6 bytes (header only, no parameters).
     @Test func packet_minimumSize() throws {
-        let data = Data([0x06,0x00,0xB1,0x36,0x00,0x10])
+        let data = [UInt8]([0x06,0x00,0xB1,0x36,0x00,0x10])
         let packet = try #require(Packet(data: data))
         #expect(packet.size == Packet.minSize)
         #expect(packet.parametersSize == 0)
@@ -1950,7 +1951,7 @@ import Testing
     
     /// [000] RECV>> [cmd=0x0010] [6 bytes]
     @Test func pkt000_nonceRequest() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0600B1360010"
         )!
         let packet = try #require(Packet(data: data))
@@ -1964,7 +1965,7 @@ import Testing
     /// [001] SEND>> [cmd=0x0110] [10 bytes]
     /// nonce=0xDB6A9AF6
     @Test func pkt001_nonceResponse() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00E5530110DB6A9AF6"
         )!
         let packet = try #require(Packet(data: data))
@@ -1978,7 +1979,7 @@ import Testing
     /// [002] RECV>> [cmd=0x1010] [86 bytes]
     /// username=colemancda password=1234 clientVersion=280
     @Test func pkt002_authenticationRequest() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "5600AF0D1010218ABED7FA38086ECC02"
         + "A15A4D3010F1E2DA03985C6E99D1496C"
         + "BD2DA584FA8CAF1C01BB5032237E9EB4"
@@ -1994,19 +1995,17 @@ import Testing
         // Decode and verify the encrypted authentication request
         let decoder = GunBoundDecoder()
         let request = try decoder.decodePacket(AuthenticationRequest.self, from: data)
-        #expect(request.username == "colemancda")
-        
+        let username = try parseDecryptedUsername(try Crypto.AES.decrypt(Data(request.encryptedUsername), key: .login))
+        #expect(username == "colemancda")
+
         // Derive session key: username + password + nonce
         let key = Key(username: "colemancda", password: "1234", nonce: 0xDB6A9AF6)
         let decryptedData = try Crypto.AES.decrypt(
-            request.encryptedData,
+            Data(request.encryptedData),
             key: key,
             opcode: AuthenticationRequest.opcode
         )
-        let decryptedPayload = try decoder.decode(
-            AuthenticationRequest.EncryptedData.self,
-            from: decryptedData
-        )
+        let decryptedPayload = try parseDecryptedAuthenticationData(decryptedData)
         #expect(decryptedPayload.password == "1234")
         #expect(decryptedPayload.clientVersion == 280)
     }
@@ -2014,7 +2013,7 @@ import Testing
     /// [003] SEND>> [cmd=0x1210] [419 bytes]
     /// status=success username=colemancda gold=999999
     @Test func pkt003_authenticationResponse() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "A301FC9A1210000043107A1C636F6C65"
         + "6D616E63646100000100000001000300"
         + "746573740000000014001400050D3905"
@@ -2052,7 +2051,7 @@ import Testing
     /// [004] SEND>> [cmd=0x3210] [22 bytes]
     /// encrypted cash payload for colemancda
     @Test func pkt004_cashUpdateNotification() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "1600BA72321034E66D6BE366FB2DD142"
         + "6CED3ACACFB6"
         )!
@@ -2065,7 +2064,7 @@ import Testing
     /// [005] RECV>> [cmd=0x0020] [8 bytes]
     /// channel=0xFFFF routes to channel 0
     @Test func pkt005_joinChannelRequest_1() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800972D0020FFFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2078,7 +2077,7 @@ import Testing
     /// [006] SEND>> [cmd=0x0120] [265 bytes]
     /// 5 users maxPosition=4 channel=0
     @Test func pkt006_joinChannelResponse_1() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "09019FD3012000000000040500757300"
         + "00000000000000000000800080008000"
         + "007669727475616C0013001300016A67"
@@ -2106,7 +2105,7 @@ import Testing
     /// [007] RECV>> [cmd=0x0021] [10 bytes]
     /// filter=waiting(2)
     @Test func pkt007_roomListRequest_1() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00E53F002102000000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2119,7 +2118,7 @@ import Testing
     /// [008] SEND>> [cmd=0x0321] [79 bytes]
     /// 3 virtual waiting rooms
     @Test func pkt008_roomListResponse_1() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "4F00B2CE03210000030000000A757320"
         + "7669727475616C00B2620C0001020000"
         + "01000A6A67207669727475616C00B262"
@@ -2135,7 +2134,7 @@ import Testing
     /// [009] RECV>> [cmd=0x2010] [38 bytes]
     /// encrypted SVC_USER_ID lookup for "us"
     @Test func pkt009_userRequest() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "260007ED2010C8AC2504FF015BBD5EB2"
         + "3C73822183A1E7EEB0AF622BB17C1C6A"
         + "B23DA595450E"
@@ -2149,7 +2148,7 @@ import Testing
     /// [010] SEND>> [cmd=0x2110] [72 bytes]
     /// encrypted user record for "us"
     @Test func pkt010_userResponse() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "4800DAED211000004A285C716457B52B"
         + "F2D576F0BFE98C884A285C716457B52B"
         + "F2D576F0BFE98C88B5DB965B5290E0BF"
@@ -2165,7 +2164,7 @@ import Testing
     /// [011] RECV>> [cmd=0x2021] [20 bytes]
     /// name=test settings=0x000062B2 password=1234 capacity=2(_1_1)
     @Test func pkt011_createRoomRequest() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "1400CB3C20210474657374B262000031"
         + "32333402"
         )!
@@ -2179,7 +2178,7 @@ import Testing
     /// [012] SEND>> [cmd=0x2121] [21 bytes]
     /// room=3 message=$Room MOTD
     @Test func pkt012_createRoomResponse() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "15009B812121000000030024526F6F6D"
         + "204D4F5444"
         )!
@@ -2193,7 +2192,7 @@ import Testing
     /// [013] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=armor secondary=random
     @Test func pkt013_roomSelectTankRequest_armor() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800B35C003200FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2206,7 +2205,7 @@ import Testing
     /// [014] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt014_roomSelectTankResponse_armor() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800A18301320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2219,7 +2218,7 @@ import Testing
     /// [015] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=mage secondary=random
     @Test func pkt015_roomSelectTankRequest_mage() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08009B7C003201FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2232,7 +2231,7 @@ import Testing
     /// [016] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt016_roomSelectTankResponse_mage() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08006BC101320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2245,7 +2244,7 @@ import Testing
     /// [017] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=nak secondary=random
     @Test func pkt017_roomSelectTankRequest_nak() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800839C003202FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2258,7 +2257,7 @@ import Testing
     /// [018] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt018_roomSelectTankResponse_nak() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080053E101320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2271,7 +2270,7 @@ import Testing
     /// [019] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=trico secondary=random
     @Test func pkt019_roomSelectTankRequest_trico() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08006BBC003203FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2284,7 +2283,7 @@ import Testing
     /// [020] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt020_roomSelectTankResponse_trico() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08003B0101320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2297,7 +2296,7 @@ import Testing
     /// [021] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=bigFoot secondary=random
     @Test func pkt021_roomSelectTankRequest_bigFoot() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080053DC003204FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2310,7 +2309,7 @@ import Testing
     /// [022] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt022_roomSelectTankResponse_bigFoot() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800232101320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2323,7 +2322,7 @@ import Testing
     /// [023] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=boomer secondary=random
     @Test func pkt023_roomSelectTankRequest_boomer() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08003BFC003205FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2336,7 +2335,7 @@ import Testing
     /// [024] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt024_roomSelectTankResponse_boomer() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08000B4101320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2349,7 +2348,7 @@ import Testing
     /// [025] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=raon secondary=random
     @Test func pkt025_roomSelectTankRequest_raon() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800231C003206FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2362,7 +2361,7 @@ import Testing
     /// [026] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt026_roomSelectTankResponse_raon() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800F36001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2375,7 +2374,7 @@ import Testing
     /// [027] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=lightning secondary=random
     @Test func pkt027_roomSelectTankRequest_lightning() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08000B3C003207FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2388,7 +2387,7 @@ import Testing
     /// [028] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt028_roomSelectTankResponse_lightning() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800DB8001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2401,7 +2400,7 @@ import Testing
     /// [029] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=jd secondary=random
     @Test func pkt029_roomSelectTankRequest_jd() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800F35B003208FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2414,7 +2413,7 @@ import Testing
     /// [030] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt030_roomSelectTankResponse_jd() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800C3A001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2427,7 +2426,7 @@ import Testing
     /// [031] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=asate secondary=random
     @Test func pkt031_roomSelectTankRequest_asate() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800DB7B003209FF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2440,7 +2439,7 @@ import Testing
     /// [032] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt032_roomSelectTankResponse_asate() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800ABC001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2453,7 +2452,7 @@ import Testing
     /// [033] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=ice secondary=random
     @Test func pkt033_roomSelectTankRequest_ice() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800C39B00320AFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2466,7 +2465,7 @@ import Testing
     /// [034] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt034_roomSelectTankResponse_ice() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080093E001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2479,7 +2478,7 @@ import Testing
     /// [035] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=turtle secondary=random
     @Test func pkt035_roomSelectTankRequest_turtle() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800ABBB00320BFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2492,7 +2491,7 @@ import Testing
     /// [036] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt036_roomSelectTankResponse_turtle() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08007B0001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2505,7 +2504,7 @@ import Testing
     /// [037] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=grub secondary=random
     @Test func pkt037_roomSelectTankRequest_grub() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080093DB00320CFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2518,7 +2517,7 @@ import Testing
     /// [038] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt038_roomSelectTankResponse_grub() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800632001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2531,7 +2530,7 @@ import Testing
     /// [039] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=aduka secondary=random
     @Test func pkt039_roomSelectTankRequest_aduka() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08007BFB00320DFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2544,7 +2543,7 @@ import Testing
     /// [040] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt040_roomSelectTankResponse_aduka() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08004B4001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2557,7 +2556,7 @@ import Testing
     /// [041] RECV>> [cmd=0x0032] [8 bytes]
     /// primary=random secondary=random
     @Test func pkt041_roomSelectTankRequest_random() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800631B0032FFFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -2570,7 +2569,7 @@ import Testing
     /// [042] SEND>> [cmd=0x0132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt042_roomSelectTankResponse_random() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800336001320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2583,7 +2582,7 @@ import Testing
     /// [043] RECV>> [cmd=0x1032] [7 bytes]
     /// team=b(1)
     @Test func pkt043_roomSelectTeamRequest_b() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "07004EF7103201"
         )!
         let packet = try #require(Packet(data: data))
@@ -2596,7 +2595,7 @@ import Testing
     /// [044] SEND>> [cmd=0x1132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt044_roomSelectTeamResponse_b() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08001B8011320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2609,7 +2608,7 @@ import Testing
     /// [045] RECV>> [cmd=0x1032] [7 bytes]
     /// team=a(0)
     @Test func pkt045_roomSelectTeamRequest_a() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "070039D3103200"
         )!
         let packet = try #require(Packet(data: data))
@@ -2622,7 +2621,7 @@ import Testing
     /// [046] SEND>> [cmd=0x1132] [8 bytes]
     /// rtc=0x0000
     @Test func pkt046_roomSelectTeamResponse_a() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080003A011320000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2635,7 +2634,7 @@ import Testing
     /// [047] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x004462B2
     @Test func pkt047_roomChangeOption_047() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A001B7B0131B2624400"
         )!
         let packet = try #require(Packet(data: data))
@@ -2648,7 +2647,7 @@ import Testing
     /// [048] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt048_roomUpdateNotif_048() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800EBBF05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2661,7 +2660,7 @@ import Testing
     /// [049] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000862B2
     @Test func pkt049_roomChangeOption_049() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00FD220131B2620800"
         )!
         let packet = try #require(Packet(data: data))
@@ -2674,7 +2673,7 @@ import Testing
     /// [050] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt050_roomUpdateNotif_050() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800D3DF05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2687,7 +2686,7 @@ import Testing
     /// [051] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000C62B2
     @Test func pkt051_roomChangeOption_051() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00DFCA0131B2620C00"
         )!
         let packet = try #require(Packet(data: data))
@@ -2700,7 +2699,7 @@ import Testing
     /// [052] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt052_roomUpdateNotif_052() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800BBFF05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2713,7 +2712,7 @@ import Testing
     /// [053] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000062B2
     @Test func pkt053_roomChangeOption_053() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00C1720131B2620000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2726,7 +2725,7 @@ import Testing
     /// [054] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt054_roomUpdateNotif_054() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800A31F05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2739,7 +2738,7 @@ import Testing
     /// [055] RECV>> [cmd=0x0331] [7 bytes]
     /// capacity=04=_2_2
     @Test func pkt055_roomChangeCapacity__2_2() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700AC4E033104"
         )!
         let packet = try #require(Packet(data: data))
@@ -2752,7 +2751,7 @@ import Testing
     /// [056] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt056_roomUpdateNotif_056() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08008B3F05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2765,7 +2764,7 @@ import Testing
     /// [057] RECV>> [cmd=0x0331] [7 bytes]
     /// capacity=06=_3_3
     @Test func pkt057_roomChangeCapacity__3_3() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700972A033106"
         )!
         let packet = try #require(Packet(data: data))
@@ -2778,7 +2777,7 @@ import Testing
     /// [058] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt058_roomUpdateNotif_058() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800735F05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2791,7 +2790,7 @@ import Testing
     /// [059] RECV>> [cmd=0x0331] [7 bytes]
     /// capacity=08=_4_4
     @Test func pkt059_roomChangeCapacity__4_4() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "07008206033108"
         )!
         let packet = try #require(Packet(data: data))
@@ -2804,7 +2803,7 @@ import Testing
     /// [060] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt060_roomUpdateNotif_060() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08005B7F05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2817,7 +2816,7 @@ import Testing
     /// [061] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000162B2
     @Test func pkt061_roomChangeOption_061() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A0064AE0131B2620100"
         )!
         let packet = try #require(Packet(data: data))
@@ -2830,7 +2829,7 @@ import Testing
     /// [062] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt062_roomUpdateNotif_062() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800439F05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2843,7 +2842,7 @@ import Testing
     /// [063] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000062B2
     @Test func pkt063_roomChangeOption_063() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A0046560131B2620000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2856,7 +2855,7 @@ import Testing
     /// [064] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt064_roomUpdateNotif_064() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08002BBF05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2869,7 +2868,7 @@ import Testing
     /// [065] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000063B2
     @Test func pkt065_roomChangeOption_065() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A0028FE0131B2630000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2882,7 +2881,7 @@ import Testing
     /// [066] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt066_roomUpdateNotif_066() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080013DF05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2895,7 +2894,7 @@ import Testing
     /// [067] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000060B2
     @Test func pkt067_roomChangeOption_067() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A000AA60131B2600000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2908,7 +2907,7 @@ import Testing
     /// [068] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt068_roomUpdateNotif_068() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800FBFE05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2921,7 +2920,7 @@ import Testing
     /// [069] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000061B2
     @Test func pkt069_roomChangeOption_069() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00EC4D0131B2610000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2934,7 +2933,7 @@ import Testing
     /// [070] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt070_roomUpdateNotif_070() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800E31E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2947,7 +2946,7 @@ import Testing
     /// [071] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000062B2
     @Test func pkt071_roomChangeOption_071() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00CEF50131B2620000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2960,7 +2959,7 @@ import Testing
     /// [072] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt072_roomUpdateNotif_072() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800CB3E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2973,7 +2972,7 @@ import Testing
     /// [073] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x0000A2B2
     @Test func pkt073_roomChangeOption_073() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00B09D0131B2A20000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2986,7 +2985,7 @@ import Testing
     /// [074] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt074_roomUpdateNotif_074() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800B35E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -2999,7 +2998,7 @@ import Testing
     /// [075] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000062B2
     @Test func pkt075_roomChangeOption_075() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A0092450131B2620000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3012,7 +3011,7 @@ import Testing
     /// [076] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt076_roomUpdateNotif_076() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08009B7E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3025,7 +3024,7 @@ import Testing
     /// [077] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000072B2
     @Test func pkt077_roomChangeOption_077() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A0074ED0131B2720000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3038,7 +3037,7 @@ import Testing
     /// [078] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt078_roomUpdateNotif_078() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800839E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3051,7 +3050,7 @@ import Testing
     /// [079] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000052B2
     @Test func pkt079_roomChangeOption_079() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A0056950131B2520000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3064,7 +3063,7 @@ import Testing
     /// [080] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt080_roomUpdateNotif_080() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08006BBE05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3077,7 +3076,7 @@ import Testing
     /// [081] RECV>> [cmd=0x0131] [10 bytes]
     /// settings=0x000062B2
     @Test func pkt081_roomChangeOption_081() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00383D0131B2620000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3090,7 +3089,7 @@ import Testing
     /// [082] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt082_roomUpdateNotif_082() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080053DE05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3103,7 +3102,7 @@ import Testing
     /// [083] RECV>> [cmd=0x0031] [7 bytes]
     /// map=miramoTown
     @Test func pkt083_roomChangeStage_miramoTown() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "07002319003101"
         )!
         let packet = try #require(Packet(data: data))
@@ -3116,7 +3115,7 @@ import Testing
     /// [084] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt084_roomUpdateNotif_084() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08003BFE05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3129,7 +3128,7 @@ import Testing
     /// [085] RECV>> [cmd=0x0031] [7 bytes]
     /// map=nirvana
     @Test func pkt085_roomChangeStage_nirvana() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "07000EF5003102"
         )!
         let packet = try #require(Packet(data: data))
@@ -3142,7 +3141,7 @@ import Testing
     /// [086] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt086_roomUpdateNotif_086() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800231E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3155,7 +3154,7 @@ import Testing
     /// [087] RECV>> [cmd=0x0031] [7 bytes]
     /// map=metropolis
     @Test func pkt087_roomChangeStage_metropolis() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700F9D0003103"
         )!
         let packet = try #require(Packet(data: data))
@@ -3168,7 +3167,7 @@ import Testing
     /// [088] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt088_roomUpdateNotif_088() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08000B3E05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3181,7 +3180,7 @@ import Testing
     /// [089] RECV>> [cmd=0x0031] [7 bytes]
     /// map=seaHero
     @Test func pkt089_roomChangeStage_seaHero() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700E4AC003104"
         )!
         let packet = try #require(Packet(data: data))
@@ -3194,7 +3193,7 @@ import Testing
     /// [090] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt090_roomUpdateNotif_090() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800F35D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3207,7 +3206,7 @@ import Testing
     /// [091] RECV>> [cmd=0x0031] [7 bytes]
     /// map=adiumroot
     @Test func pkt091_roomChangeStage_adiumroot() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700CF88003105"
         )!
         let packet = try #require(Packet(data: data))
@@ -3220,7 +3219,7 @@ import Testing
     /// [092] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt092_roomUpdateNotif_092() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800DB7D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3233,7 +3232,7 @@ import Testing
     /// [093] RECV>> [cmd=0x0031] [7 bytes]
     /// map=dragon
     @Test func pkt093_roomChangeStage_dragon() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700BA64003106"
         )!
         let packet = try #require(Packet(data: data))
@@ -3246,7 +3245,7 @@ import Testing
     /// [094] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt094_roomUpdateNotif_094() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800C39D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3259,7 +3258,7 @@ import Testing
     /// [095] RECV>> [cmd=0x0031] [7 bytes]
     /// map=cozytower
     @Test func pkt095_roomChangeStage_cozytower() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700A540003107"
         )!
         let packet = try #require(Packet(data: data))
@@ -3272,7 +3271,7 @@ import Testing
     /// [096] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt096_roomUpdateNotif_096() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800ABBD05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3285,7 +3284,7 @@ import Testing
     /// [097] RECV>> [cmd=0x0031] [7 bytes]
     /// map=dummySlope
     @Test func pkt097_roomChangeStage_dummySlope() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0700901C003108"
         )!
         let packet = try #require(Packet(data: data))
@@ -3298,7 +3297,7 @@ import Testing
     /// [098] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt098_roomUpdateNotif_098() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080093DD05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3311,7 +3310,7 @@ import Testing
     /// [099] RECV>> [cmd=0x0031] [7 bytes]
     /// map=stardust
     @Test func pkt099_roomChangeStage_stardust() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "07007BF8003109"
         )!
         let packet = try #require(Packet(data: data))
@@ -3324,7 +3323,7 @@ import Testing
     /// [100] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt100_roomUpdateNotif_100() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08007BFD05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3337,7 +3336,7 @@ import Testing
     /// [101] RECV>> [cmd=0x0031] [7 bytes]
     /// map=metaMine
     @Test func pkt101_roomChangeStage_metaMine() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "070066D400310A"
         )!
         let packet = try #require(Packet(data: data))
@@ -3350,7 +3349,7 @@ import Testing
     /// [102] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt102_roomUpdateNotif_102() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800631D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3363,7 +3362,7 @@ import Testing
     /// [103] RECV>> [cmd=0x0031] [7 bytes]
     /// map=random
     @Test func pkt103_roomChangeStage_random() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "070051B0003100"
         )!
         let packet = try #require(Packet(data: data))
@@ -3376,7 +3375,7 @@ import Testing
     /// [104] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt104_roomUpdateNotif_104() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08004B3D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3389,7 +3388,7 @@ import Testing
     /// [105] RECV>> [cmd=0x0431] [11 bytes]
     /// title=test2
     @Test func pkt105_roomSetTitle_test2() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0B00309C04317465737432"
         )!
         let packet = try #require(Packet(data: data))
@@ -3401,7 +3400,7 @@ import Testing
     /// [106] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt106_roomUpdateNotif_title() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0800335D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3414,7 +3413,7 @@ import Testing
     /// [107] RECV>> [cmd=0x0331] [7 bytes]
     /// capacity=02=_1_1
     @Test func pkt107_roomChangeCapacity__1_1() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "07001B78033102"
         )!
         let packet = try #require(Packet(data: data))
@@ -3427,7 +3426,7 @@ import Testing
     /// [108] SEND>> [cmd=0x0531] [8 bytes]
     /// rtc=0x0000
     @Test func pkt108_roomUpdateNotif_108() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "08001B7D05310000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3440,7 +3439,7 @@ import Testing
     /// [109] RECV>> [cmd=0x0020] [8 bytes]
     /// triggers room cleanup channel=0xFFFF
     @Test func pkt109_joinChannelRequest_2() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "080003980020FFFF"
         )!
         let packet = try #require(Packet(data: data))
@@ -3453,7 +3452,7 @@ import Testing
     /// [110] SEND>> [cmd=0x0120] [265 bytes]
     /// 5 users after room cleanup
     @Test func pkt110_joinChannelResponse_2() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "090100DE012000000000040500757300"
         + "00000000000000000000800080008000"
         + "007669727475616C0013001300016A67"
@@ -3496,7 +3495,7 @@ import Testing
     /// [111] RECV>> [cmd=0x0021] [10 bytes]
     /// filter=waiting identical bytes to first request
     @Test func pkt111_roomListRequest_2() throws {
-        let data = Data(hexString:
+        let data = [UInt8](hexString:
             "0A00E53F002102000000"
         )!
         let packet = try #require(Packet(data: data))
@@ -3508,6 +3507,21 @@ import Testing
 }
 
 // MARK: - Extensions
+
+extension ServerDirectory.Element {
+
+    var wireServer: ServerDirectoryResponse.Server {
+        ServerDirectoryResponse.Server(
+            name: name,
+            descriptionText: descriptionText,
+            address: address.withUnsafeBytes { GunBoundProtocol.IPv4Address($0[0], $0[1], $0[2], $0[3]) },
+            port: port,
+            utilization: utilization,
+            capacity: capacity,
+            isEnabled: isEnabled
+        )
+    }
+}
 
 extension Data {
 
@@ -3529,16 +3543,24 @@ extension Data {
     }
 }
 
+extension Array where Element == UInt8 {
+
+    init?(hexString: String) {
+        guard let data = Data(hexString: hexString) else { return nil }
+        self = [UInt8](data)
+    }
+}
+
 func assertEncode<T>(
     _ value: T,
     _ packet: Packet,
     key: Key? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-) where T: Equatable, T: Encodable, T: GunBoundPacket {
+) where T: Equatable, T: GunBoundPacketEncodable {
     var encoder = GunBoundEncoder()
     encoder.log = { print("Encoder:", $0) }
     do {
-        var encodedPacket = try encoder.encode(value, id: packet.id)
+        var encodedPacket = encoder.encode(value, id: packet.id)
         #expect(!encodedPacket.data.isEmpty, sourceLocation: sourceLocation)
         if T.opcode.isEncrypted {
             guard let key = key else {
@@ -3561,20 +3583,16 @@ func assertEncodeDecrypted<T>(
     _ value: T,
     _ packet: Packet,
     sourceLocation: SourceLocation = #_sourceLocation
-) where T: Equatable, T: Encodable, T: GunBoundPacket {
+) where T: Equatable, T: GunBoundPacketEncodable {
     var encoder = GunBoundEncoder()
     encoder.log = { print("Encoder:", $0) }
-    do {
-        let encodedPacket = try encoder.encode(value, id: packet.id)
-        #expect(!encodedPacket.data.isEmpty, sourceLocation: sourceLocation)
-        #expect(
-            encodedPacket.data == packet.data,
-            "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)",
-            sourceLocation: sourceLocation
-        )
-    } catch {
-        Issue.record(error, sourceLocation: sourceLocation)
-    }
+    let encodedPacket = encoder.encode(value, id: packet.id)
+    #expect(!encodedPacket.data.isEmpty, sourceLocation: sourceLocation)
+    #expect(
+        encodedPacket.data == packet.data,
+        "\(encodedPacket.data.hexString) is not equal to \(packet.data.hexString)",
+        sourceLocation: sourceLocation
+    )
 }
 
 func assertDecode<T>(
@@ -3582,7 +3600,7 @@ func assertDecode<T>(
     _ packet: Packet,
     key: Key? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-) where T: GunBoundPacket, T: Equatable, T: Decodable {
+) where T: GunBoundPacketDecodable, T: Equatable {
     var decoder = GunBoundDecoder()
     decoder.log = { print("Decoder:", $0) }
     do {
@@ -3605,7 +3623,7 @@ func assertDecodeDecrypted<T>(
     _ value: T,
     _ packet: Packet,
     sourceLocation: SourceLocation = #_sourceLocation
-) where T: GunBoundPacket, T: Equatable, T: Decodable {
+) where T: GunBoundPacketDecodable, T: Equatable {
     var decoder = GunBoundDecoder()
     decoder.log = { print("Decoder:", $0) }
     do {
