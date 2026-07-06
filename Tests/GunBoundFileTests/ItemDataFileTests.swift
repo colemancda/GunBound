@@ -33,23 +33,25 @@ struct ItemDataFileTests {
         #expect(dual.name == "Dual")
         #expect(dual.price == 600)
         #expect(dual.itemTypeID == 1)
-        #expect(dual.descriptionMarker == 0xff)
-        #expect(dual.descriptionText?.hasPrefix("Usando este item") == true)
+        #expect(dual.descriptionText.hasPrefix("Usando este item"))
 
         let teleport = records[1]
         #expect(teleport.name == "Teleport")
         #expect(teleport.price == 100)
 
-        // Records with no description marker report nil descriptionText.
+        // Corrected from an earlier pass: "Blood" does have a real
+        // description under the confirmed field layout (a previous,
+        // byte-pattern-only model had a "marker byte" heuristic that
+        // incorrectly reported no description for this item).
         let blood = records[4]
         #expect(blood.name == "Blood")
         #expect(blood.price == 0)
-        #expect(blood.descriptionMarker == 0)
-        #expect(blood.descriptionText == nil)
+        #expect(blood.descriptionText.hasPrefix("Sacrificando 8%"))
 
         // Slots beyond the 13 populated entries are zero-filled/unused.
         let unused = try #require(records.last)
         #expect(unused.name.isEmpty)
         #expect(unused.price == 0)
+        #expect(unused.descriptionText.isEmpty)
     }
 }
