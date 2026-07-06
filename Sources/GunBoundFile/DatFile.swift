@@ -1,5 +1,5 @@
 /// GunBound's `.dat` game-data files (`characterdata.dat`, `itemdata.dat`,
-/// `stage.dat`, `specialdata.dat`).
+/// `stage.dat`).
 ///
 /// **Note:** Static analysis of the original client (`LoadGameDataFiles`)
 /// confirmed these files are LZHUF-compressed in full — despite being
@@ -10,10 +10,15 @@
 /// checksum inputs weren't recovered).
 ///
 /// **Each file has its own decompressed target size** — an earlier pass
-/// incorrectly assumed all four `.dat` files shared `characterdata.dat`'s
-/// size; decompiling `LoadGameDataFiles` directly corrected this for three
-/// of the four files (see the constants below). `specialdata.dat`'s loader
-/// wasn't located, so its target size remains unconfirmed.
+/// incorrectly assumed all these `.dat` files shared `characterdata.dat`'s
+/// size; decompiling `LoadGameDataFiles` directly corrected this (see the
+/// constants below).
+///
+/// **`specialdata.dat` is not handled here.** Static analysis confirmed
+/// `GunBound.gme` (the game client) never references this filename
+/// anywhere in the binary — it isn't loaded by the client at all, and
+/// likely belongs to a separate server/tool component instead. There is no
+/// client-confirmed target size to decompress it with.
 public enum DatFile {
 
     /// Confirmed target decompressed size for `characterdata.dat`.

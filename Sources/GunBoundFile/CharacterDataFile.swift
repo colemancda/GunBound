@@ -13,6 +13,18 @@
 /// bounding box, and two records sharing unusually large values in three
 /// fields suggestive of a matched heavy/tank-type pair), not confirmed
 /// against code. Treat every field name here as a hypothesis, not a fact.
+///
+/// Static analysis also found this file has no client-side consumer beyond
+/// the checksum-validation loop above (a whole-binary search for
+/// `"characterdata.dat"` turned up only the one reference, and the decoded
+/// buffer is a stack-local, never copied to persistent storage) —
+/// suggesting this file's role client-side is purely an anti-tamper
+/// integrity check (detecting a locally-edited stats file), not a source
+/// of values the client itself computes with. Real mobile stats most
+/// likely live server-side, consistent with GunBound's server-authoritative
+/// gameplay model. This means field *names* here can't be confirmed
+/// further by tracing client execution — only by server-side code or
+/// outside knowledge of GunBound's actual mobile stats.
 public enum CharacterDataFile {
 
     /// Every record is this many bytes, confirmed directly from the
