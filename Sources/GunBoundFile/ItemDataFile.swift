@@ -46,15 +46,26 @@ public enum ItemDataFile {
         /// anti-memory-editing measure applied to exactly this and the next
         /// two flags, no other item field. The on-disk value here is the
         /// plain (pre-obfuscation) byte.
-        public let flag1: UInt8
+        ///
+        /// Identified via a companion editor tool's (`mishato_English.exe`)
+        /// item-editing dialog, which has exactly three checkboxes in this
+        /// order: `Shot?`, `Skip`, `2 Slots` — matching this field's count
+        /// and its "uniquely obfuscated, no other field gets this
+        /// treatment" behavior exactly. Most likely: can this item be fired
+        /// as a shot (vs. a passive/utility item).
+        public let shotFlag: UInt8
 
         /// Boolean flag at record offset `0x2d`, same obfuscation-on-copy
-        /// treatment as `flag1`, independently.
-        public let flag2: UInt8
+        /// treatment as `shotFlag`, independently. Most likely: using this
+        /// item skips/ends the player's turn (see `shotFlag`'s doc comment
+        /// for how this was identified).
+        public let skipFlag: UInt8
 
         /// Boolean flag at record offset `0x2e`, same obfuscation-on-copy
-        /// treatment as `flag1`/`flag2`, independently.
-        public let flag3: UInt8
+        /// treatment as `shotFlag`/`skipFlag`, independently. Most likely:
+        /// this item occupies two inventory slots (see `shotFlag`'s doc
+        /// comment for how this was identified).
+        public let twoSlotsFlag: UInt8
 
         /// `uint16` at record offset `0x30`. Read and checksummed, purpose
         /// beyond that unconfirmed.
@@ -71,9 +82,9 @@ public enum ItemDataFile {
             field0x20: UInt32 = 0,
             price: UInt32,
             itemTypeID: UInt32,
-            flag1: UInt8 = 0,
-            flag2: UInt8 = 0,
-            flag3: UInt8 = 0,
+            shotFlag: UInt8 = 0,
+            skipFlag: UInt8 = 0,
+            twoSlotsFlag: UInt8 = 0,
             field0x30: UInt16 = 0,
             descriptionText: String = ""
         ) {
@@ -81,9 +92,9 @@ public enum ItemDataFile {
             self.field0x20 = field0x20
             self.price = price
             self.itemTypeID = itemTypeID
-            self.flag1 = flag1
-            self.flag2 = flag2
-            self.flag3 = flag3
+            self.shotFlag = shotFlag
+            self.skipFlag = skipFlag
+            self.twoSlotsFlag = twoSlotsFlag
             self.field0x30 = field0x30
             self.descriptionText = descriptionText
         }
@@ -115,9 +126,9 @@ public enum ItemDataFile {
             let field0x20 = try UInt32(parsingLittleEndian: &input)
             let price = try UInt32(parsingLittleEndian: &input)
             let itemTypeID = try UInt32(parsingLittleEndian: &input)
-            let flag1 = try UInt8(parsing: &input)
-            let flag2 = try UInt8(parsing: &input)
-            let flag3 = try UInt8(parsing: &input)
+            let shotFlag = try UInt8(parsing: &input)
+            let skipFlag = try UInt8(parsing: &input)
+            let twoSlotsFlag = try UInt8(parsing: &input)
             _ = try UInt8(parsing: &input) // 0x2f: unaccounted gap, not read by the client
             let field0x30 = try UInt16(parsingLittleEndian: &input)
             let descriptionBytes = [UInt8](parsingRemainingBytes: &input)
@@ -129,9 +140,9 @@ public enum ItemDataFile {
                 field0x20: field0x20,
                 price: price,
                 itemTypeID: itemTypeID,
-                flag1: flag1,
-                flag2: flag2,
-                flag3: flag3,
+                shotFlag: shotFlag,
+                skipFlag: skipFlag,
+                twoSlotsFlag: twoSlotsFlag,
                 field0x30: field0x30,
                 descriptionText: descriptionText
             )
