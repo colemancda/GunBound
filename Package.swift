@@ -40,6 +40,10 @@ let package = Package(
         .library(
             name: "GunBoundProtocol",
             targets: ["GunBoundProtocol"]
+        ),
+        .library(
+            name: "GunBoundFile",
+            targets: ["GunBoundFile"]
         )
     ],
     dependencies: [
@@ -73,6 +77,10 @@ let package = Package(
             swiftSettings: protocolSwiftSettings
         ),
         .target(
+            name: "GunBoundFile",
+            swiftSettings: swiftSettings
+        ),
+        .target(
             name: "GunBound",
             dependencies: [
                 "GunBoundProtocol",
@@ -100,6 +108,14 @@ let package = Package(
         .testTarget(
             name: "GunBoundTests",
             dependencies: ["GunBound", "GunBoundProtocol"],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
+            name: "GunBoundFileTests",
+            dependencies: ["GunBoundFile"],
+            resources: [
+                .copy("Resources")
+            ],
             swiftSettings: swiftSettings
         )
     ]
