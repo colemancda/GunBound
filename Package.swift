@@ -14,7 +14,8 @@ let swiftSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v5)
 ]
 
-let protocolSwiftSettings: [SwiftSetting] =
+// Applied to every Foundation-free, Embedded-Swift-capable target (GunBoundProtocol, GunBoundFile).
+let embeddedSwiftSettings: [SwiftSetting] =
     embedded
     ? [
         .enableExperimentalFeature("Embedded"),
@@ -74,11 +75,17 @@ let package = Package(
                     package: "swift-binary-parsing"
                 )
             ],
-            swiftSettings: protocolSwiftSettings
+            swiftSettings: embeddedSwiftSettings
         ),
         .target(
             name: "GunBoundFile",
-            swiftSettings: swiftSettings
+            dependencies: [
+                .product(
+                    name: embedded ? "BinaryParsingEmbedded" : "BinaryParsing",
+                    package: "swift-binary-parsing"
+                )
+            ],
+            swiftSettings: embeddedSwiftSettings
         ),
         .target(
             name: "GunBound",
