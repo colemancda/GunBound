@@ -51,6 +51,7 @@ struct XFSArchiveTests {
         for entry in named {
             #expect(entry.isCompressed)
             #expect(entry.decompressedSize > 0)
+            #expect(entry.compressedSize > 0)
         }
 
         // Unused reserved slots decode to empty/zeroed records, not garbage.
