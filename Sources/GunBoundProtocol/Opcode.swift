@@ -28,6 +28,12 @@ public enum Opcode: UInt16, Sendable {
     /// Login Response - authentication result
     case authenticationResponse = 0x1012
 
+    /// Session/Server Handoff Notification - two `uint` fields stored into
+    /// session-scoped globals right after channel/server selection; likely a
+    /// session token or server address handoff. Exact field meaning not
+    /// confirmed. (observed via static analysis of the original client)
+    case sessionHandoffNotification = 0x101F
+
     /// User Request - look up user information by username
     case userRequest = 0x1020  // SVC_USER_ID
 
@@ -98,6 +104,41 @@ public enum Opcode: UInt16, Sendable {
     /// Join Room Self Notification - sent to the player who just joined
     case joinRoomNotificationSelf = 0x21F5
 
+    /// Room Self Display Update Notification - companion write path to
+    /// `roomDetailResponse` (`0x2105`) for the same 128-byte per-slot display
+    /// buffer, used when the client itself is the subject of the update
+    /// (server resolves "my own slot" rather than a supplied slot index).
+    /// (observed via static analysis of the original client)
+    case roomSelfDisplayUpdateNotification = 0x21F0
+
+    /// Room Player Left Notification - a player/entity ID identifying who
+    /// left the room; removes them from local room-membership tracking.
+    /// (observed via static analysis of the original client)
+    case roomPlayerLeftNotification = 0x21F1
+
+    /// Room Player Display Update Notification - per-field update to another
+    /// player's 128-byte display buffer (see `roomSelfDisplayUpdateNotification`
+    /// for the "self" counterpart). (static analysis of the original client, State 3,
+    /// opcode `0x21f2`)
+    case roomPlayerDisplayUpdateNotification = 0x21F2
+
+    /// Room Player Flag Update Notification - single-byte per-slot field
+    /// update (one of six fields also bulk-populated by `roomDetailResponse`).
+    /// (observed via static analysis of the original client)
+    case roomPlayerFlagUpdateNotification = 0x21F3
+
+    /// Room Player Value Update Notification - 4-byte per-slot field update.
+    /// (observed via static analysis of the original client)
+    case roomPlayerValueUpdateNotification = 0x21F4
+
+    /// Room Player Status Update Notification - single-byte per-slot field
+    /// update. (observed via static analysis of the original client)
+    case roomPlayerStatusUpdateNotification = 0x21F6
+
+    /// Room Player Mode Update Notification - single-byte per-slot field
+    /// update. (observed via static analysis of the original client)
+    case roomPlayerModeUpdateNotification = 0x21F7
+
     /// Channel Chat Command - send a chat message to the channel
     case channelChatCommand = 0x2010  // SVC_CHANNEL_CHAT
 
@@ -161,6 +202,26 @@ public enum Opcode: UInt16, Sendable {
     /// Room Return Result Response
     case roomReturnResultResponse = 0x3233
 
+    /// User Quit Notification - observed with two meanings depending on
+    /// screen: a no-payload ready/unready toggle in the Ready Room, and a
+    /// player-disconnected-mid-match signal while In-Battle.
+    /// (observed via static analysis of the original client)
+    case userQuitNotification = 0x3020
+
+    /// Room Change Team Notification (tentative) - single byte team value.
+    /// (observed via static analysis of the original client)
+    case roomChangeTeamNotification = 0x3151
+
+    /// Room Ready Button Refresh Notification - no payload; tells the client
+    /// to redraw its primary action button (Ready vs. Start Game, depending
+    /// on room ownership). (observed via static analysis of the original client)
+    case roomReadyButtonRefreshNotification = 0x3400
+
+    /// Room Ready Confirmation Notification - no payload; shared confirmation
+    /// tail also reachable via team/tank/map-selection opcodes.
+    /// (observed via static analysis of the original client)
+    case roomReadyConfirmationNotification = 0x3431
+
     // MARK: - Gameplay
 
     /// Start Game Command - start the game (room master only)
@@ -192,6 +253,13 @@ public enum Opcode: UInt16, Sendable {
 
     /// Play Result Notification - broadcast game results
     case playResultNotification = 0x4413
+
+    /// User Disconnect Notification - a second, companion disconnect signal
+    /// alongside `userQuitNotification`; payload is a bitmask checked against
+    /// `0xf000`, gating a position field and cooldown flag (not fully
+    /// disambiguated from `userQuitNotification`'s trigger conditions).
+    /// (observed via static analysis of the original client)
+    case userDisconnectNotification = 0x4102
 
     // MARK: - Server/Admin Commands
 
@@ -254,6 +322,12 @@ public enum Opcode: UInt16, Sendable {
     /// Get Avatar Response - return player's avatar list
     case getAvatarResponse = 0x6001
 
+    /// Avatar Inventory Response - owned/purchased item inventory list; also
+    /// sent in response to `getAvatarRequest`, one packet per owned item.
+    /// Each item carries an expiration date (rental-style items).
+    /// (observed via static analysis of the original client)
+    case avatarInventoryResponse = 0x6002
+
     /// Set Avatar Request - equip/change avatar
     case setAvatarRequest = 0x6004  // SVC_PROP_SET
 
@@ -315,6 +389,7 @@ public extension Opcode {
         case .nonceResponse: return .response
         case .authenticationRequest: return .request
         case .authenticationResponse: return .response
+        case .sessionHandoffNotification: return .notification
         case .serverDirectoryRequest: return .request
         case .serverDirectoryResponse: return .response
         case .userRequest: return .request
@@ -335,6 +410,13 @@ public extension Opcode {
         case .joinRoomResponse: return .response
         case .joinRoomNotification: return .notification
         case .joinRoomNotificationSelf: return .notification
+        case .roomSelfDisplayUpdateNotification: return .notification
+        case .roomPlayerLeftNotification: return .notification
+        case .roomPlayerDisplayUpdateNotification: return .notification
+        case .roomPlayerFlagUpdateNotification: return .notification
+        case .roomPlayerValueUpdateNotification: return .notification
+        case .roomPlayerStatusUpdateNotification: return .notification
+        case .roomPlayerModeUpdateNotification: return .notification
         case .createRoomRequest: return .request
         case .createRoomResponse: return .response
         case .roomSelectTankRequest: return .request
@@ -373,6 +455,11 @@ public extension Opcode {
         case .clientSetPassableAuthority: return .command
         case .roomReturnResultRequest: return .request
         case .roomReturnResultResponse: return .response
+        case .userQuitNotification: return .notification
+        case .roomChangeTeamNotification: return .notification
+        case .roomReadyButtonRefreshNotification: return .notification
+        case .roomReadyConfirmationNotification: return .notification
+        case .userDisconnectNotification: return .notification
         case .gameDropUserCommand: return .command
         case .policeAccuse: return .command
         case .userInfo: return .notification
@@ -381,6 +468,7 @@ public extension Opcode {
         case .close: return .notification
         case .getAvatarRequest: return .request
         case .getAvatarResponse: return .response
+        case .avatarInventoryResponse: return .response
         case .setAvatarRequest: return .request
         case .setAvatarResponse: return .response
         case .buyGoldRequest: return .request
