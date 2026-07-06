@@ -5,8 +5,12 @@
 //  Created by Alsey Coleman Miller on 12/9/22.
 //
 
+import GunBoundProtocol
+
 /// GunBound Room
 public struct Room: Equatable, Hashable, Codable, Identifiable, Sendable {
+
+    public typealias ID = RoomID
 
     public let id: ID
 

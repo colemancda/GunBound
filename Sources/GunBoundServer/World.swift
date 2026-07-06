@@ -8,7 +8,8 @@
 import Foundation
 import ArgumentParser
 import GunBound
-import Socket
+import GunBoundProtocol
+import struct Socket.IPv4Address
 
 struct World: AsyncParsableCommand {
 
@@ -39,8 +40,8 @@ struct World: AsyncParsableCommand {
 
         // determine bind address and port
         let bindPort = settings.map { UInt16($0.port) } ?? port
-        let ipAddress = self.address ?? IPv4Address.any.rawValue
-        guard let bindAddress = GunBoundAddress(address: ipAddress, port: bindPort) else {
+        let ipAddress = self.address ?? Socket.IPv4Address.any.rawValue
+        guard let bindAddress = GunBound.GunBoundAddress(address: ipAddress, port: bindPort) else {
             throw GunBoundError.invalidAddress(ipAddress)
         }
 

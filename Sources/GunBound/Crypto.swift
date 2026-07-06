@@ -7,6 +7,7 @@
 
 import Foundation
 import CryptoSwift
+import GunBoundProtocol
 
 // MARK: - Key
 
@@ -45,10 +46,7 @@ public extension Key {
         bytes += username.data(using: .ascii) ?? Data()
         bytes += password.data(using: .ascii) ?? Data()
         let nonceBytes = nonce.rawValue.bigEndian.bytes
-        bytes += nonceBytes.0
-        bytes += nonceBytes.1
-        bytes += nonceBytes.2
-        bytes += nonceBytes.3
+        bytes += [nonceBytes.0, nonceBytes.1, nonceBytes.2, nonceBytes.3]
         let bitLength = UInt16(8 * bytes.count)
         bytes += [0x80]
         bytes += [UInt8](repeating: 0x00, count: 62 - bytes.count)
@@ -77,20 +75,38 @@ public extension Packet {
 
     /// Encrypt
     func encrypt(key: Key) throws -> Packet {
-        let plainText = self.parameters
+        let plainText = Data(self.parameters)
         let opcode = self.opcode
         let id = self.id
         let encrypted = try Crypto.AES.encrypt(plainText, key: key, opcode: opcode)
-        return Packet(opcode: opcode, id: id, parameters: encrypted)
+        return Packet(opcode: opcode, id: id, parameters: [UInt8](encrypted))
     }
 
     /// Decrypt
     func decrypt(key: Key) throws -> Packet {
-        let encrypted = self.parameters
+        let encrypted = Data(self.parameters)
         let opcode = self.opcode
         let id = self.id
         let decrypted = try Crypto.AES.decrypt(encrypted, key: key, opcode: opcode)
-        return Packet(opcode: opcode, id: id, parameters: decrypted)
+        return Packet(opcode: opcode, id: id, parameters: [UInt8](decrypted))
+    }
+}
+
+// MARK: - AuthenticationRequest parsing
+
+/// Parses the ASCII username out of a decrypted 16-byte AES block.
+/// (Free function, not nested in a generic actor, to avoid tripping a `ParserSpan` +
+/// generic-context compiler crash seen with this toolchain snapshot.)
+internal func parseDecryptedUsername(_ bytes: Data) throws -> String {
+    try bytes.withParserSpan { (input: inout ParserSpan) in
+        try String(parsingFixedLengthASCII: &input, length: 16)
+    }
+}
+
+/// Parses the decrypted `AuthenticationRequest.EncryptedData` payload.
+internal func parseDecryptedAuthenticationData(_ bytes: Data) throws -> AuthenticationRequest.EncryptedData {
+    try bytes.withParserSpan { (input: inout ParserSpan) in
+        try AuthenticationRequest.EncryptedData(parsing: &input)
     }
 }
 

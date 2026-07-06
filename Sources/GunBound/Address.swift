@@ -6,7 +6,9 @@
 //
 
 import Foundation
-import Socket
+import struct Socket.IPv4Address
+import struct Socket.IPv4SocketAddress
+import GunBoundProtocol
 
 /// GunBound Socket Address
 public struct GunBoundAddress: Equatable, Hashable, Codable, Sendable {
@@ -90,44 +92,15 @@ extension GunBoundAddress: CustomStringConvertible, CustomDebugStringConvertible
     }
 }
 
-// MARK: - GunBoundCodable
+// MARK: - Wire bridging
 
-extension GunBoundAddress: GunBoundCodable {
+internal extension GunBoundAddress {
 
-    enum CodingKeys: String, CodingKey {
-
-        case ipAddress
-        case port
-    }
-
-    public init(from container: GunBoundDecodingContainer) throws {
-        self.ipAddress = try container.decode(IPv4Address.self, forKey: CodingKeys.ipAddress)
-        self.port = try container.decode(UInt16.self, isLittleEndian: false)
-    }
-
-    public func encode(to container: GunBoundEncodingContainer) throws {
-        try container.encode(ipAddress, forKey: CodingKeys.ipAddress)
-        try container.encode(port, isLittleEndian: false)
-    }
-}
-
-extension IPv4Address: GunBoundCodable {
-
-    private var binaryData: Data {
-        return self.withUnsafeBytes {
-            Data(bytes: $0.baseAddress!, count: 4)
-        }
-    }
-
-    public init(from container: GunBoundDecodingContainer) throws {
-        self = try container.decode(length: 4) {
-            $0.withUnsafeBytes {
-                $0.load(as: IPv4Address.self)
-            }
-        }
-    }
-
-    public func encode(to container: GunBoundEncodingContainer) throws {
-        try container.encode(binaryData)
+    /// Converts to the packet wire representation used by `GunBoundProtocol`'s packet types.
+    var wireAddress: GunBoundProtocol.GunBoundAddress {
+        GunBoundProtocol.GunBoundAddress(
+            ipAddress: ipAddress.withUnsafeBytes { GunBoundProtocol.IPv4Address($0[0], $0[1], $0[2], $0[3]) },
+            port: port
+        )
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import GunBoundProtocol
 
 // Map Metadata
 public struct MapData: Equatable, Hashable, Sendable {

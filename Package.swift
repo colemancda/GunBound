@@ -1,14 +1,32 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
+import Foundation
 import PackageDescription
+
+// Building with `ENABLE_EMBEDDED=1 swift build --target GunBoundProtocol` compiles the
+// packet/protocol layer under Embedded Swift, against swift-binary-parsing's Embedded-specific
+// product. This is opt-in (rather than the default) because swift-binary-parsing only vends its
+// `BinaryParsingEmbedded` product when its own manifest observes the same environment variable,
+// and because Embedded Swift requires macOS 14 while the rest of the package (networking, which
+// isn't embeddable) targets macOS 13.
+let embedded = ProcessInfo.processInfo.environment["ENABLE_EMBEDDED"] != nil
 
 let swiftSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v5)
 ]
 
+let protocolSwiftSettings: [SwiftSetting] =
+    embedded
+    ? [
+        .enableExperimentalFeature("Embedded"),
+        .enableExperimentalFeature("Lifetimes"),
+        .define("GUNBOUND_EMBEDDED"),
+    ]
+    : []
+
 let package = Package(
     name: "GunBound",
     platforms: [
-        .macOS("13.0")
+        .macOS(embedded ? "14.0" : "13.0")
     ],
     products: [
         .executable(
@@ -18,6 +36,10 @@ let package = Package(
         .library(
             name: "GunBound",
             targets: ["GunBound"]
+        ),
+        .library(
+            name: "GunBoundProtocol",
+            targets: ["GunBoundProtocol"]
         )
     ],
     dependencies: [
@@ -33,12 +55,27 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-argument-parser",
             from: "1.2.0"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-binary-parsing",
+            .upToNextMinor(from: "0.0.2")
         )
     ],
     targets: [
         .target(
+            name: "GunBoundProtocol",
+            dependencies: [
+                .product(
+                    name: embedded ? "BinaryParsingEmbedded" : "BinaryParsing",
+                    package: "swift-binary-parsing"
+                )
+            ],
+            swiftSettings: protocolSwiftSettings
+        ),
+        .target(
             name: "GunBound",
             dependencies: [
+                "GunBoundProtocol",
                 "Socket",
                 "CryptoSwift",
                 .product(
@@ -52,6 +89,7 @@ let package = Package(
             name: "GunBoundServer",
             dependencies: [
                 "GunBound",
+                "GunBoundProtocol",
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
@@ -61,7 +99,7 @@ let package = Package(
         ),
         .testTarget(
             name: "GunBoundTests",
-            dependencies: ["GunBound"],
+            dependencies: ["GunBound", "GunBoundProtocol"],
             swiftSettings: swiftSettings
         )
     ]

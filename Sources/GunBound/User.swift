@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import GunBoundProtocol
 
 /// User
 public struct User: Equatable, Hashable, Codable, Identifiable, Sendable {

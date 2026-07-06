@@ -1,6 +1,7 @@
 import Foundation
 import ArgumentParser
 import SystemPackage
+import GunBoundProtocol
 
 /// GunBound Classic Server
 public final class GunBoundServer<TCPSocket: GunBoundSocketTCP, UDPSocket: GunBoundSocketUDP, DataSource: GunBoundServerDataSource> {
@@ -119,7 +120,7 @@ public final class GunBoundServer<TCPSocket: GunBoundSocketTCP, UDPSocket: GunBo
     public func send<T>(
         _ packet: T,
         to address: GunBoundAddress
-    ) async throws where T: GunBoundPacket, T: Encodable {
+    ) async throws where T: GunBoundPacketEncodable {
         assert(T.opcode.type == .notification)
         guard let connection = await self.storage.connections[address] else {
             throw GunBoundError.disconnected(address)
@@ -765,21 +766,25 @@ internal extension GunBoundServer {
         }
 
         @discardableResult
-        private func register<Request, Response>(
-            _ callback: @escaping (Request) async throws -> (Response)
-        ) async -> UInt where Request: GunBoundPacket, Request: Decodable, Response: GunBoundPacket, Response: Encodable {
+        private func register<Request: GunBoundPacketDecodable>(
+            _ callback: @escaping (Request) async throws -> (any GunBoundPacketEncodable)
+        ) async -> UInt {
             await self.connection.register { [unowned self] request in
                 do {
                     let response = try await callback(request)
-                    await self.respond(response)
+                    await self.respondErased(response)
                 } catch {
                     await self.close(error)
                 }
             }
         }
 
+        private func respondErased(_ response: any GunBoundPacketEncodable) async {
+            await self.respond(response)
+        }
+
         /// Respond to a client-initiated PDU message.
-        internal func respond<T>(_ response: T) async where T: GunBoundPacket, T: Encodable {
+        internal func respond<T>(_ response: T) async where T: GunBoundPacketEncodable {
             log("Response: \(response)")
             assert(T.opcode.type == .response)
             guard await connection.queue(response) != nil
@@ -787,7 +792,7 @@ internal extension GunBoundServer {
         }
 
         /// Send a server-initiated PDU message.
-        internal func send<T>(_ notification: T) async where T: GunBoundPacket, T: Encodable {
+        internal func send<T>(_ notification: T) async where T: GunBoundPacketEncodable {
             log("Notification: \(notification)")
             assert(T.opcode.type == .notification)
             guard await connection.queue(notification) != nil
@@ -804,7 +809,18 @@ internal extension GunBoundServer {
         private func serverDirectory(_ packet: ServerDirectoryRequest) async throws -> ServerDirectoryResponse {
             log("Server Directory Request")
             let directory = try await self.server.dataSource.serverDirectory
-            return ServerDirectoryResponse(directory: directory)
+            let servers = directory.map { server in
+                ServerDirectoryResponse.Server(
+                    name: server.name,
+                    descriptionText: server.descriptionText,
+                    address: server.address.withUnsafeBytes { GunBoundProtocol.IPv4Address($0[0], $0[1], $0[2], $0[3]) },
+                    port: server.port,
+                    utilization: server.utilization,
+                    capacity: server.capacity,
+                    isEnabled: server.isEnabled
+                )
+            }
+            return ServerDirectoryResponse(directory: servers)
         }
 
         private func nonce(_ packet: NonceRequest) async throws -> NonceResponse {
@@ -835,7 +851,11 @@ internal extension GunBoundServer {
         }
 
         private func authenticate(_ request: AuthenticationRequest) async throws -> AuthenticationResponse {
-            log("Authentication Request - \(request.username)")
+            // decrypt username (fixed login key, 16-byte AES block)
+            let decryptedUsernameBytes = try Crypto.AES.decrypt(Data(request.encryptedUsername), key: .login)
+            let usernameString = try parseDecryptedUsername(decryptedUsernameBytes)
+
+            log("Authentication Request - \(usernameString)")
 
             // Reject re-authentication on an already-authenticated connection (matches binary behavior)
             guard await self.connection.username == nil else {
@@ -843,7 +863,7 @@ internal extension GunBoundServer {
             }
 
             // validate username
-            guard let username = Username(rawValue: request.username) else {
+            guard let username = Username(rawValue: usernameString) else {
                 return .badUsername
             }
 
@@ -870,16 +890,16 @@ internal extension GunBoundServer {
             let key = await self.connection.authenticate(username: username, password: password)
             let decryptedData: Data
             do {
-                decryptedData = try Crypto.AES.decrypt(request.encryptedData, key: key, opcode: AuthenticationRequest.opcode)
+                decryptedData = try Crypto.AES.decrypt(Data(request.encryptedData), key: key, opcode: AuthenticationRequest.opcode)
             } catch {
                 log("Error: \(error)")
                 return .badPassword
             }
 
-            let decryptedValue = try connection.decoder.decode(AuthenticationRequest.EncryptedData.self, from: decryptedData)
+            let decryptedValue = try parseDecryptedAuthenticationData(decryptedData)
 
             #if DEBUG
-            log("Login attempt for \"\(request.username)\" with password \"\(decryptedValue.password)\" client version \(decryptedValue.clientVersion))")
+            log("Login attempt for \"\(usernameString)\" with password \"\(decryptedValue.password)\" client version \(decryptedValue.clientVersion))")
             #endif
 
             guard password == decryptedValue.password else {
@@ -1157,8 +1177,8 @@ internal extension GunBoundServer {
                         JoinRoomResponse.PlayerSession(
                             id: player.id,
                             username: player.username,
-                            address: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363),
-                            address2: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363),
+                            address: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363).wireAddress,
+                            address2: GunBoundAddress(ipAddress: player.address.ipAddress, port: 8363).wireAddress,
                             primaryTank: player.primaryTank,
                             secondary: player.secondaryTank,
                             team: player.team,
@@ -1195,8 +1215,8 @@ internal extension GunBoundServer {
                 let notification = JoinRoomNotification(
                     id: player.id,
                     username: player.username,
-                    address: GunBoundAddress(ipAddress: address.ipAddress, port: 8363),
-                    address2: GunBoundAddress(ipAddress: address.ipAddress, port: 8363),
+                    address: GunBoundAddress(ipAddress: address.ipAddress, port: 8363).wireAddress,
+                    address2: GunBoundAddress(ipAddress: address.ipAddress, port: 8363).wireAddress,
                     primaryTank: player.primaryTank,
                     secondary: player.primaryTank,
                     team: player.team,
@@ -1560,7 +1580,7 @@ internal extension GunBoundServer {
                 }
                 let encrypted = try Crypto.AES.encrypt(plaintext, key: key, opcode: .getAvatarResponse)
                 let rtcAndEncrypted = Data([0x00, 0x00]) + encrypted
-                let response = GetAvatarResponse(rtcAndEncryptedData: rtcAndEncrypted)
+                let response = GetAvatarResponse(rtcAndEncryptedData: [UInt8](rtcAndEncrypted))
                 await self.respond(response)
                 // send cash update
                 let notification = CashUpdate(cash: user.cash)

@@ -7,6 +7,7 @@
 
 import Foundation
 import ArgumentParser
+import GunBoundProtocol
 
 public protocol GunBoundCommand: AsyncParsableCommand {
 

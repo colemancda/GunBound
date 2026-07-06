@@ -8,6 +8,7 @@
 import Foundation
 import Testing
 @testable import GunBound
+@testable import GunBoundProtocol
 
 @Suite struct CryptoTests {
 

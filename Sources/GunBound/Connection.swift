@@ -7,6 +7,7 @@
 
 import Foundation
 import Socket
+import GunBoundProtocol
 
 /// GunBound Connection
 internal actor Connection<Socket: GunBoundSocketTCP> {
@@ -151,7 +152,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
         self.recievedBytes += recievedData.count
 
         // parse packet
-        guard var packet = Packet(data: recievedData, validateLength: false, validateOpcode: false) else {
+        guard var packet = Packet(data: [UInt8](recievedData), validateLength: false, validateOpcode: false) else {
             throw GunBoundError.invalidData(recievedData)
         }
 
@@ -197,7 +198,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
 
         // encode packet
         let opcode = type(of: sendOperation.packet).opcode
-        var packet = try encoder.encode(sendOperation.packet, id: 0x0000)
+        var packet = encoder.encode(sendOperation.packet, id: 0x0000)
 
         // encrypt packet parameters
         if opcode.isEncrypted {
@@ -212,7 +213,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
         packet.id = .init(serverPacketLength: Int(sentBytes))
 
         // write data to socket
-        try await socket.send(packet.data)
+        try await socket.send(Data(packet.data))
 
         log?("Sent packet \(packet.opcode) ID \(packet.id)")
         #if DEBUG
@@ -246,7 +247,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
 
     /// Registers a callback for an opcode and returns the ID associated with that callback.
     @discardableResult
-    public func register<T>(_ callback: @escaping (T) async -> ()) -> UInt where T: GunBoundPacket, T: Decodable {
+    public func register<T>(_ callback: @escaping (T) async -> ()) -> UInt where T: GunBoundPacketDecodable {
 
         let id = nextRegisterID
 
@@ -286,7 +287,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
     public func queue<T>(
         _ packet: T,
         response: (callback: (GunBoundPacket) -> (), GunBoundPacket.Type)? = nil
-    ) -> UInt? where T: GunBoundPacket, T: Encodable {
+    ) -> UInt? where T: GunBoundPacketEncodable {
 
         // Only request PDUs should have response callbacks.
         switch T.opcode.type {
@@ -359,7 +360,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
 
             // attempt to deserialize
             guard let PDU = foundPDU ?? (try? type(of: notify).packetType.init(packet: packet, decoder: decoder))
-            else { throw GunBoundError.invalidData(packet.data) }
+            else { throw GunBoundError.invalidData(Data(packet.data)) }
 
             foundPDU = PDU
 
@@ -380,21 +381,21 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
 
         // If no request is pending, then the response is unexpected. Disconnect the bearer.
         guard let sendOperation = self.pendingRequest else {
-            throw GunBoundError.invalidData(packet.data)
+            throw GunBoundError.invalidData(Data(packet.data))
         }
 
         // If the received response doesn't match the pending request, or if the request is malformed,
         // end the current request with failure.
 
         guard let requestOpcode = packet.opcode.request
-        else { throw GunBoundError.unexpectedResponse(packet.data) }
+        else { throw GunBoundError.unexpectedResponse(Data(packet.data)) }
 
         // clear current pending request
         defer { self.pendingRequest = nil }
 
         /// Verify the recieved response belongs to the pending request
         guard type(of: sendOperation.packet).opcode == requestOpcode else {
-            throw GunBoundError.invalidData(packet.data)
+            throw GunBoundError.invalidData(Data(packet.data))
         }
 
         // success!
@@ -413,7 +414,7 @@ internal actor Connection<Socket: GunBoundSocketTCP> {
 
         // Received request while another is pending.
         guard incomingRequest == false
-        else { throw GunBoundError.invalidData(packet.data) }
+        else { throw GunBoundError.invalidData(Data(packet.data)) }
 
         incomingRequest = true
 
@@ -428,14 +429,14 @@ internal final class SendOperation {
     let id: UInt
 
     /// The packet to send.
-    let packet: any (GunBoundPacket & Encodable)
+    let packet: any GunBoundPacketEncodable
 
     /// The response callback.
     let response: (callback: (GunBoundPacket) -> (), responseType: GunBoundPacket.Type)?
 
     fileprivate init(
         id: UInt,
-        packet: any (GunBoundPacket & Encodable),
+        packet: any GunBoundPacketEncodable,
         response: (
             callback: (GunBoundPacket) -> (),
             responseType: GunBoundPacket.Type
@@ -474,23 +475,23 @@ extension SendOperation {
         
         } else {
             // other response
-            throw GunBoundError.unexpectedResponse(packet.data)
+            throw GunBoundError.unexpectedResponse(Data(packet.data))
         }*/
     }
 }
 
 internal protocol NotifyType {
 
-    static var packetType: (GunBoundPacket & Decodable).Type { get }
+    static var packetType: any GunBoundPacketDecodable.Type { get }
 
     var id: UInt { get }
 
     var callback: (GunBoundPacket) async -> () { get }
 }
 
-internal struct Notify<Packet>: NotifyType where Packet: GunBoundPacket, Packet: Decodable {
+internal struct Notify<Packet>: NotifyType where Packet: GunBoundPacketDecodable {
 
-    static var packetType: (GunBoundPacket & Decodable).Type { return Packet.self }
+    static var packetType: any GunBoundPacketDecodable.Type { return Packet.self }
 
     let id: UInt
 
