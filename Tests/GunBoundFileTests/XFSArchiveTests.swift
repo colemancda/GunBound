@@ -35,31 +35,21 @@ struct XFSArchiveTests {
         }
     }
 
-    /// Enumerates the real `avatar.xfs` sample's table of contents. The
-    /// archive reserves 999 TOC slots but only the first 8 are populated
-    /// (the rest are zero-filled unused capacity, per the confirmed
-    /// chunked-TOC layout) — this decodes real named entries with
-    /// plausible filenames (avatar body-part sprites) rather than noise.
+    /// Enumerates the real `avatar.xfs` sample's table of contents: 8
+    /// entries (the true entry count, the second `uint32_t` after the
+    /// magic — not the first one, which is a still-unidentified field
+    /// that happens to read `999` on every sample archive seen so far).
+    /// This decodes real named entries with plausible filenames (avatar
+    /// body-part sprites) rather than noise.
     @Test
     func readEntries() throws {
         let data = try loadResource("avatar", "xfs")
         let entries = try XFSArchive.readEntries(data)
-        #expect(entries.count == 999)
-
-        let named = entries.prefix(while: { !$0.name.isEmpty })
-        #expect(named.map(\.name) == ["fb.dat", "ff.dat", "fg.dat", "fh.dat", "mb.dat", "mf.dat", "mg.dat", "mh.dat"])
-        for entry in named {
+        #expect(entries.map(\.name) == ["fb.dat", "ff.dat", "fg.dat", "fh.dat", "mb.dat", "mf.dat", "mg.dat", "mh.dat"])
+        for entry in entries {
             #expect(entry.isCompressed)
             #expect(entry.decompressedSize > 0)
             #expect(entry.compressedSize > 0)
-        }
-
-        // Unused reserved slots decode to empty/zeroed records, not garbage.
-        let unused = entries[named.count...]
-        for entry in unused {
-            #expect(entry.name.isEmpty)
-            #expect(entry.fileOffset == 0)
-            #expect(entry.decompressedSize == 0)
         }
     }
 
