@@ -61,4 +61,21 @@ struct XFSArchiveTests {
         let decoded = try XFSArchive.readEntryData(data, entry: first)
         #expect(decoded.count == Int(first.decompressedSize))
     }
+
+    /// Every compressed entry embeds an integrity checksum in its
+    /// `XFSEntryBlock` header (a summed-32-bit-words hash over the first
+    /// 4096 decoded bytes, confirmed via decompiling `DecodeXFSEntryBlock`)
+    /// — validated here against every real entry in the sample archive,
+    /// confirming both the LZHUF decoder's output and the checksum
+    /// algorithm itself.
+    @Test
+    func entryBlocksVerifyChecksum() throws {
+        let data = try loadResource("avatar", "xfs")
+        let entries = try XFSArchive.readEntries(data)
+        for entry in entries {
+            let block = try XFSArchive.readEntryBlock(data, at: Int(entry.fileOffset))
+            let decoded = XFSArchive.decompressEntry(block, decodedSize: Int(entry.decompressedSize))
+            #expect(block.verifyChecksum(against: decoded))
+        }
+    }
 }
