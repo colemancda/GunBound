@@ -107,7 +107,7 @@ public enum XFSArchive {
     /// ```
     /// struct XFSEntryBlock {
     ///     uint32_t compressedSize;
-    ///     uint32_t checksum;       // not validated here; convention unconfirmed
+    ///     uint32_t checksum;       // see `EntryBlock.verifyChecksum(against:)`
     ///     uint8_t  compressedData[compressedSize];
     /// };
     /// ```
@@ -115,6 +115,35 @@ public enum XFSArchive {
         public let compressedSize: UInt32
         public let checksum: UInt32
         public let compressedData: [UInt8]
+
+        /// Validates `decodedData` (this block's LZHUF-decompressed
+        /// output) against `checksum`.
+        ///
+        /// Confirmed via decompiling `DecodeXFSEntryBlock` (`0x4f03f0`):
+        /// the client sums every 32-bit little-endian word in the first
+        /// 4096 bytes of the decoded output (mod 2^32) and compares
+        /// against this field. Verified byte-exact against real archive
+        /// entries (`tank1.img`, `b_buddy_del.img`, `avataimsi.img`).
+        public func verifyChecksum(against decodedData: [UInt8]) -> Bool {
+            checksum == XFSArchive.computeChecksum(decodedData)
+        }
+    }
+
+    /// Computes the summed-`int32`-words checksum `DecodeXFSEntryBlock`
+    /// validates decoded entries against (see `EntryBlock.verifyChecksum(against:)`).
+    public static func computeChecksum(_ decodedData: [UInt8]) -> UInt32 {
+        let byteCount = min(4096, decodedData.count - (decodedData.count % 4))
+        var total: UInt32 = 0
+        var offset = 0
+        while offset < byteCount {
+            let word = UInt32(decodedData[offset])
+                | (UInt32(decodedData[offset + 1]) << 8)
+                | (UInt32(decodedData[offset + 2]) << 16)
+                | (UInt32(decodedData[offset + 3]) << 24)
+            total = total &+ word
+            offset += 4
+        }
+        return total
     }
 
     public static func readEntryBlock(_ data: [UInt8], at offset: Int) throws(ParsingError) -> EntryBlock {
