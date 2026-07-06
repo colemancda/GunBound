@@ -30,7 +30,7 @@ struct XFSArchiveTests {
 
     @Test
     func invalidFooterOnTooSmallFile() {
-        #expect(throws: XFSArchive.Error.self) {
+        #expect(throws: ParsingError.self) {
             _ = try XFSArchive.readFooter([0x01, 0x02])
         }
     }
