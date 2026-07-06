@@ -8,7 +8,7 @@
 import Foundation
 import ArgumentParser
 import GunBound
-import Socket
+import struct Socket.IPv4Address
 
 struct Broker: AsyncParsableCommand {
 
@@ -37,7 +37,7 @@ struct Broker: AsyncParsableCommand {
         }
 
         // start server
-        let ipAddress = self.address ?? IPv4Address.any.rawValue
+        let ipAddress = self.address ?? Socket.IPv4Address.any.rawValue
         guard let address = GunBoundAddress(address: ipAddress, port: port) else {
             throw GunBoundError.invalidAddress(ipAddress)
         }

@@ -6,9 +6,14 @@
 //
 
 import Foundation
+import GunBoundProtocol
 
 /// GunBound Channel
 public struct Channel: Codable, Equatable, Hashable, Identifiable, Sendable {
+
+    public typealias ID = ChannelID
+
+    public typealias UserID = ChannelUserID
 
     public let id: ID
 
