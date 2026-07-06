@@ -118,8 +118,7 @@ public enum Opcode: UInt16, Sendable {
 
     /// Room Player Display Update Notification - per-field update to another
     /// player's 128-byte display buffer (see `roomSelfDisplayUpdateNotification`
-    /// for the "self" counterpart). (static analysis of the original client, State 3,
-    /// opcode `0x21f2`)
+    /// for the "self" counterpart). (observed via static analysis of the original client)
     case roomPlayerDisplayUpdateNotification = 0x21F2
 
     /// Room Player Flag Update Notification - single-byte per-slot field
