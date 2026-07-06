@@ -12,7 +12,7 @@
 /// - Display the room interface
 /// - Wait for JoinRoomNotification packets for other players in the room
 /// - Expect RoomUpdateNotification for any room state changes
-public struct JoinRoomNotificationSelf: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct JoinRoomNotificationSelf: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .joinRoomNotificationSelf }
 
@@ -25,6 +25,11 @@ public struct JoinRoomNotificationSelf: GunBoundPacket, GunBoundPacketEncodable,
     public init() {
         self.rtc = 0x00
         self.value = 03
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.rtc = try UInt16(parsingLittleEndian: &input)
+        self.value = try UInt8(parsing: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

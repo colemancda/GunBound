@@ -8,7 +8,7 @@
 /// This ensures the UI displays the correct amount of available cash.
 ///
 /// **Note:** This packet is encrypted before transmission.
-public struct CashUpdate: GunBoundPacket, GunBoundPacketEncodable, Hashable, Sendable {
+public struct CashUpdate: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Hashable, Sendable {
 
     public static var opcode: Opcode { .cashUpdateNotification }
 
@@ -17,6 +17,10 @@ public struct CashUpdate: GunBoundPacket, GunBoundPacketEncodable, Hashable, Sen
 
     public init(cash: UInt32 = 0) {
         self.cash = cash
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.cash = try UInt32(parsingLittleEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

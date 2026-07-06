@@ -3,7 +3,7 @@
 /// Sent by the server to set the passable authority level.
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct ClientSetPassableAuthority: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ClientSetPassableAuthority: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientSetPassableAuthority }
 
@@ -11,6 +11,10 @@ public struct ClientSetPassableAuthority: GunBoundPacket, GunBoundPacketEncodabl
 
     public init(level: UInt8) {
         self.level = level
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.level = try UInt8(parsing: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

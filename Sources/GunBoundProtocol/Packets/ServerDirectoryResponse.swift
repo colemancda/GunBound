@@ -13,7 +13,7 @@
 /// - Network address and port
 /// - Current utilization and capacity
 /// - Whether the server is enabled/available
-public struct ServerDirectoryResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ServerDirectoryResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .serverDirectoryResponse }
 
@@ -66,7 +66,44 @@ public extension ServerDirectoryResponse {
     }
 }
 
+extension ServerDirectoryResponse.Server {
+
+    public init(parsing input: inout ParserSpan) throws {
+        // Server Index
+        _ = try UInt8(parsing: &input)
+        _ = try UInt8(parsing: &input)
+        _ = try UInt8(parsing: &input)
+        // values
+        self.name = try String(parsingLengthPrefixedASCII: &input)
+        self.descriptionText = try String(parsingLengthPrefixedASCII: &input)
+        self.address = try IPv4Address(parsing: &input)
+        self.port = try UInt16(parsingBigEndian: &input)
+        self.utilization = try UInt16(parsingBigEndian: &input)
+        _ = try UInt16(parsingBigEndian: &input)  // duplicate utilization write in encode
+        self.capacity = try UInt16(parsingBigEndian: &input)
+        self.isEnabled = try UInt8(parsing: &input) != 0
+    }
+}
+
 extension ServerDirectoryResponse {
+
+    public init(parsing input: inout ParserSpan) throws {
+        // unknown
+        _ = try UInt8(parsing: &input)
+        _ = try UInt8(parsing: &input)
+        _ = try UInt8(parsing: &input)
+
+        // number of servers
+        let count = try UInt8(parsing: &input)
+
+        // decode each
+        var directory = [Server]()
+        directory.reserveCapacity(Int(count))
+        for _ in 0..<count {
+            directory.append(try Server(parsing: &input))
+        }
+        self.directory = directory
+    }
 
     public func encode(to output: inout ByteWriter) {
         // unknown

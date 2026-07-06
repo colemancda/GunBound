@@ -12,7 +12,7 @@
 ///
 /// The client should update its room list display with the
 /// provided room information.
-public struct RoomListResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct RoomListResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomListResponse }
 
@@ -20,6 +20,22 @@ public struct RoomListResponse: GunBoundPacket, GunBoundPacketEncodable, Equatab
     public var rooms: [Room]
 
     public init(rooms: [Room]) {
+        self.rooms = rooms
+    }
+}
+
+// MARK: - Decoding
+
+extension RoomListResponse {
+
+    public init(parsing input: inout ParserSpan) throws {
+        _ = try UInt16(parsingLittleEndian: &input)  // RTC
+        let count = try UInt16(parsingLittleEndian: &input)
+        var rooms = [Room]()
+        rooms.reserveCapacity(Int(count))
+        for _ in 0..<count {
+            rooms.append(try Room(parsing: &input))
+        }
         self.rooms = rooms
     }
 }
@@ -100,6 +116,17 @@ public extension RoomListResponse {
 }
 
 extension RoomListResponse.Room {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.id = try RoomID(parsing: &input)
+        self.name = try String(parsingLengthPrefixedASCII: &input)
+        self.map = try GameMap(parsing: &input)
+        self.settings = try UInt32(parsingLittleEndian: &input)
+        self.playerCount = try UInt8(parsing: &input)
+        self.capacity = try RoomCapacity(parsing: &input)
+        self.isPlaying = try UInt8(parsing: &input) != 0
+        self.isLocked = try UInt8(parsing: &input) != 0
+    }
 
     public func encode(to output: inout ByteWriter) {
         id.encode(to: &output)

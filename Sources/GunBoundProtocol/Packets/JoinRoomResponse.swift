@@ -13,7 +13,7 @@
 /// - Show the map and game settings
 /// - Wait for additional JoinRoomNotification packets if more players join
 /// - Expect RoomUpdateNotification for any room state changes
-public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .joinRoomResponse }
 
@@ -69,6 +69,31 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, Equatab
         self.capacity = capacity
         self.players = players
         self.message = message
+    }
+}
+
+// MARK: - Decoding
+
+extension JoinRoomResponse {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.rtc = try UInt16(parsingLittleEndian: &input)
+        self.value0 = try UInt16(parsingLittleEndian: &input)
+        self.room = try RoomID(parsing: &input)
+        self.name = try String(parsingLengthPrefixedASCII: &input)
+        self.map = try GameMap(parsing: &input)
+        self.settings = try UInt32(parsingLittleEndian: &input)
+        self.value1 = try UInt64(parsingLittleEndian: &input)
+        self.capacity = try RoomCapacity(parsing: &input)
+        let count = try UInt8(parsing: &input)
+        var players = [PlayerSession]()
+        players.reserveCapacity(Int(count))
+        for _ in 0..<count {
+            players.append(try PlayerSession(parsing: &input))
+        }
+        self.players = players
+        let messageBytes = [UInt8](parsingRemainingBytes: &input)
+        self.message = String(decoding: messageBytes, as: UTF8.self)
     }
 }
 
@@ -167,6 +192,21 @@ public extension JoinRoomResponse {
 }
 
 extension JoinRoomResponse.PlayerSession {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.id = try UInt8(parsing: &input)
+        self.username = try Username(parsing: &input)
+        self.address = try GunBoundAddress(parsing: &input)
+        self.address2 = try GunBoundAddress(parsing: &input)
+        self.primaryTank = try Mobile(parsing: &input)
+        self.secondary = try Mobile(parsing: &input)
+        self.team = try Team(parsing: &input)
+        self.value0 = try UInt8(parsing: &input)
+        self.avatarEquipped = try UInt64(parsingLittleEndian: &input)
+        self.guild = try Guild(parsing: &input)
+        self.rankCurrent = try UInt16(parsingLittleEndian: &input)
+        self.rankSeason = try UInt16(parsingLittleEndian: &input)
+    }
 
     public func encode(to output: inout ByteWriter) {
         output.write(id)

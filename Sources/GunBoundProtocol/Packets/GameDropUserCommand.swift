@@ -3,7 +3,7 @@
 /// Sent by the server to drop/disconnect a user from the in-progress game.
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct GameDropUserCommand: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct GameDropUserCommand: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .gameDropUserCommand }
 
@@ -12,6 +12,10 @@ public struct GameDropUserCommand: GunBoundPacket, GunBoundPacketEncodable, Equa
 
     public init(playerID: UInt8) {
         self.playerID = playerID
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.playerID = try UInt8(parsing: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

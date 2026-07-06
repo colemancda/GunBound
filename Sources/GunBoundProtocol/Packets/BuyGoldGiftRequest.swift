@@ -4,7 +4,7 @@
 /// directly to another player.
 ///
 /// **Note:** This is a best-effort reconstruction mirroring `BuyGoldRequest` and `GiftRequest`.
-public struct BuyGoldGiftRequest: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct BuyGoldGiftRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .buyGoldGiftRequest }
 
@@ -12,8 +12,18 @@ public struct BuyGoldGiftRequest: GunBoundPacket, GunBoundPacketDecodable, Equat
 
     public let avatar: UInt32
 
+    public init(recipient: Username, avatar: UInt32) {
+        self.recipient = recipient
+        self.avatar = avatar
+    }
+
     public init(parsing input: inout ParserSpan) throws {
         self.recipient = try Username(parsing: &input)
         self.avatar = try UInt32(parsingBigEndian: &input)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        recipient.encode(to: &output)
+        output.write(avatar, endianness: .big)
     }
 }

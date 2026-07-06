@@ -6,7 +6,7 @@
 /// (`0x21f0`) writes via a different ("find my own slot") trigger path.
 ///
 /// **Note:** Reconstructed from static analysis of the original client, not a live packet capture or verified traffic.
-public struct RoomDetailResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct RoomDetailResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomDetailResponse }
 
@@ -22,6 +22,12 @@ public struct RoomDetailResponse: GunBoundPacket, GunBoundPacketEncodable, Equat
         self.reserved = reserved
         self.name = name
         self.extra = extra
+    }
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.reserved = try UInt16(parsingLittleEndian: &input)
+        self.name = try String(parsingLengthPrefixedASCII: &input)
+        self.extra = [UInt8](parsingRemainingBytes: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

@@ -4,7 +4,7 @@
 /// (mirrors `InMemoryGunBoundServerDataSource.State.versionFirst`/`versionLast`).
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct ClientCommandSetVersion: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ClientCommandSetVersion: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientCommandSetVersion }
 
@@ -15,6 +15,11 @@ public struct ClientCommandSetVersion: GunBoundPacket, GunBoundPacketEncodable, 
     public init(versionFirst: ClientVersion, versionLast: ClientVersion) {
         self.versionFirst = versionFirst
         self.versionLast = versionLast
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.versionFirst = try ClientVersion(parsing: &input)
+        self.versionLast = try ClientVersion(parsing: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

@@ -10,7 +10,7 @@
 /// This packet is encrypted but contains no meaningful data.
 /// The server validates the request and updates the game state
 /// accordingly, notifying all players of the resurrection.
-public struct PlayerResurrectCommand: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct PlayerResurrectCommand: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .playResurrect }
 
@@ -18,4 +18,6 @@ public struct PlayerResurrectCommand: GunBoundPacket, GunBoundPacketDecodable, E
     public init() {}
 
     public init(parsing input: inout ParserSpan) throws {}
+
+    public func encode(to output: inout ByteWriter) {}
 }

@@ -4,7 +4,7 @@
 /// `InMemoryGunBoundServerDataSource.State.functionRestrict`).
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct ClientCommandFunctionRestrict: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ClientCommandFunctionRestrict: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientCommandFunctionRestrict }
 
@@ -12,6 +12,10 @@ public struct ClientCommandFunctionRestrict: GunBoundPacket, GunBoundPacketEncod
 
     public init(functionRestrict: FunctionRestrict) {
         self.functionRestrict = functionRestrict
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.functionRestrict = try FunctionRestrict(parsing: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

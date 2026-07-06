@@ -4,7 +4,7 @@
 /// `SellRequest`'s fields).
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct SellGiven: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct SellGiven: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .sellGiven }
 
@@ -15,6 +15,11 @@ public struct SellGiven: GunBoundPacket, GunBoundPacketEncodable, Equatable, Has
     public init(itemPosition: UInt8, avatar: UInt32) {
         self.itemPosition = itemPosition
         self.avatar = avatar
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.itemPosition = try UInt8(parsing: &input)
+        self.avatar = try UInt32(parsingBigEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

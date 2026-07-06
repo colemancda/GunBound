@@ -4,7 +4,7 @@
 /// opposed to `RoomListRequest`'s general sorted/filtered listing.
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct RoomSpecificList: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct RoomSpecificList: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomSpecificList }
 
@@ -17,5 +17,11 @@ public struct RoomSpecificList: GunBoundPacket, GunBoundPacketDecodable, Equatab
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         let count = try UInt8(parsing: &input)
         self.rooms = try Array(parsing: &input, count: Int(count), parser: RoomID.init(parsing:))
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.write(array: rooms) { output, room in
+            room.encode(to: &output)
+        }
     }
 }

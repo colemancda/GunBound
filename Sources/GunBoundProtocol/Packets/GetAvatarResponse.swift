@@ -19,16 +19,20 @@
 /// - Equipped avatar bitmask
 /// - List of owned avatar items
 /// - Item quantities and properties
-public struct GetAvatarResponse: GunBoundPacket, GunBoundPacketEncodable, Sendable {
+public struct GetAvatarResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .getAvatarResponse }
 
     /// Raw bytes: [0x00, 0x00] (RTC = return code, 0 = success) + encrypted avatar payload.
     /// The avatar data portion is AES-encrypted and must be decrypted by the client.
-    internal let rtcAndEncryptedData: [UInt8]
+    public let rtcAndEncryptedData: [UInt8]
 
     public init(rtcAndEncryptedData: [UInt8]) {
         self.rtcAndEncryptedData = rtcAndEncryptedData
+    }
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.rtcAndEncryptedData = [UInt8](parsingRemainingBytes: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

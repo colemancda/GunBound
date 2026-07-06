@@ -4,7 +4,7 @@
 /// `GuildMarkLimit` value parsed from `setting.txt`).
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct ClientCommandGuildMarkLimit: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ClientCommandGuildMarkLimit: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientCommandGuildMarkLimit }
 
@@ -12,6 +12,10 @@ public struct ClientCommandGuildMarkLimit: GunBoundPacket, GunBoundPacketEncodab
 
     public init(limit: UInt16) {
         self.limit = limit
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.limit = try UInt16(parsingLittleEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

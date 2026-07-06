@@ -4,7 +4,7 @@
 /// `InMemoryGunBoundServerDataSource.State.gradeLimitFirst`/`gradeLimitLast`).
 ///
 /// **Note:** This is a best-effort reconstruction from the opcode name alone.
-public struct ClientCommandGradeLimit: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ClientCommandGradeLimit: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientCommandGradeLimit }
 
@@ -15,6 +15,11 @@ public struct ClientCommandGradeLimit: GunBoundPacket, GunBoundPacketEncodable, 
     public init(gradeLimitFirst: Int16, gradeLimitLast: Int16) {
         self.gradeLimitFirst = gradeLimitFirst
         self.gradeLimitLast = gradeLimitLast
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.gradeLimitFirst = try Int16(parsingLittleEndian: &input)
+        self.gradeLimitLast = try Int16(parsingLittleEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

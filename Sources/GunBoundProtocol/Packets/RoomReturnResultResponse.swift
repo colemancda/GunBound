@@ -14,7 +14,7 @@
 /// - Show any reward notifications
 ///
 /// The RTC field indicates success (0x0000) or error codes.
-public struct RoomReturnResultResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct RoomReturnResultResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomReturnResultResponse }
 
@@ -23,6 +23,10 @@ public struct RoomReturnResultResponse: GunBoundPacket, GunBoundPacketEncodable,
 
     public init() {
         self.rtc = 0x0000
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.rtc = try UInt16(parsingLittleEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

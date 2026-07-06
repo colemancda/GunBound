@@ -12,7 +12,7 @@
 /// **Settings Field:**
 /// The settings field is a bitmask containing game configuration options
 /// such as game mode, map, turn time, etc.
-public struct CreateRoomRequest: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct CreateRoomRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .createRoomRequest }
 
@@ -45,5 +45,12 @@ public struct CreateRoomRequest: GunBoundPacket, GunBoundPacketDecodable, Equata
         self.settings = try UInt32(parsingLittleEndian: &input)
         self.password = try RoomPassword(parsing: &input)
         self.capacity = try RoomCapacity(parsing: &input)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.writeLengthPrefixed(ascii: name)
+        output.write(settings, endianness: .little)
+        password.encode(to: &output)
+        capacity.encode(to: &output)
     }
 }

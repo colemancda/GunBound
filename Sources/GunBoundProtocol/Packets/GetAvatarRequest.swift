@@ -13,7 +13,7 @@
 /// When sendExtended is true, the response includes detailed information
 /// about all avatar items in the player's inventory. When false, only
 /// basic information is returned (typically just equipped avatars).
-public struct GetAvatarRequest: GunBoundPacket, GunBoundPacketDecodable, Sendable {
+public struct GetAvatarRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Sendable {
 
     public static var opcode: Opcode { .getAvatarRequest }
 
@@ -21,8 +21,16 @@ public struct GetAvatarRequest: GunBoundPacket, GunBoundPacketDecodable, Sendabl
     /// If false, only basic/equipped avatar information is returned.
     public let sendExtended: Bool
 
+    public init(sendExtended: Bool) {
+        self.sendExtended = sendExtended
+    }
+
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         let raw = try UInt8(parsing: &input)
         sendExtended = raw == 1
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.write(sendExtended)
     }
 }

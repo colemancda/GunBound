@@ -13,7 +13,7 @@
 /// - Display all users in the channel user list
 /// - Wait for subsequent JoinChannelNotification packets for any additional users
 /// - Expect a RoomListResponse with the current rooms in the channel
-public struct JoinChannelResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct JoinChannelResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .joinChannelResponse }
 
@@ -44,6 +44,26 @@ public struct JoinChannelResponse: GunBoundPacket, GunBoundPacketEncodable, Equa
         self.maxPosition = maxPosition
         self.users = users
         self.message = message
+    }
+}
+
+// MARK: - Decoding
+
+extension JoinChannelResponse {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.status = try UInt16(parsingLittleEndian: &input)
+        self.channel = try ChannelID(parsing: &input)
+        self.maxPosition = try ChannelUserID(parsing: &input)
+        let count = try UInt8(parsing: &input)
+        var users = [ChannelUser]()
+        users.reserveCapacity(Int(count))
+        for _ in 0..<count {
+            users.append(try ChannelUser(parsing: &input))
+        }
+        self.users = users
+        let messageBytes = [UInt8](parsingRemainingBytes: &input)
+        self.message = String(decoding: messageBytes, as: UTF8.self)
     }
 }
 
@@ -108,6 +128,15 @@ public extension JoinChannelResponse {
 }
 
 extension JoinChannelResponse.ChannelUser {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.id = try ChannelUserID(parsing: &input)
+        self.username = try Username(parsing: &input)
+        self.avatarEquipped = try UInt64(parsingLittleEndian: &input)
+        self.guild = try Guild(parsing: &input)
+        self.rankCurrent = try UInt16(parsingLittleEndian: &input)
+        self.rankSeason = try UInt16(parsingLittleEndian: &input)
+    }
 
     public func encode(to output: inout ByteWriter) {
         id.encode(to: &output)
