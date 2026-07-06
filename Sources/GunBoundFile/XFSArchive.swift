@@ -2,11 +2,14 @@
 /// `Avatar.xfs`).
 ///
 /// **Note:** Reconstructed from static analysis of the original client
-/// (`OpenXFSArchive`, `FindXFSEntry`, `ReadXFSEntry`/`ReadXFSEntryByte`).
-/// The container framing (footer, magic, chunked LZHUF-compressed table of
-/// contents, 128-byte entry records) is confirmed; one 4-byte field in each
-/// entry record (at relative offset `0x7c`) is unidentified and not
-/// exposed here beyond its raw value.
+/// (`OpenXFSArchive`, `FindXFSEntry`, `ReadXFSEntry`/`ReadXFSEntryByte`,
+/// and the entry-insert function `FUN_004f1220`). The container framing
+/// (footer, magic, chunked LZHUF-compressed table of contents, 128-byte
+/// entry records with all four trailing fields identified) is fully
+/// confirmed. The client also contains an archive-writer/insert code path
+/// (building the same TOC structure from scratch), so the format isn't
+/// strictly read-only/build-time-only — that path isn't implemented here
+/// since this library only needs to read existing archives.
 public enum XFSArchive {
 
     /// The container's magic bytes, `"XFS2"`, read from the front of the
@@ -32,7 +35,7 @@ public enum XFSArchive {
 
     /// Byte budget for an entry's NUL-terminated filename before the four
     /// trailing `uint32_t` fields (mode flag, file offset, decompressed
-    /// size, and an unidentified reserved field).
+    /// size, compressed size).
     static let entryNameFieldSize = 0x70
 
     public enum Error: Swift.Error, Equatable {
@@ -148,8 +151,11 @@ public enum XFSArchive {
         /// header. Otherwise, the raw file offset of the entry's bytes.
         public let fileOffset: UInt32
         public let decompressedSize: UInt32
-        /// The unidentified field at relative offset `0x7c`.
-        public let reserved: UInt32
+        /// On-disk footprint of the entry's compressed data (the
+        /// `EntryBlock`'s `compressedData` size). Only meaningful when
+        /// `isCompressed`; raw entries redundantly report the same value
+        /// as `decompressedSize` here.
+        public let compressedSize: UInt32
     }
 
     /// Enumerates every entry in the archive's table of contents.
@@ -208,13 +214,13 @@ public enum XFSArchive {
             let modeFlag = try UInt32(parsingLittleEndian: &input)
             let fileOffset = try UInt32(parsingLittleEndian: &input)
             let decompressedSize = try UInt32(parsingLittleEndian: &input)
-            let reserved = try UInt32(parsingLittleEndian: &input)
+            let compressedSize = try UInt32(parsingLittleEndian: &input)
             return Entry(
                 name: name,
                 isCompressed: modeFlag != 1,
                 fileOffset: fileOffset,
                 decompressedSize: decompressedSize,
-                reserved: reserved
+                compressedSize: compressedSize
             )
         }
     }
