@@ -18,6 +18,11 @@ public struct ClientGenericCommand: GunBoundPacket, GunBoundPacketDecodable, Equ
     /// The command string to execute
     public let command: String
 
+    internal init(value0: UInt8, command: String) {
+        self.value0 = value0
+        self.command = command
+    }
+
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         self.value0 = try UInt8(parsing: &input)
         let commandBytes = [UInt8](parsingRemainingBytes: &input)

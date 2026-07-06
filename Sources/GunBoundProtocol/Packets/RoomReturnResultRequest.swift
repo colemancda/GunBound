@@ -10,11 +10,13 @@
 ///
 /// The server processes the request and updates player statistics,
 /// awards gold/XP, and sends the result response to all players.
-public struct RoomReturnResultRequest: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct RoomReturnResultRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomReturnResultRequest }
 
     public init() {}
 
     public init(parsing input: inout ParserSpan) throws {}
+
+    public func encode(to output: inout ByteWriter) {}
 }

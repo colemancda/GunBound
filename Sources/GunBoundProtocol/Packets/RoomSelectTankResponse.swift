@@ -12,7 +12,7 @@
 /// After receiving this, the client knows their mobile selection
 /// has been updated and other players will be notified via
 /// RoomUpdateNotification.
-public struct RoomSelectTankResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct RoomSelectTankResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomSelectTankResponse }
 
@@ -21,6 +21,10 @@ public struct RoomSelectTankResponse: GunBoundPacket, GunBoundPacketEncodable, E
 
     public init() {
         self.rtc = 0x00
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.rtc = try UInt16(parsingLittleEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

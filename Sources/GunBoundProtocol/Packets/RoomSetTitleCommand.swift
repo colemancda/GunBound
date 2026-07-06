@@ -23,6 +23,7 @@ public struct RoomSetTitleCommand: GunBoundPacket, GunBoundPacketDecodable, Equa
     }
 
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
-        self.title = try String(parsingNulTerminated: &input)
+        let bytes = [UInt8](parsingRemainingBytes: &input)
+        self.title = String(decoding: bytes, as: UTF8.self)
     }
 }

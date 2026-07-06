@@ -13,11 +13,13 @@
 ///
 /// **Note:** The filename has a typo ("Nonce" instead of "Nonce"),
 /// but this is kept for compatibility with the original codebase.
-public struct NonceRequest: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct NonceRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     static public var opcode: Opcode { .nonceRequest }
 
     public init() {}
 
     public init(parsing input: inout ParserSpan) throws {}
+
+    public func encode(to output: inout ByteWriter) {}
 }
