@@ -11,9 +11,31 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
     - name: Swift Version
       run: swift --version
     - name: Build
       run: swift build -c ${{ matrix.config }}
     - name: Test
       run: swift test -c ${{ matrix.config }}
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        config: ["debug", "release"]
+    container: swift:6.3.2-noble
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Swift Version
+      run: swift --version
+    # Only the Foundation-free GunBoundProtocol (packet parsing) library builds on
+    # Linux for now; GunBound/GunBoundServer depend on the Socket package, whose
+    # Linux target doesn't currently import Glibc for SOCK_* constants.
+    - name: Build GunBoundProtocol
+      run: swift build -c ${{ matrix.config }} --target GunBoundProtocol
