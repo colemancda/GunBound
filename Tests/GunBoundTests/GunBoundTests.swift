@@ -170,6 +170,46 @@ import Testing
         assertEncode(NonceResponse(nonce: 0x0001_0203), packet)
     }
 
+    /// No real packet capture is available for `0x2105` yet; this instead
+    /// verifies encode/decode agree with each other for the field layout
+    /// static analysis confirmed (see `RoomDetailResponse`'s doc comment).
+    @Test func roomDetailResponse_roundTrip() throws {
+        let value = RoomDetailResponse(
+            name: "Player1",
+            readyID: 1,
+            value: 0x1122_3344,
+            flag2: 2,
+            flag3: 3,
+            flag4: 4,
+            equippedItems: [[UInt8](repeating: 0xAB, count: 32), [UInt8](repeating: 0xCD, count: 32)]
+        )
+        var encoder = GunBoundEncoder()
+        let packet = encoder.encode(value, id: 0x0001)
+        var decoder = GunBoundDecoder()
+        let decodedValue = try decoder.decodePacket(RoomDetailResponse.self, from: packet.data)
+        #expect(decodedValue == value)
+    }
+
+    /// No real packet capture is available for `0x6002` yet; this instead
+    /// verifies encode/decode agree with each other for the field layout
+    /// static analysis confirmed (see `AvatarInventoryResponse`'s doc comment).
+    @Test func avatarInventoryResponse_roundTrip() throws {
+        let value = AvatarInventoryResponse(
+            id0: 1,
+            id1: 2,
+            id2: 3,
+            id3: 4,
+            expirationDate: 1_800_000_000,
+            id4: 5,
+            itemData: [0xAA, 0xBB, 0xCC]
+        )
+        var encoder = GunBoundEncoder()
+        let packet = encoder.encode(value, id: 0x0001)
+        var decoder = GunBoundDecoder()
+        let decodedValue = try decoder.decodePacket(AvatarInventoryResponse.self, from: packet.data)
+        #expect(decodedValue == value)
+    }
+
     @Test func loginRequest() throws {
         var decoder = GunBoundDecoder()
         decoder.log = { print("Decoder:", $0) }
