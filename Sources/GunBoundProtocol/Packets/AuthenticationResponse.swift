@@ -53,7 +53,12 @@ public extension AuthenticationResponse {
     }
 }
 
-extension AuthenticationResponse {
+extension AuthenticationResponse: GunBoundPacketDecodable {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.status = try AuthenticationStatus(parsing: &input)
+        self.userData = status == .success ? try UserData(parsing: &input) : nil
+    }
 
     public func encode(to output: inout ByteWriter) {
         status.encode(to: &output)
@@ -149,6 +154,27 @@ public extension AuthenticationResponse {
 }
 
 extension AuthenticationResponse.UserData {
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.session = try UInt32(parsingBigEndian: &input)
+        self.username = try Username(parsing: &input)
+        self.avatarEquipped = try UInt64(parsingLittleEndian: &input)
+        self.guild = try Guild(parsing: &input)
+        self.rankCurrent = try UInt16(parsingLittleEndian: &input)
+        self.rankSeason = try UInt16(parsingLittleEndian: &input)
+        self.guildMemberCount = try UInt16(parsingLittleEndian: &input)
+        self.rankPositionCurrent = try UInt16(parsingLittleEndian: &input)
+        _ = try UInt16(parsingLittleEndian: &input)
+        self.rankPositionSeason = try UInt16(parsingLittleEndian: &input)
+        _ = try UInt16(parsingLittleEndian: &input)
+        self.guildRank = try UInt16(parsingLittleEndian: &input)
+        _ = try [UInt8](parsing: &input, byteCount: (4 * 4 * 20) + 10)  // shot history?
+        self.gpCurrent = try UInt32(parsingLittleEndian: &input)
+        self.gpSeason = try UInt32(parsingLittleEndian: &input)
+        self.gold = try UInt32(parsingLittleEndian: &input)
+        _ = try [UInt8](parsing: &input, byteCount: 17)
+        self.funcRestrict = try FunctionRestrict(parsing: &input)
+    }
 
     public func encode(to output: inout ByteWriter) {
         output.write(session, endianness: .big)  // session

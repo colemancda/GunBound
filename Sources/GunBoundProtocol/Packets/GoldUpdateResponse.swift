@@ -9,7 +9,7 @@
 ///
 /// This packet is typically sent after purchases, game rewards, or when explicitly
 /// requested by the client.
-public struct GoldUpdateResponse: GunBoundPacket, GunBoundPacketEncodable, Hashable, Sendable {
+public struct GoldUpdateResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Hashable, Sendable {
 
     public static var opcode: Opcode { .goldUpdateResponse }
 
@@ -18,6 +18,10 @@ public struct GoldUpdateResponse: GunBoundPacket, GunBoundPacketEncodable, Hasha
 
     public init(gold: UInt64 = 0) {
         self.gold = gold
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.gold = try UInt64(parsingLittleEndian: &input)
     }
 
     public func encode(to output: inout ByteWriter) {

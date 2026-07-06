@@ -14,7 +14,7 @@
 ///
 /// **Note:** Clients typically send this periodically to keep the room list
 /// up to date with current player counts and room states.
-public struct RoomListRequest: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct RoomListRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomListRequest }
 
@@ -27,5 +27,9 @@ public struct RoomListRequest: GunBoundPacket, GunBoundPacketDecodable, Equatabl
 
     public init(parsing input: inout ParserSpan) throws {
         self.filter = try RoomFilter(parsing: &input)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        filter.encode(to: &output)
     }
 }

@@ -10,7 +10,7 @@
 ///
 /// Upon successful room creation, the server also broadcasts a RoomUpdateNotification
 /// to all players in the channel to update the room list.
-public struct CreateRoomResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct CreateRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .createRoomResponse }
 
@@ -26,6 +26,13 @@ public struct CreateRoomResponse: GunBoundPacket, GunBoundPacketEncodable, Equat
     ) {
         self.room = room
         self.message = message
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        _ = try [UInt8](parsing: &input, byteCount: 3)
+        self.room = try RoomID(parsing: &input)
+        let messageBytes = [UInt8](parsingRemainingBytes: &input)
+        self.message = String(decoding: messageBytes, as: UTF8.self)
     }
 
     public func encode(to output: inout ByteWriter) {

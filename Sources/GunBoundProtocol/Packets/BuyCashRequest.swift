@@ -11,14 +11,22 @@
 /// The server verifies the purchase and deducts cash from the player's account.
 ///
 /// **Note:** This packet is encrypted and requires decryption before processing.
-public struct BuyCashRequest: GunBoundPacket, GunBoundPacketDecodable, Sendable {
+public struct BuyCashRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Sendable {
 
     public static var opcode: Opcode { .buyCashRequest }
 
     /// Extended (DWORD) avatar item code from the shop catalog
     public let avatar: UInt32
 
+    public init(avatar: UInt32) {
+        self.avatar = avatar
+    }
+
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         avatar = try UInt32(parsingBigEndian: &input)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.write(avatar, endianness: .big)
     }
 }

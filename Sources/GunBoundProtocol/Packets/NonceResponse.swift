@@ -13,7 +13,7 @@
 ///
 /// **Note:** The filename has a typo ("Nonce" instead of "Nonce"),
 /// but this is kept for compatibility with original codebase.
-public struct NonceResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct NonceResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .nonceResponse }
 
@@ -23,6 +23,10 @@ public struct NonceResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable,
 
     public init(nonce: Nonce = Nonce()) {
         self.nonce = nonce
+    }
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        self.nonce = Nonce(rawValue: try UInt32(parsingBigEndian: &input))
     }
 
     public func encode(to output: inout ByteWriter) {

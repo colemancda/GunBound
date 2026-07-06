@@ -15,11 +15,15 @@
 /// - Item is removed from player's inventory
 /// - Gold is credited to player's account
 /// - Server sends GoldUpdateResponse with new balance
-public struct SellResponse: GunBoundPacket, GunBoundPacketEncodable, Sendable {
+public struct SellResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Sendable {
 
     public static var opcode: Opcode { .sellResponse }
 
     public init() {}
+
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        _ = try UInt16(parsingLittleEndian: &input)  // RTC (Return Code: 0x0000 = success)
+    }
 
     public func encode(to output: inout ByteWriter) {
         output.write(UInt16(0x0000), endianness: .little)  // RTC (Return Code: 0x0000 = success)

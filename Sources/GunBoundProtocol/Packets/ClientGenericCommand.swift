@@ -8,7 +8,7 @@
 /// The command string is parsed by the server to determine the action to take.
 ///
 /// **Note:** The value0 field's purpose is currently unknown and may be unused.
-public struct ClientGenericCommand: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct ClientGenericCommand: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientCommand }
 
@@ -27,5 +27,10 @@ public struct ClientGenericCommand: GunBoundPacket, GunBoundPacketDecodable, Equ
         self.value0 = try UInt8(parsing: &input)
         let commandBytes = [UInt8](parsingRemainingBytes: &input)
         self.command = String(decoding: commandBytes, as: UTF8.self)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.write(value0)
+        output.write(Array(command.utf8))
     }
 }

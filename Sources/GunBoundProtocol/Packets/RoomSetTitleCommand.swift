@@ -11,7 +11,7 @@
 /// - Server validates the title
 /// - Server broadcasts RoomUpdateNotification to all players in room
 /// - Room list in lobby is updated with the new title
-public struct RoomSetTitleCommand: GunBoundPacket, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
+public struct RoomSetTitleCommand: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .roomSetTitleCommand }
 
@@ -25,5 +25,9 @@ public struct RoomSetTitleCommand: GunBoundPacket, GunBoundPacketDecodable, Equa
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         let bytes = [UInt8](parsingRemainingBytes: &input)
         self.title = String(decoding: bytes, as: UTF8.self)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.write(Array(title.utf8))
     }
 }

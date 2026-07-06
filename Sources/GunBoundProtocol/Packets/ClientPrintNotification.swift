@@ -8,7 +8,7 @@
 /// such as a popup dialog or system notification area.
 /// This is separate from chat messages and is used for important
 /// information that requires player attention.
-public struct ClientPrintNotification: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
+public struct ClientPrintNotification: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .clientPrintNotification }
 
@@ -17,6 +17,10 @@ public struct ClientPrintNotification: GunBoundPacket, GunBoundPacketEncodable, 
 
     public init(message: String) {
         self.message = message
+    }
+
+    public init(parsing input: inout ParserSpan) throws {
+        self.message = try String(parsingLengthPrefixedASCII: &input)
     }
 
     public func encode(to output: inout ByteWriter) {
