@@ -535,6 +535,16 @@ import Testing
         #expect(packet.id == 0x253D)
         let value = CreateRoomRequest(name: "test", settings: 25266, password: "1234", capacity: 8)
         assertDecode(value, packet)
+        #expect(GameMode(settings: value.settings) == .solo)
+    }
+
+    @Test func gameMode_settingsExtraction() throws {
+        // gameMode is packed into the upper 16 bits of the settings field.
+        #expect(GameMode(settings: 0x000062B2) == .solo)
+        #expect(GameMode(settings: 0x000C62B2) == .jewel)
+        #expect(GameMode(settings: 0x004462B2) == .score)
+        #expect(GameMode(settings: 0x000862B2) == .tag)
+        #expect(GameMode(settings: 0x00FF62B2) == nil)
     }
 
     @Test func createRoomResponse() throws {
