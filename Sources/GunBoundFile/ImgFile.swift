@@ -1,27 +1,30 @@
 /// GunBound's `.img` sprite/texture format (individual entries inside
 /// `.xfs` archives, e.g. `tank1.img`, `bullet1n.img`).
 ///
-/// **Note:** Reconstructed from static analysis of the original client,
-/// then verified by extracting and visually rendering real sprites from
-/// `graphics.xfs` and comparing against a real reference screenshot. Only
-/// frame 0's layout is confirmed — multi-frame sheets (e.g. `tank1.img`,
-/// which claims 455 frames) have more data following frame 0, but the
-/// per-frame repeat structure beyond it hasn't been mapped.
-///
-/// `BlitRLESprite` (despite its name) turned out, on full decompilation, to
-/// be a table-lookup-driven terrain/tile renderer unrelated to `.img`
-/// sprites, not this format's decoder — `BlitSprite16bpp` is the relevant
-/// one. Frame 0's pixel data is stored in one of two confirmed sub-formats,
-/// auto-detected by comparing `pixelByteCount` against `width * height * 2`:
-/// a flat row-major pixel array when they're equal, or (when they differ) a
-/// sparse per-scanline run list — for each row, a `[stride][runCount]`
-/// pair followed by `runCount` spans of `[xOffset][length][length pixels]`;
-/// pixels not covered by any run are fully transparent, and a `stride` of
-/// `0` terminates the row list early.
+/// **Note:** Reconstructed from static analysis of the original client. An
+/// earlier pass had concluded pixel data was always ARGB4444 — **this was
+/// wrong for some files**: the pixel format is actually selected **per
+/// frame** by the frame's own `transparencyType` field (confirmed
+/// empirically: `avataimsi.img`'s real frame 0 has `transparencyType == 0`,
+/// i.e. flat RGB565, not ARGB4444 — decoding it as ARGB4444 had silently
+/// produced a plausible-looking but wrong purple tint instead of the
+/// correct light-gray background). A later pass also corrected the sparse
+/// (`.simple`) row-decoding algorithm itself: it's a `[stride][run_count]`
+/// + `[x_offset][length]` run-list (see `decodeSparseRGB565`), not an
+/// alpha-run/color-run pair sequence as an earlier version of this file
+/// assumed.
 public enum ImgFile {
 
-    /// Byte offset where frame 0's pixel data begins.
-    public static let frame0HeaderSize = 0x30
+    /// A frame's pixel storage/format selector.
+    public enum TransparencyType: Int32, Equatable, Sendable {
+        /// Flat, row-major RGB565 pixels, always fully opaque.
+        case none = 0
+        /// Sparse per-scanline run list of RGB565 pixels; pixels not
+        /// covered by any run are fully transparent.
+        case simple = 1
+        /// Flat, row-major ARGB4444 pixels (alpha channel included).
+        case alpha = 2
+    }
 
     /// A decoded pixel, 8 bits per channel.
     public struct Pixel: Equatable, Sendable {
@@ -30,13 +33,16 @@ public enum ImgFile {
         public let blue: UInt8
         public let alpha: UInt8
 
-        /// Decodes a raw 16-bit **ARGB4444** value (4 bits each for
+        /// Decodes a raw 16-bit RGB565 value (5/6/5 bits), always opaque.
+        public init(rgb565 raw: UInt16) {
+            self.red = UInt8((Int(raw >> 11) & 0x1f) * 0xff / 0x1f)
+            self.green = UInt8((Int(raw >> 5) & 0x3f) * 0xff / 0x3f)
+            self.blue = UInt8((Int(raw) & 0x1f) * 0xff / 0x1f)
+            self.alpha = 0xff
+        }
+
+        /// Decodes a raw 16-bit ARGB4444 value (4 bits each for
         /// alpha/red/green/blue, most to least significant nibble).
-        /// Confirmed by comparing rendered output against a real reference
-        /// screenshot — two earlier guesses (RGB565, then RGB555) both
-        /// produced visibly wrong colors before landing on this format;
-        /// the giveaway was every common pixel's top hex digit reading
-        /// `0xf` (a fully-opaque alpha nibble, not a maxed color channel).
         public init(argb4444 raw: UInt16) {
             func scale(_ nibble: UInt8) -> UInt8 { nibble * 17 } // 0...15 -> 0...255
             self.alpha = scale(UInt8((raw >> 12) & 0xf))
@@ -55,148 +61,211 @@ public enum ImgFile {
         }
     }
 
-    /// One decoded `.img` entry's frame 0.
-    public struct Frame0: Equatable, Sendable {
+    /// One decoded `.img` frame.
+    public struct Frame: Equatable, Sendable {
 
-        /// `uint32` at offset `0x00`. `0` in every sample tested; purpose
-        /// unconfirmed.
-        public let flags: UInt32
+        public let transparencyType: TransparencyType
 
-        /// `uint32` at offset `0x04`: total frame count in the entry (only
-        /// frame 0 is decoded by this type).
-        public let frameCount: UInt32
+        public let width: Int32
+        public let height: Int32
 
-        /// `uint32` at offset `0x08`. Varies per file; purpose unconfirmed.
-        public let unknown0x08: UInt32
+        /// Likely hotspot/origin offset (not confirmed against rendering code).
+        public let xCenter: Int32
+        public let yCenter: Int32
 
-        /// Frame width in pixels, confirmed exactly (matches `pixelByteCount`).
-        public let width: UInt32
+        /// `1` when this frame has a second, currently-unused trailing
+        /// data blob (see the type-level note on `readFrames`'s decoding
+        /// of it); `0` otherwise.
+        public let flippedX: Int32
 
-        /// Frame height in pixels, confirmed exactly (matches `pixelByteCount`).
-        public let height: UInt32
+        /// Companion to `flippedX`; the second blob is only present when
+        /// `flippedX == 1 && flippedY == 0`.
+        public let flippedY: Int32
 
-        /// Signed `int` at offset `0x14`, likely an X hotspot/origin offset
-        /// (e.g. `-12` observed for a projectile sprite that rotates in
-        /// flight) — not confirmed against rendering code.
-        public let hotspotX: Int32
+        /// Purpose unconfirmed.
+        public let unknown1: Int32
 
-        /// Signed `int` at offset `0x18`, likely a Y hotspot/origin offset.
-        public let hotspotY: Int32
-
-        /// 16 unidentified bytes at offset `0x1c`.
-        public let unidentified: [UInt8]
-
-        /// Total pixel-data byte count for this frame at offset `0x2c`.
-        /// Equals `width * height * 2` for flat storage; smaller for
-        /// sparse (run-list) storage.
-        public let pixelByteCount: UInt32
+        /// Purpose unconfirmed.
+        public let unknown2: Int32
 
         /// Decoded pixels, row-major, `width * height` entries.
         public let pixels: [Pixel]
     }
 
-    public static func readFrame0(_ decodedData: [UInt8]) throws -> Frame0 {
+    /// Parses every frame in a decompressed `.img` entry's bytes.
+    ///
+    /// Layout: 4 unidentified bytes, then a `uint32` frame count, then that
+    /// many frame records back-to-back. Each frame record is 10 `int32`
+    /// fields (`transparencyType`, `width`, `height`, `xCenter`, `yCenter`,
+    /// `flippedX`, `flippedY`, `unknown1`, `unknown2`, `length`) followed by
+    /// `length` bytes of primary pixel data — and, **only when
+    /// `flippedX == 1 && flippedY == 0`**, a second `uint32` length field
+    /// and that many bytes of a second data blob. That second blob is
+    /// present in the file but not used by rendering (the reference
+    /// decoder's own flip-handling for this case is a no-op transform), so
+    /// it's read here only to correctly advance to the next frame, not
+    /// exposed or decoded.
+    ///
+    /// **Known limitation**: this record shape is fully confirmed and
+    /// decodes correctly for the vast majority of real `.img` files (icons,
+    /// buttons, projectiles, multi-frame UI elements), but large
+    /// multi-rotation-frame animation sheets (e.g. a 455-frame vehicle
+    /// sheet) desync after the first couple of frames — the true cause
+    /// isn't identified yet. Rather than throwing on that desync, this
+    /// function stops and returns every frame successfully parsed before
+    /// it (detected either by a `ParsingError` — ran out of data — or
+    /// implausible width/height once desynced).
+    public static func readFrames(_ decodedData: [UInt8]) throws -> [Frame] {
         try decodedData.withParserSpan { input in
-            try readFrame0(parsing: &input)
+            try readFrames(parsing: &input)
         }
     }
 
-    public static func readFrame0(parsing input: inout ParserSpan) throws -> Frame0 {
-        let flags = try UInt32(parsingLittleEndian: &input)
-        let frameCount = try UInt32(parsingLittleEndian: &input)
-        let unknown0x08 = try UInt32(parsingLittleEndian: &input)
-        let width = try UInt32(parsingLittleEndian: &input)
-        let height = try UInt32(parsingLittleEndian: &input)
-        let hotspotX = try Int32(parsingLittleEndian: &input)
-        let hotspotY = try Int32(parsingLittleEndian: &input)
-        let unidentified = try [UInt8](parsing: &input, byteCount: 16)
-        let pixelByteCount = try UInt32(parsingLittleEndian: &input)
-        let pixelData = [UInt8](parsingRemainingBytes: &input)
+    /// Maximum plausible frame dimension, used to detect desync/corruption
+    /// and stop early rather than crash or return garbage. See the note on
+    /// `readFrames` about very large multi-frame sheets.
+    private static let maxPlausibleDimension: Int32 = 4096
+
+    public static func readFrames(parsing input: inout ParserSpan) throws -> [Frame] {
+        _ = try [UInt8](parsing: &input, byteCount: 4) // unidentified
+        let frameCount = try Int32(parsingLittleEndian: &input)
+        var frames = [Frame]()
+        frames.reserveCapacity(Int(max(frameCount, 0)))
+        for _ in 0..<max(frameCount, 0) {
+            let frame: Frame?
+            do {
+                frame = try readFrame(parsing: &input)
+            } catch {
+                // Ran out of data or hit an implausible byte count while
+                // reading — stop and return whatever parsed successfully.
+                break
+            }
+            guard let frame else { break }
+            frames.append(frame)
+        }
+        return frames
+    }
+
+    private static func readFrame(parsing input: inout ParserSpan) throws -> Frame? {
+        let transparencyTypeRaw = try Int32(parsingLittleEndian: &input)
+        let transparencyType = TransparencyType(rawValue: transparencyTypeRaw & 0xff) ?? .none
+        let width = try Int32(parsingLittleEndian: &input)
+        let height = try Int32(parsingLittleEndian: &input)
+        let xCenter = try Int32(parsingLittleEndian: &input)
+        let yCenter = try Int32(parsingLittleEndian: &input)
+        let flippedXRaw = try Int32(parsingLittleEndian: &input)
+        let flippedYRaw = try Int32(parsingLittleEndian: &input)
+        let flippedX = flippedXRaw & 0xff
+        let flippedY = flippedYRaw & 0xff
+        let unknown1 = try Int32(parsingLittleEndian: &input)
+        let unknown2 = try Int32(parsingLittleEndian: &input)
+        let length = try Int32(parsingLittleEndian: &input)
+
+        guard width > 0, width <= maxPlausibleDimension, height > 0, height <= maxPlausibleDimension, length >= 0 else {
+            return nil
+        }
+
+        let primaryData = try [UInt8](parsing: &input, byteCount: Int(length))
+
+        if flippedX == 1, flippedY == 0 {
+            let secondLength = try Int32(parsingLittleEndian: &input)
+            guard secondLength >= 0 else { return nil }
+            _ = try [UInt8](parsing: &input, byteCount: Int(secondLength))
+        }
 
         let pixels = decodePixels(
-            pixelData,
+            primaryData,
             width: Int(width),
             height: Int(height),
-            pixelByteCount: Int(pixelByteCount)
+            transparencyType: transparencyType
         )
 
-        return Frame0(
-            flags: flags,
-            frameCount: frameCount,
-            unknown0x08: unknown0x08,
+        return Frame(
+            transparencyType: transparencyType,
             width: width,
             height: height,
-            hotspotX: hotspotX,
-            hotspotY: hotspotY,
-            unidentified: unidentified,
-            pixelByteCount: pixelByteCount,
+            xCenter: xCenter,
+            yCenter: yCenter,
+            flippedX: flippedX,
+            flippedY: flippedY,
+            unknown1: unknown1,
+            unknown2: unknown2,
             pixels: pixels
         )
     }
 
-    /// Decodes `pixelData` (the bytes immediately following the frame-0
-    /// header) into a row-major pixel buffer, auto-detecting flat vs.
-    /// sparse storage.
-    static func decodePixels(_ pixelData: [UInt8], width: Int, height: Int, pixelByteCount: Int) -> [Pixel] {
-        let flatByteCount = width * height * 2
-        if pixelByteCount == flatByteCount, pixelData.count >= flatByteCount {
-            return decodeFlatPixels(pixelData, count: width * height)
+    static func decodePixels(_ data: [UInt8], width: Int, height: Int, transparencyType: TransparencyType) -> [Pixel] {
+        switch transparencyType {
+        case .none:
+            return decodeFlatRGB565(data, count: width * height)
+        case .alpha:
+            return decodeFlatARGB4444(data, count: width * height)
+        case .simple:
+            return decodeSparseRGB565(data, width: width, height: height)
         }
-        return decodeSparsePixels(pixelData, width: width, height: height, pixelByteCount: pixelByteCount)
     }
 
-    private static func decodeFlatPixels(_ pixelData: [UInt8], count: Int) -> [Pixel] {
+    private static func decodeFlatRGB565(_ data: [UInt8], count: Int) -> [Pixel] {
         var pixels = [Pixel]()
         pixels.reserveCapacity(count)
         for i in 0..<count {
             let offset = i * 2
-            let raw = UInt16(pixelData[offset]) | (UInt16(pixelData[offset + 1]) << 8)
+            guard offset + 2 <= data.count else { break }
+            let raw = UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
+            pixels.append(Pixel(rgb565: raw))
+        }
+        return pixels
+    }
+
+    private static func decodeFlatARGB4444(_ data: [UInt8], count: Int) -> [Pixel] {
+        var pixels = [Pixel]()
+        pixels.reserveCapacity(count)
+        for i in 0..<count {
+            let offset = i * 2
+            guard offset + 2 <= data.count else { break }
+            let raw = UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
             pixels.append(Pixel(argb4444: raw))
         }
         return pixels
     }
 
-    /// Sparse per-scanline run list: for each row, `[stride][runCount]`
-    /// followed by `runCount` spans of `[xOffset][length][length pixels]`.
-    /// `stride` is the distance (in `uint16` units, from the row's own
-    /// start) to the next row; a `stride` of `0` terminates the row list
-    /// early (the remaining rows are left fully transparent).
-    private static func decodeSparsePixels(
-        _ pixelData: [UInt8],
-        width: Int,
-        height: Int,
-        pixelByteCount: Int
-    ) -> [Pixel] {
+    /// Sparse per-scanline format, confirmed directly from `BlitSprite16bpp`'s
+    /// disassembly. For each row, starting right after the previous row:
+    /// `[stride:u16][run_count:u16]`, then `run_count` spans of
+    /// `[x_offset:u16][length:u16]` followed by `length` RGB565 pixels.
+    /// `stride` is the distance, in `u16` units measured from the row's own
+    /// start, to the next row's header; pixels not covered by any run are
+    /// fully transparent. A `stride` of `0` terminates the row list early
+    /// (the remaining rows stay transparent).
+    private static func decodeSparseRGB565(_ data: [UInt8], width: Int, height: Int) -> [Pixel] {
         var pixels = [Pixel](repeating: .transparent, count: width * height)
-        let end = min(pixelByteCount, pixelData.count)
 
         func readUInt16(at offset: Int) -> UInt16? {
-            guard offset + 2 <= end else { return nil }
-            return UInt16(pixelData[offset]) | (UInt16(pixelData[offset + 1]) << 8)
+            guard offset + 2 <= data.count else { return nil }
+            return UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
         }
 
-        var pos = 0
+        var rowStart = 0
         for y in 0..<height {
-            guard let stride = readUInt16(at: pos), let runCount = readUInt16(at: pos + 2) else { break }
-            var runPointer = pos + 4
+            guard let stride = readUInt16(at: rowStart), let runCount = readUInt16(at: rowStart + 2) else { break }
+            var runPointer = rowStart + 4
+            let pixelRowStart = y * width
+
             for _ in 0..<runCount {
-                guard let xOffset = readUInt16(at: runPointer), let length = readUInt16(at: runPointer + 2) else {
-                    break
-                }
+                guard let xOffset = readUInt16(at: runPointer), let length = readUInt16(at: runPointer + 2) else { break }
                 runPointer += 4
                 for k in 0..<Int(length) {
                     guard let raw = readUInt16(at: runPointer) else { break }
-                    let x = Int(xOffset) + k
-                    if x >= 0, x < width {
-                        pixels[y * width + x] = Pixel(argb4444: raw)
-                    }
                     runPointer += 2
+                    let x = Int(xOffset) + k
+                    if x < width {
+                        pixels[pixelRowStart + x] = Pixel(rgb565: raw)
+                    }
                 }
             }
-            if stride == 0 {
-                break // remaining rows stay fully transparent
-            }
-            pos += Int(stride) * 2
+
+            if stride == 0 { break }
+            rowStart += Int(stride) * 2
         }
         return pixels
     }

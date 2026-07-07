@@ -12,16 +12,6 @@
 /// type only exposes the confirmed header/name split plus the remaining
 /// bytes as an opaque blob.
 ///
-/// A companion editor tool (`Shinji.exe`, same private-server toolset)
-/// has real Korean field labels recovered from its dialog resources: a
-/// stage number/title/filename, three terrain-hazard-event blocks (each a
-/// max/min value pair plus 8 numbered spawn-point sub-slots — matching
-/// the `+0xc4` 8-element sub-array — for tornado, "amplification," and
-/// electricity hazards respectively), and a feature-toggle block (Force /
-/// Gust / Electric / Wind / Return / Heal / Fog / Version). As with
-/// `CharacterDataFile`, the dialog's control order isn't confirmed to
-/// match on-disk field order, so this doesn't map onto `trailingData`
-/// with confidence.
 public enum StageDataFile {
 
     /// Every record is this many bytes, confirmed directly from the
