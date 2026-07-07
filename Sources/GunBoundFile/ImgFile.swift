@@ -8,7 +8,11 @@
 /// empirically: `avataimsi.img`'s real frame 0 has `transparencyType == 0`,
 /// i.e. flat RGB565, not ARGB4444 — decoding it as ARGB4444 had silently
 /// produced a plausible-looking but wrong purple tint instead of the
-/// correct light-gray background).
+/// correct light-gray background). A later pass also corrected the sparse
+/// (`.simple`) row-decoding algorithm itself: it's a `[stride][run_count]`
+/// + `[x_offset][length]` run-list (see `decodeSparseRGB565`), not an
+/// alpha-run/color-run pair sequence as an earlier version of this file
+/// assumed.
 public enum ImgFile {
 
     /// A frame's pixel storage/format selector.
@@ -225,77 +229,43 @@ public enum ImgFile {
         return pixels
     }
 
-    /// Sparse per-scanline format. Per row: a `[totalBytes:i16][allLine:i16]` pair (in 16-bit-word
-    /// units), where `totalBytes == 2 && allLine == 0` means the whole row
-    /// is transparent. Otherwise, a sequence of `[alphaCount:i16]
-    /// [colorCount:i16]` pairs: the *first* pair gives a literal transparent
-    /// run length (`alphaCount`) followed by an opaque run of `colorCount`
-    /// RGB565 pixels; every *subsequent* pair's `alphaCount` is instead a
-    /// running cumulative pixel-position marker (the format
-    /// computes the actual transparent-run length as `alphaCount - (previous
-    /// alphaCount + previous colorCount)`), again followed by `colorCount`
-    /// opaque pixels — continuing until `totalBytes` 16-bit words have been
-    /// consumed for the row. Any width remaining after that is padded
-    /// transparent.
+    /// Sparse per-scanline format, confirmed directly from `BlitSprite16bpp`'s
+    /// disassembly. For each row, starting right after the previous row:
+    /// `[stride:u16][run_count:u16]`, then `run_count` spans of
+    /// `[x_offset:u16][length:u16]` followed by `length` RGB565 pixels.
+    /// `stride` is the distance, in `u16` units measured from the row's own
+    /// start, to the next row's header; pixels not covered by any run are
+    /// fully transparent. A `stride` of `0` terminates the row list early
+    /// (the remaining rows stay transparent).
     private static func decodeSparseRGB565(_ data: [UInt8], width: Int, height: Int) -> [Pixel] {
         var pixels = [Pixel](repeating: .transparent, count: width * height)
-        var pos = 0
 
-        func readInt16(at offset: Int) -> Int? {
-            guard offset + 2 <= data.count else { return nil }
-            return Int(Int16(bitPattern: UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)))
-        }
         func readUInt16(at offset: Int) -> UInt16? {
             guard offset + 2 <= data.count else { return nil }
             return UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
         }
 
+        var rowStart = 0
         for y in 0..<height {
-            guard let totalBytes = readInt16(at: pos), let allLine = readInt16(at: pos + 2) else { break }
-            pos += 4
-            var countBytes = 2
-            var sum = 0
-            let rowStart = y * width
+            guard let stride = readUInt16(at: rowStart), let runCount = readUInt16(at: rowStart + 2) else { break }
+            var runPointer = rowStart + 4
+            let pixelRowStart = y * width
 
-            func writeTransparent() {
-                if sum < width { pixels[rowStart + sum] = .transparent }
-                sum += 1
-            }
-            func writeOpaque() {
-                guard let raw = readUInt16(at: pos) else { return }
-                pos += 2
-                countBytes += 1
-                if sum < width { pixels[rowStart + sum] = Pixel(rgb565: raw) }
-                sum += 1
-            }
-
-            if totalBytes == 2, allLine == 0 {
-                for _ in 0..<width { writeTransparent() }
-                continue
+            for _ in 0..<runCount {
+                guard let xOffset = readUInt16(at: runPointer), let length = readUInt16(at: runPointer + 2) else { break }
+                runPointer += 4
+                for k in 0..<Int(length) {
+                    guard let raw = readUInt16(at: runPointer) else { break }
+                    runPointer += 2
+                    let x = Int(xOffset) + k
+                    if x < width {
+                        pixels[pixelRowStart + x] = Pixel(rgb565: raw)
+                    }
+                }
             }
 
-            guard var alphaCount = readInt16(at: pos), var colorCount = readInt16(at: pos + 2) else { continue }
-            pos += 4
-            countBytes += 2
-
-            for _ in 0..<max(alphaCount, 0) { writeTransparent() }
-            for _ in 0..<max(colorCount, 0) { writeOpaque() }
-
-            while countBytes < totalBytes {
-                let sumaColor = alphaCount + colorCount
-                guard let newAlphaCount = readInt16(at: pos), let newColorCount = readInt16(at: pos + 2) else { break }
-                pos += 4
-                countBytes += 2
-                alphaCount = newAlphaCount - sumaColor
-                colorCount = newColorCount
-
-                for _ in 0..<max(alphaCount, 0) { writeTransparent() }
-                for _ in 0..<max(colorCount, 0) { writeOpaque() }
-            }
-
-            if sum < width {
-                for _ in sum..<width { writeTransparent() }
-            }
+            if stride == 0 { break }
+            rowStart += Int(stride) * 2
         }
         return pixels
     }
