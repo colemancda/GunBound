@@ -7,9 +7,13 @@
 /// (footer, magic, chunked LZHUF-compressed table of contents, 128-byte
 /// entry records with all four trailing fields identified) is fully
 /// confirmed. The client also contains an archive-writer/insert code path
-/// (building the same TOC structure from scratch), so the format isn't
-/// strictly read-only/build-time-only — that path isn't implemented here
-/// since this library only needs to read existing archives.
+/// (building the same TOC structure from scratch) — traced to its caller
+/// chain and confirmed to be a defensive fallback for a missing expected
+/// built-in asset (triggered by the generic "load a resource by name"
+/// helper when a fixed, compile-time-constructed lookup fails to find the
+/// entry), not a live content-download/patch mechanism as an earlier pass
+/// had speculated. That path isn't implemented here since this library
+/// only needs to read existing archives.
 public enum XFSArchive {
 
     /// The container's magic bytes, `"XFS2"`, read from the front of the

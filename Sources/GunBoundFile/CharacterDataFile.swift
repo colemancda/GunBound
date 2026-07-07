@@ -26,15 +26,6 @@
 /// further by tracing client execution — only by server-side code or
 /// outside knowledge of GunBound's actual mobile stats.
 ///
-/// A companion editor tool (`Asuka.exe`, from the same private-server
-/// toolset) does have real Korean field labels recovered from its dialog
-/// resources — max HP/shield/shield-regen, energy, search width/height
-/// and body height (hitbox), firing angle range, max firing power, move
-/// distance, max incline angle, base delay, and per-weapon-slot
-/// power/shape/density/attribute values (each split into inner/mid/outer
-/// sub-values) — but the dialog's control order isn't confirmed to match
-/// the on-disk field order, so none of that maps onto `field0`-`field5`/
-/// `remainingFields` below with confidence.
 public enum CharacterDataFile {
 
     /// Every record is this many bytes, confirmed directly from the

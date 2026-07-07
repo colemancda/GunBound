@@ -45,14 +45,8 @@ public enum ItemDataFile {
         /// XOR/`rand()`-obfuscated when copied into persistent storage — an
         /// anti-memory-editing measure applied to exactly this and the next
         /// two flags, no other item field. The on-disk value here is the
-        /// plain (pre-obfuscation) byte.
-        ///
-        /// Identified via a companion editor tool's (`mishato_English.exe`)
-        /// item-editing dialog, which has exactly three checkboxes in this
-        /// order: `Shot?`, `Skip`, `2 Slots` — matching this field's count
-        /// and its "uniquely obfuscated, no other field gets this
-        /// treatment" behavior exactly. Most likely: can this item be fired
-        /// as a shot (vs. a passive/utility item).
+        /// plain (pre-obfuscation) byte. Named `Shot?` (most likely: can
+        /// this item be fired as a shot, vs. a passive/utility item).
         public let shotFlag: UInt8
 
         /// Boolean flag at record offset `0x2d`, same obfuscation-on-copy
