@@ -72,40 +72,34 @@ struct ImgFileTests {
         }
     }
 
-    /// Hand-built sparse-format buffer, verifying the exact run-list
-    /// algorithm against a case simple enough to trace by hand: a 4x3
-    /// image where row 0 has a
-    /// 2-pixel opaque run at x=1, row 1 has no run data (falls through to
-    /// the trailing-pad case), and row 2 is never reached because the
-    /// buffer ends after row 1.
+    /// Hand-built sparse-format buffer, verifying the exact `[stride]
+    /// [run_count]` + `[x_offset][length]` run-list algorithm against a case
+    /// simple enough to trace by hand: a 4x3 image where row 0 has one run
+    /// of 2 opaque pixels at x=1, row 1 has a `stride` of 0 (terminates the
+    /// row list early, leaving it and row 2 fully transparent).
     @Test
     func decodeSparsePixelsHandBuilt() {
         var pixelData = [UInt8]()
-        // Row 0: totalBytes=6 (2 header words + 2 alphaCount/colorCount words + 2 pixel words...
-        // matches: header(2 words) + [alphaCount,colorCount](2 words) + 2 color pixels(2 words) = 6 words consumed after the header pair).
-        pixelData += [6, 0, 1, 0] // totalBytes=6, allLine=1
-        pixelData += [1, 0, 2, 0] // alphaCount=1, colorCount=2
+        // Row 0: stride=4 (u16 units to next row's header), run_count=1.
+        pixelData += [4, 0, 1, 0]
+        // Run 0: x_offset=1, length=2, followed by 2 RGB565 pixels.
+        pixelData += [1, 0, 2, 0]
         pixelData += [0x3c, 0xe7] // pixel: raw 0xe73c (LE)
         pixelData += [0xff, 0xff] // pixel: raw 0xffff (opaque white)
-        // Row 1: totalBytes=2, allLine=0 -> entire row transparent.
-        pixelData += [2, 0, 0, 0]
+        // Row 1: stride=0 -> terminates early; rows 1 and 2 stay transparent.
+        pixelData += [0, 0, 0, 0]
 
         let pixels = ImgFile.decodePixels(pixelData, width: 4, height: 3, transparencyType: .simple)
         #expect(pixels.count == 12)
 
-        // Row 0: x=0 transparent (alphaCount=1), x=1/x=2 from the color run, x=3 padded transparent.
+        // Row 0: x=0 transparent, x=1/x=2 from the run, x=3 stays transparent.
         #expect(pixels[0] == ImgFile.Pixel.transparent)
         #expect(pixels[1] == ImgFile.Pixel(rgb565: 0xe73c))
         #expect(pixels[2] == ImgFile.Pixel(rgb565: 0xffff))
         #expect(pixels[3] == ImgFile.Pixel.transparent)
 
-        // Row 1: explicit all-transparent row.
-        for pixel in pixels[4..<8] {
-            #expect(pixel == ImgFile.Pixel.transparent)
-        }
-
-        // Row 2: no data left, stays at the default-transparent fill.
-        for pixel in pixels[8...] {
+        // Rows 1-2: terminated early by stride==0, stay fully transparent.
+        for pixel in pixels[4...] {
             #expect(pixel == ImgFile.Pixel.transparent)
         }
     }
