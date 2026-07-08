@@ -36,12 +36,15 @@ struct GunBoundClient: ParsableCommand {
     @Option(help: "GunBound world server address to connect to.")
     var server: String = "127.0.0.1"
 
-    @Option(help: "GunBound world server port to connect to.")
+    @Option(help: "GunBound world server port to connect to (used directly if the broker can't be reached).")
     var port: UInt16 = 8370
+
+    @Option(help: "GunBound broker/directory server port — looked up first for the list of world servers.")
+    var brokerPort: UInt16 = 8372
 
     mutating func run() throws {
         let assetsPath = assetsPath ?? FileManager.default.currentDirectoryPath
-        let network = NetworkConfig(username: username, password: password, serverAddress: server, serverPort: port)
+        let network = NetworkConfig(username: username, password: password, serverAddress: server, serverPort: port, brokerPort: brokerPort)
         try MainActor.assumeIsolated {
             try runClient(assetsDirectory: URL(fileURLWithPath: assetsPath, isDirectory: true), fullscreen: fullscreen, network: network)
         }
