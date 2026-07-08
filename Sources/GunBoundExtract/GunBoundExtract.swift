@@ -13,7 +13,7 @@ struct GunBoundExtract: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "GunBoundExtract",
         abstract: "Extracts and decodes entries from GunBound .xfs archives — a Swift replacement for the decomp repo's Python tools/lzhuf scripts.",
-        subcommands: [List.self, Image.self, Raw.self, Montage.self],
+        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self],
         defaultSubcommand: List.self
     )
 }
@@ -168,6 +168,93 @@ extension GunBoundExtract {
             #if canImport(CoreGraphics)
             try writeRGBA(rgba, width: sheetWidth, height: sheetHeight, to: URL(fileURLWithPath: outputPath))
             print("wrote \(outputPath): frames \(start)..<\(end) in a \(columns)-wide grid, \(cell)px cells")
+            #else
+            throw ExtractError.pngUnsupported
+            #endif
+        }
+    }
+}
+
+extension GunBoundExtract {
+
+    /// Renders a raw 1-bit-per-pixel glyph blob (e.g. `font.fnt`) as a
+    /// contact-sheet PNG, treating the file as `count` fixed-size glyphs of
+    /// `width`×`height`, MSB-first, rows padded to a byte boundary. Used to
+    /// reverse-engineer the glyph geometry by trying candidate sizes.
+    struct Glyphs: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Renders a raw 1bpp glyph blob to a contact-sheet PNG (for font reversing).")
+
+        @Argument(help: "Path to the .xfs archive.")
+        var archivePath: String
+
+        @Argument(help: "Entry name (e.g. font.fnt).")
+        var entryName: String
+
+        @Argument(help: "Output PNG path.")
+        var outputPath: String
+
+        @Option(help: "Glyph width in pixels.")
+        var width: Int = 8
+
+        @Option(help: "Glyph height in pixels (rows).")
+        var height: Int = 12
+
+        @Option(help: "First glyph index.")
+        var start: Int = 0
+
+        @Option(help: "Number of glyphs to render.")
+        var count: Int = 256
+
+        @Option(help: "Glyphs per row in the sheet.")
+        var columns: Int = 32
+
+        @Option(help: "Bytes per glyph, if it differs from the packed size (rowBytes×height).")
+        var stride: Int?
+
+        @Option(help: "Byte offset into the entry to start reading glyphs from.")
+        var offset: Int = 0
+
+        func run() throws {
+            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: archivePath)))
+            let entries = try XFSArchive.readEntries(data)
+            guard let entry = entries.first(where: { $0.name == entryName }) else {
+                throw ExtractError.entryNotFound(entryName)
+            }
+            let glyphData = try XFSArchive.readEntryData(data, entry: entry)
+
+            let rowBytes = (width + 7) / 8
+            let glyphSize = stride ?? (rowBytes * height)
+            let cellW = width + 2
+            let cellH = height + 2
+            let rows = (count + columns - 1) / columns
+            let sheetW = columns * cellW
+            let sheetH = rows * cellH
+            // Opaque dark-blue background so the white glyph pixels are visible.
+            var rgba = [UInt8](repeating: 0, count: sheetW * sheetH * 4)
+            for pixelIndex in 0..<(sheetW * sheetH) {
+                let base = pixelIndex * 4
+                rgba[base] = 20; rgba[base + 1] = 20; rgba[base + 2] = 40; rgba[base + 3] = 255
+            }
+
+            for i in 0..<count {
+                let glyphIndex = start + i
+                let base = offset + glyphIndex * glyphSize
+                guard base + glyphSize <= glyphData.count else { break }
+                let cellX = (i % columns) * cellW
+                let cellY = (i / columns) * cellH
+                for y in 0..<height {
+                    for x in 0..<width {
+                        let byte = glyphData[base + y * rowBytes + x / 8]
+                        guard byte & (0x80 >> (x % 8)) != 0 else { continue }
+                        let dst = ((cellY + y) * sheetW + (cellX + x)) * 4
+                        rgba[dst] = 255; rgba[dst + 1] = 255; rgba[dst + 2] = 255; rgba[dst + 3] = 255
+                    }
+                }
+            }
+
+            #if canImport(CoreGraphics)
+            try writeRGBA(rgba, width: sheetW, height: sheetH, to: URL(fileURLWithPath: outputPath))
+            print("wrote \(outputPath): \(count) glyphs at \(width)x\(height) (stride \(glyphSize)B), from index \(start)")
             #else
             throw ExtractError.pngUnsupported
             #endif
