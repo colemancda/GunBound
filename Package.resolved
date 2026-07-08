@@ -1,5 +1,5 @@
 {
-  "originHash" : "e70d4a38c4d3a7f26229c513a975ed5fe00ffbd7ed35685214842a019a9a5e8f",
+  "originHash" : "bb13a2b659dde90c36d240fe1cd703011c192ce110ff4664cca8aee41657dc05",
   "pins" : [
     {
       "identity" : "cryptoswift",
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PureSwift/Socket",
       "state" : {
-        "branch" : "main",
-        "revision" : "579c0fc29cf2dc9f227f89403fb44d4726a4af44"
+        "revision" : "cd69948505fc8f6a58d6c610b74c2d40984029e0",
+        "version" : "0.5.2"
       }
     },
     {

@@ -73,7 +73,7 @@ let package = Package(
         // Dependencies declare other packages that this package depends on.
         .package(
             url: "https://github.com/PureSwift/Socket",
-            branch: "main"
+            from: "0.5.2"
         ),
         .package(
             url: "https://github.com/krzyzanowskim/CryptoSwift.git",
