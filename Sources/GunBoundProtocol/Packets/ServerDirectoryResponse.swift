@@ -76,19 +76,21 @@ extension ServerDirectoryResponse.Server {
     //   u8   regionOrType     (client forces to 3 when offline)
     //   u8   nameLen; char name[nameLen]     (not NUL-terminated on wire)
     //   u8   descLen; char desc[descLen]     (not NUL-terminated on wire)
-    //   u32  unknownField      (raw; decomp's best guess: packed IP)
+    //   u32  serverIp          (packed IPv4 a.b.c.d — confirmed: sprintf'd
+    //                           "%d.%d.%d.%d" and fed to the connect helper)
     //   u16  port              (htons/big-endian)
     //   u16  unknownField2     (raw copy, not yet identified)
     //   u16  currentPlayers    (the "is server full" check compares this…
     //   u16  maxCapacity       (…against this, in both button handlers)
     //   u8   onlineFlag        (0 = offline)
     //
-    // Our field names map: address = unknownField (u32, treated as the
-    // packed IP — decomp's own hypothesis), utilization = currentPlayers,
+    // Our field names map: address = serverIp, utilization = currentPlayers,
     // capacity = maxCapacity, isEnabled = onlineFlag. serverId/regionOrType
     // aren't surfaced yet (only opcode 0x2001's confirm-connect reads
     // serverId back out, which this client doesn't implement), so they're
-    // parsed and dropped.
+    // parsed and dropped. Note the real client auto-connects to the first
+    // entry with onlineFlag set — the same choice ServerSelectViewModel
+    // makes via `directory.first(where: \.isEnabled)`.
     public init(parsing input: inout ParserSpan) throws {
         _ = try UInt16(parsingLittleEndian: &input)  // serverId
         _ = try UInt8(parsing: &input)               // regionOrType
