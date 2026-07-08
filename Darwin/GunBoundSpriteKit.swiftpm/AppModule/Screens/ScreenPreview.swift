@@ -35,8 +35,7 @@ struct ScreenPreviewView: View {
 /// `AppModule/Resources` folder (run `Darwin/copy-dependencies.sh` to
 /// populate it; an empty folder just renders a black canvas).
 func previewAssetsDirectory() -> URL {
-    let resourceURL = Bundle.main.resourceURL ?? URL(filePath: ".")
-    return resourceURL.appendingPathComponent("Resources")
+    Bundle.main.resourceURL!
 }
 
 /// Hosts a single `GameScreen`, forwarding touches so hover/click states are

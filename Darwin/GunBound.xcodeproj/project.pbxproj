@@ -7,6 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6E0D60882FFEFD9D00BF6558 /* graphics.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60822FFEFD9D00BF6558 /* graphics.xfs */; };
+		6E0D60892FFEFD9D00BF6558 /* itemdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60832FFEFD9D00BF6558 /* itemdata.dat */; };
+		6E0D608A2FFEFD9D00BF6558 /* characterdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60812FFEFD9D00BF6558 /* characterdata.dat */; };
+		6E0D608B2FFEFD9D00BF6558 /* sound.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60842FFEFD9D00BF6558 /* sound.xfs */; };
+		6E0D608C2FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
+		6E0D608D2FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
+		6E0D608E2FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
+		6E0D608F2FFEFD9D00BF6558 /* graphics.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60822FFEFD9D00BF6558 /* graphics.xfs */; };
+		6E0D60902FFEFD9D00BF6558 /* itemdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60832FFEFD9D00BF6558 /* itemdata.dat */; };
+		6E0D60912FFEFD9D00BF6558 /* characterdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60812FFEFD9D00BF6558 /* characterdata.dat */; };
+		6E0D60922FFEFD9D00BF6558 /* sound.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60842FFEFD9D00BF6558 /* sound.xfs */; };
+		6E0D60932FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
+		6E0D60942FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
+		6E0D60952FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
+		6E0D60962FFEFD9D00BF6558 /* graphics.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60822FFEFD9D00BF6558 /* graphics.xfs */; };
+		6E0D60972FFEFD9D00BF6558 /* itemdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60832FFEFD9D00BF6558 /* itemdata.dat */; };
+		6E0D60982FFEFD9D00BF6558 /* characterdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60812FFEFD9D00BF6558 /* characterdata.dat */; };
+		6E0D60992FFEFD9D00BF6558 /* sound.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60842FFEFD9D00BF6558 /* sound.xfs */; };
+		6E0D609A2FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
+		6E0D609B2FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
+		6E0D609C2FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
 		D00000000000000000000201 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
 		D00000000000000000000202 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
 		D00000000000000000000203 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
@@ -15,7 +36,6 @@
 		D00000000000000000000207 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A03 /* GunBoundProtocol */; };
 		D00000000000000000000208 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A04 /* GunBoundFile */; };
 		D00000000000000000000209 /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A05 /* GunBoundClient */; };
-		D00000000000000000000210 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000109 /* Resources */; };
 		D00000000000000000000211 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
 		D00000000000000000000212 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
 		D00000000000000000000213 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
@@ -35,7 +55,6 @@
 		D00000000000000000000308 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A07 /* GunBoundProtocol */; };
 		D00000000000000000000309 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A08 /* GunBoundFile */; };
 		D0000000000000000000030A /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A09 /* GunBoundClient */; };
-		D0000000000000000000030B /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000109 /* Resources */; };
 		D00000000000000000000311 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
 		D00000000000000000000312 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
 		D00000000000000000000313 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
@@ -51,7 +70,6 @@
 		D00000000000000000000C11 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0B /* GunBoundProtocol */; };
 		D00000000000000000000C12 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0C /* GunBoundFile */; };
 		D00000000000000000000C13 /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0D /* GunBoundClient */; };
-		D00000000000000000000C14 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000109 /* Resources */; };
 		D0000000000000000000C01 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
 		D0000000000000000000C02 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
 		D0000000000000000000C03 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
@@ -70,13 +88,19 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		6E0D60802FFEFD9D00BF6558 /* avatar.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = avatar.xfs; sourceTree = "<group>"; };
+		6E0D60812FFEFD9D00BF6558 /* characterdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = characterdata.dat; sourceTree = "<group>"; };
+		6E0D60822FFEFD9D00BF6558 /* graphics.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = graphics.xfs; sourceTree = "<group>"; };
+		6E0D60832FFEFD9D00BF6558 /* itemdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = itemdata.dat; sourceTree = "<group>"; };
+		6E0D60842FFEFD9D00BF6558 /* sound.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = sound.xfs; sourceTree = "<group>"; };
+		6E0D60852FFEFD9D00BF6558 /* specialdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = specialdata.dat; sourceTree = "<group>"; };
+		6E0D60862FFEFD9D00BF6558 /* stage.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = stage.dat; sourceTree = "<group>"; };
 		D00000000000000000000101 /* SpriteKitRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitRenderer.swift; sourceTree = "<group>"; };
 		D00000000000000000000102 /* SpriteKitAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitAudioPlayer.swift; sourceTree = "<group>"; };
 		D00000000000000000000103 /* GameScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		D00000000000000000000105 /* AppDelegate_macOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate_macOS.swift; sourceTree = "<group>"; };
 		D00000000000000000000106 /* AppDelegate_tvOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate_tvOS.swift; sourceTree = "<group>"; };
 		D00000000000000000000108 /* GunBound-macOS-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GunBound-macOS-Info.plist"; sourceTree = "<group>"; };
-		D00000000000000000000109 /* orig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = orig; path = GunBoundSpriteKit.swiftpm/AppModule/Resources/orig; sourceTree = "<group>"; };
 		D0000000000000000000010A /* GunBound-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000000000000000000010B /* GunBound-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000000000000000000010C /* GunBound-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -131,14 +155,29 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6E0D60872FFEFD9D00BF6558 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6E0D60802FFEFD9D00BF6558 /* avatar.xfs */,
+				6E0D60812FFEFD9D00BF6558 /* characterdata.dat */,
+				6E0D60822FFEFD9D00BF6558 /* graphics.xfs */,
+				6E0D60832FFEFD9D00BF6558 /* itemdata.dat */,
+				6E0D60842FFEFD9D00BF6558 /* sound.xfs */,
+				6E0D60852FFEFD9D00BF6558 /* specialdata.dat */,
+				6E0D60862FFEFD9D00BF6558 /* stage.dat */,
+			);
+			name = Resources;
+			path = GunBoundSpriteKit.swiftpm/AppModule/Resources;
+			sourceTree = "<group>";
+		};
 		D00000000000000000000401 = {
 			isa = PBXGroup;
 			children = (
+				6E0D60872FFEFD9D00BF6558 /* Resources */,
 				D00000000000000000000402 /* Products */,
 				D00000000000000000000403 /* Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule) */,
 				D00000000000000000000404 /* Darwin (Darwin/Sources/GunBoundDarwin) */,
 				D00000000000000000000108 /* GunBound-macOS-Info.plist */,
-				D00000000000000000000109 /* orig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -302,7 +341,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D0000000000000000000030B /* orig in Resources */,
+				6E0D60882FFEFD9D00BF6558 /* graphics.xfs in Resources */,
+				6E0D60892FFEFD9D00BF6558 /* itemdata.dat in Resources */,
+				6E0D608A2FFEFD9D00BF6558 /* characterdata.dat in Resources */,
+				6E0D608B2FFEFD9D00BF6558 /* sound.xfs in Resources */,
+				6E0D608C2FFEFD9D00BF6558 /* specialdata.dat in Resources */,
+				6E0D608D2FFEFD9D00BF6558 /* stage.dat in Resources */,
+				6E0D608E2FFEFD9D00BF6558 /* avatar.xfs in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -310,7 +355,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D00000000000000000000210 /* orig in Resources */,
+				6E0D60962FFEFD9D00BF6558 /* graphics.xfs in Resources */,
+				6E0D60972FFEFD9D00BF6558 /* itemdata.dat in Resources */,
+				6E0D60982FFEFD9D00BF6558 /* characterdata.dat in Resources */,
+				6E0D60992FFEFD9D00BF6558 /* sound.xfs in Resources */,
+				6E0D609A2FFEFD9D00BF6558 /* specialdata.dat in Resources */,
+				6E0D609B2FFEFD9D00BF6558 /* stage.dat in Resources */,
+				6E0D609C2FFEFD9D00BF6558 /* avatar.xfs in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -318,7 +369,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D00000000000000000000C14 /* orig in Resources */,
+				6E0D608F2FFEFD9D00BF6558 /* graphics.xfs in Resources */,
+				6E0D60902FFEFD9D00BF6558 /* itemdata.dat in Resources */,
+				6E0D60912FFEFD9D00BF6558 /* characterdata.dat in Resources */,
+				6E0D60922FFEFD9D00BF6558 /* sound.xfs in Resources */,
+				6E0D60932FFEFD9D00BF6558 /* specialdata.dat in Resources */,
+				6E0D60942FFEFD9D00BF6558 /* stage.dat in Resources */,
+				6E0D60952FFEFD9D00BF6558 /* avatar.xfs in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,7 +459,6 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				MARKETING_VERSION = 1.0;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -414,6 +470,7 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -432,12 +489,12 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				MARKETING_VERSION = 1.0;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

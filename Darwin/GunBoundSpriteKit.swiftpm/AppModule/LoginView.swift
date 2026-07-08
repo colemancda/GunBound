@@ -47,6 +47,7 @@ struct LoginView: View {
         } message: { message in
             Text(message)
         }
+        .frame(minWidth: 800, minHeight: 600)
     }
 
     private var form: some View {
@@ -98,8 +99,8 @@ struct LoginView: View {
             throw AssetsError.missingBundleResourceURL
         }
         var candidates = [
-            resourceURL.appendingPathComponent("Resources", isDirectory: true),
             resourceURL,
+            resourceURL.appendingPathComponent("Resources", isDirectory: true),
             resourceURL.appendingPathComponent("Resources/orig", isDirectory: true),
             resourceURL.appendingPathComponent("orig", isDirectory: true)
         ]

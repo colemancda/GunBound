@@ -109,8 +109,8 @@ private func logoScreenPreview() -> some View {
         next: .logo2,
         delegate: delegate
     )
-    let resourceURL = Bundle.main.resourceURL ?? URL(filePath: ".")
-    let assetsDirectory = resourceURL.appendingPathComponent("Resources")
+    let resourceURL = Bundle.main.resourceURL!
+    let assetsDirectory = resourceURL
     return LogoScreenView(viewModel: viewModel, assetsDirectory: assetsDirectory)
         .frame(width: 800, height: 600)
 }
