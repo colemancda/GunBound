@@ -16,6 +16,7 @@ public final class AvatarShopScreen: GameScreen {
     private var itemTextures: [UInt32: ClientTexture?] = [:]
     private weak var renderer: ClientRenderer?
     private var assets: AssetLibrary?
+    private var font: LoadedFont?
 
     public init(viewModel: AvatarShopViewModel) {
         self.viewModel = viewModel
@@ -41,6 +42,8 @@ public final class AvatarShopScreen: GameScreen {
         cancelTexture = context.renderer.texture(named: viewModel.cancelButtonImageName, assets: context.assets)
         let (cancelWidth, cancelHeight) = context.renderer.size(of: cancelTexture)
         viewModel.cancelRect = Rect(x: 20, y: 600 - cancelHeight - 20, width: cancelWidth, height: cancelHeight)
+
+        font = LoadedFont(.numberFont, renderer: context.renderer, assets: context.assets)
     }
 
     public func onExit() {
@@ -51,6 +54,7 @@ public final class AvatarShopScreen: GameScreen {
         itemTextures = [:]
         renderer = nil
         assets = nil
+        font = nil
     }
 
     /// Loads (and caches) the icon for an item ID on demand — the inventory
@@ -75,11 +79,24 @@ public final class AvatarShopScreen: GameScreen {
         renderer.clear()
         drawFullSize(backgroundTexture, using: renderer)
 
-        // Owned-item grid.
+        // Owned-item grid. This build's archives don't actually ship the
+        // per-item `NNNNN.img` sprites (the "smaller private-server build"
+        // pattern again), so when an icon is missing the item ID is drawn in
+        // the bitmap number font instead of leaving an invisible cell.
         for (index, itemID) in viewModel.items.enumerated() {
-            guard let texture = itemTexture(for: itemID) else { continue }
+            let rect = viewModel.itemRect(at: index)
             let selected = index == viewModel.selectedItemIndex
-            renderer.draw(texture, in: viewModel.itemRect(at: index), tint: selected ? (255, 240, 160) : nil)
+            if let texture = itemTexture(for: itemID) {
+                renderer.draw(texture, in: rect, tint: selected ? (255, 240, 160) : nil)
+            } else if let font {
+                let text = "\(itemID)"
+                font.draw(
+                    text,
+                    x: rect.x + (rect.width - font.width(of: text)) / 2,
+                    y: rect.y + (rect.height - font.lineHeight) / 2,
+                    using: renderer
+                )
+            }
         }
 
         for (index, button) in viewModel.categoryButtons.enumerated() {
