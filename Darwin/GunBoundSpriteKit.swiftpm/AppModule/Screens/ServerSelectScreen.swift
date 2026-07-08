@@ -3,9 +3,10 @@
 //  GunBoundSpriteKit
 //
 //  Preview for Server / Channel Select (state 2) — the WORLD LIST panel over
-//  `server_back.img` with the three confirmed buttons. No broker is running
-//  in a preview, so clicking Server falls back to the configured address and
-//  fails quietly; hover states are interactive.
+//  `server_back.img` with the three confirmed buttons and the row grid
+//  (backgrounds, numbers, names/descriptions, population gauges) fed by a
+//  mock broker. Rows are click-selectable (online ones); SERVER "connects"
+//  to the selection and fails quietly with no real server running.
 //
 
 import SwiftUI
@@ -19,6 +20,7 @@ import GunBoundProtocol
 
 let mockServers = [
     ServerDirectoryResponse.Server(
+        id: 0,
         name: "JG Test Broker",
         descriptionText: "Broker description\\n goes here",
         address: IPv4Address(192, 168, 1, 1),
@@ -28,6 +30,7 @@ let mockServers = [
         isEnabled: true
     ),
     ServerDirectoryResponse.Server(
+        id: 1,
         name: "Free Play",
         descriptionText: "Rookie Zone\\nAvatar ON",
         address: IPv4Address(192, 168, 1, 1),
@@ -37,6 +40,7 @@ let mockServers = [
         isEnabled: true
     ),
     ServerDirectoryResponse.Server(
+        id: 2,
         name: "Disabled Server",
         descriptionText: "Rookie Zone\\nAvatar ON",
         address: IPv4Address(192, 168, 1, 1),
@@ -46,6 +50,7 @@ let mockServers = [
         isEnabled: false
     ),
     ServerDirectoryResponse.Server(
+        id: 3,
         name: "Full Server",
         descriptionText: "Rookie Zone\\nAvatar ON",
         address: IPv4Address(192, 168, 1, 1),
@@ -55,6 +60,7 @@ let mockServers = [
         isEnabled: true
     ),
     ServerDirectoryResponse.Server(
+        id: 4,
         name: "Loopback Server",
         descriptionText: "localhost\\nPort 8370",
         address: IPv4Address(127, 0, 0, 1),
