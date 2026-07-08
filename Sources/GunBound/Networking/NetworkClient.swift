@@ -123,6 +123,21 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await request(JoinChannelRequest(channel: channel), response: JoinChannelResponse.self)
     }
 
+    /// Requests the current channel's room list (outgoing opcode `0x2100`,
+    /// the Game Room List's `OnEnter` room-list request in the decompiled
+    /// client) and decodes the server's `0x2103` reply into its rooms.
+    /// Neither opcode is encrypted, so no session key is needed.
+    public func fetchRoomList(filter: RoomFilter = .all) async throws -> [RoomListResponse.Room] {
+        try await request(RoomListRequest(filter: filter), response: RoomListResponse.self).rooms
+    }
+
+    /// Joins a room by ID (outgoing opcode `0x2110`) and decodes the server's
+    /// `JoinRoomResponse` (`0x2111`). On success the lobby transitions into
+    /// the room's Ready Room (state 9) — callers should check `isSuccess`.
+    public func joinRoom(_ room: RoomID, password: RoomPassword = "") async throws -> JoinRoomResponse {
+        try await request(JoinRoomRequest(room: room, password: password), response: JoinRoomResponse.self)
+    }
+
     /// Sends `requestValue` and decodes the next packet read off the socket
     /// as `Response`. No request/response ID matching or queueing (unlike
     /// `Connection`) — fine for the strictly-sequential login handshake this
