@@ -74,6 +74,26 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// at `maxServers` to match the client's fixed-size storage.
     public private(set) var availableServers: [ServerDirectoryResponse.Server] = []
 
+    // MARK: World-list row grid (decomp-confirmed geometry)
+    //
+    // `RenderWorldListRow` (0x50dc80) lays rows out 2-across inside the
+    // panel: x = (i%2)·0xf7 + 0x16 + panelX, y = (i/2)·0x49 + 0x2d + panelY
+    // (247px column pitch, 73px row pitch). The row background sprite is
+    // 181×65 (server_list.img frames 1–4, one per state) with the 42×65
+    // population gauge (frames 5–9, five fill levels) beside it.
+    public static let rowColumns = 2
+    public static let rowSize = (width: Float(181), height: Float(65))
+    public static let gaugeSize = (width: Float(42), height: Float(65))
+    static let rowOrigin = (x: Float(0x16), y: Float(0x2d))  // relative to panel
+    static let rowPitch = (x: Float(0xf7), y: Float(0x49))
+
+    /// The highlighted row (the state object's `+0x08`, init −1): set by
+    /// clicking an online row (`WorldListRowHitTest` only accepts online
+    /// rows); the SERVER button then connects to it. When nothing is
+    /// selected, connecting auto-picks the first joinable server — the
+    /// decompiled Enter-key behaviour.
+    public private(set) var selectedIndex: Int?
+
     private let delegate: ViewModelDelegate
     private let directoryFetcher: ServerDirectoryFetching
 
@@ -82,9 +102,36 @@ public final class ServerSelectViewModel: ScreenViewModel {
         self.directoryFetcher = directoryFetcher
     }
 
+    /// The on-screen rect of world-list row `index`'s background sprite.
+    public func rowRect(at index: Int) -> Rect {
+        Rect(
+            x: panelRect.x + Self.rowOrigin.x + Float(index % Self.rowColumns) * Self.rowPitch.x,
+            y: panelRect.y + Self.rowOrigin.y + Float(index / Self.rowColumns) * Self.rowPitch.y,
+            width: Self.rowSize.width,
+            height: Self.rowSize.height
+        )
+    }
+
+    /// The population gauge's rect, beside the row background.
+    public func gaugeRect(at index: Int) -> Rect {
+        let row = rowRect(at: index)
+        return Rect(x: row.x + row.width + 2, y: row.y, width: Self.gaugeSize.width, height: Self.gaugeSize.height)
+    }
+
+    /// The gauge fill level (0…4) — `currentPlayers·100/maxCapacity`
+    /// bucketed into five levels, mirroring the decompiled threshold lookup
+    /// (`DAT_005a9050`; the exact thresholds aren't dumped, so even 20%
+    /// quintiles are used).
+    public func populationLevel(of server: ServerDirectoryResponse.Server) -> Int {
+        guard server.capacity > 0 else { return 4 }
+        let percent = Int(server.utilization) * 100 / Int(server.capacity)
+        return min(4, percent / 20)
+    }
+
     public func onEnter() {
         isConnecting = false
         hoveredIndex = nil
+        selectedIndex = nil  // the real client resets +0x08 to -1 on enter
         // Populate the WORLD LIST up front, like the real client.
         Task { await fetchDirectory() }
     }
@@ -92,6 +139,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public func onExit() {
         isConnecting = false
         hoveredIndex = nil
+        selectedIndex = nil
     }
 
     public func update(deltaTime: Double) {}
@@ -102,7 +150,17 @@ public final class ServerSelectViewModel: ScreenViewModel {
             hoveredIndex = buttons.firstIndex { $0.rect.contains(x: x, y: y) }
 
         case .pointerDown(let x, let y):
-            guard !isConnecting, let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
+            guard !isConnecting else { return }
+            // Row click first — `WorldListRowHitTest` maps the click through
+            // the same grid geometry as the renderer and only accepts online
+            // rows (fullness is checked later, at connect time).
+            if let row = (0..<availableServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) {
+                if availableServers[row].isEnabled {
+                    selectedIndex = row
+                }
+                return
+            }
+            guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
             switch buttons[index].name {
             case "b_server_choiceserver.img":
                 connect()
@@ -184,13 +242,14 @@ public final class ServerSelectViewModel: ScreenViewModel {
         let network = delegate.network
         var worldAddress = network.serverAddress
         var worldPort = network.serverPort
-        // Choose from the capped list — the client only stores the first
-        // 16 entries, so a later one couldn't be selected anyway. Skip
-        // offline and full servers: the decompiled connect handlers
-        // validate the target is online and not full (currentPlayers <
-        // maxCapacity) before opening a socket, so a full-but-online
-        // server can't be joined.
-        if let chosen = availableServers.first(where: \.isJoinable) {
+        // The clicked row wins (the decompiled SERVER button connects to the
+        // highlighted slot `+0x08`); with nothing selected, fall back to the
+        // first joinable server — the Enter-key auto-select. Offline and
+        // full servers are skipped either way: the decompiled connect
+        // handlers validate the target is online and not full
+        // (currentPlayers < maxCapacity) before opening a socket.
+        let selected = selectedIndex.flatMap { availableServers.indices.contains($0) ? availableServers[$0] : nil }
+        if let chosen = (selected?.isJoinable == true ? selected : availableServers.first(where: \.isJoinable)) {
             worldAddress = chosen.address.rawValue
             worldPort = chosen.port
         }
