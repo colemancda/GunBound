@@ -3,9 +3,13 @@ import SDL3Swift
 import GunBound
 
 /// State 2 — Server / Channel select (`server_list.img`,
-/// `b_server_choiceserver.img`, `channel.mp3`). No networking in this pass:
-/// clicking the "choose server" button (or anywhere on the button's rough
-/// screen area) locally transitions straight to the Game Room List.
+/// `b_server_choiceserver.img`, `channel.mp3`). Clicking the "choose server"
+/// button now opens a real TCP connection to `context.network`'s
+/// server/port and runs the nonce + login handshake
+/// (`NetworkClient.authenticate`) using the configured username/password —
+/// only on a successful `AuthenticationResponse` does it transition to the
+/// Game Room List; any failure (bad credentials, connection error) is
+/// logged and the screen stays put so the attempt can be retried.
 ///
 /// Button screen position isn't reverse-engineered in the decomp docs, so
 /// it's placed at a fixed bottom-of-window rect purely to be visible and
@@ -14,6 +18,7 @@ import GunBound
 final class ServerSelectScreen: ImageBackgroundScreen {
     private var buttonTexture: SDLTexture?
     private var buttonRect = SDL_FRect(x: 0, y: 0, w: 0, h: 0)
+    private var isConnecting = false
 
     init() {
         super.init(backgroundImageName: "server_list.img", musicName: "channel.mp3")
@@ -29,16 +34,44 @@ final class ServerSelectScreen: ImageBackgroundScreen {
 
     override func onExit() {
         buttonTexture = nil
+        isConnecting = false
         super.onExit()
     }
 
     override func handleEvent(_ event: SDLEvent, context: ScreenContext) {
         switch event {
         case .mouseButtonDown(_, let x, let y, _) where contains(buttonRect, x: x, y: y):
-            context.requestTransition(to: .gameRoomList)
+            guard !isConnecting else { return }
+            isConnecting = true
+            let network = context.network
+            print("[GunBoundClient] connecting to \(network.serverAddress):\(network.serverPort) as \(network.username)")
+            Task {
+                do {
+                    let client = try await NetworkClient.connect(network)
+                    let response = try await client.authenticate(username: network.username, password: network.password)
+                    if response.status == .success {
+                        print("[GunBoundClient] authenticated as \(network.username)")
+                        await MainActor.run {
+                            context.client = client
+                            context.requestTransition(to: .gameRoomList)
+                        }
+                    } else {
+                        print("[GunBoundClient] authentication failed: \(response.status)")
+                        await client.close()
+                        await self.finishConnecting()
+                    }
+                } catch {
+                    print("[GunBoundClient] connection failed: \(error)")
+                    await self.finishConnecting()
+                }
+            }
         default:
             break
         }
+    }
+
+    private func finishConnecting() {
+        isConnecting = false
     }
 
     override func render(_ renderer: SDLRenderer) throws {
