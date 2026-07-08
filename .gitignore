@@ -102,3 +102,8 @@ Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundProtocol/
 Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundFile/
 Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundClient/
 Playgrounds/GunBoundSpriteKit.swiftpm/BinaryParsing/
+
+# The Darwin (macOS/tvOS) Xcode project is real source, not generated cruft —
+# re-include it despite the global *.xcodeproj ignore above (xcuserdata/ and
+# .swiftpm inside it stay ignored).
+!Darwin/GunBound.xcodeproj
