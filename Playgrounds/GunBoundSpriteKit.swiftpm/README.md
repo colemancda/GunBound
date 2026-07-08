@@ -39,6 +39,19 @@ cp ~/Developer/GunBound-Decomp/orig/{graphics.xfs,sound.xfs,avatar.xfs,character
 before opening the Playground in Xcode, or the app will fail to find them at
 runtime.
 
+## Login screen
+
+The app opens on `LoginView` (username/password/server IP, defaulting to
+`admin`/`1234`/`127.0.0.1`) instead of going straight into `GameScene`. Its
+"Play" button first locates `AppModule/Resources/orig/` (checking both the
+flattened-into-bundle-root and `Resources/`-subfolder layouts Xcode might
+produce) and decodes `server_back.img` through it as a sanity check that the
+whole XFS + LZHUF + `ImgFile` path actually works — only then does it hand
+off to `GameSceneView`/`GameScene`. If the directory, `graphics.xfs`, or the
+decode itself is missing/broken, it shows an alert with the specific problem
+instead of silently failing once inside SpriteKit (where a missing archive
+previously just printed to the console with nothing visible on screen).
+
 ## What it doesn't do
 
 Same scope as `GunBoundSDL3`: no in-battle/game-session logic, no settings
