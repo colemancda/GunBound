@@ -151,7 +151,7 @@ public final class ServerSelectScreen: GameScreen {
             let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
             renderer.draw(texture, in: button.rect, tint: tint)
         }
-        if viewModel.isConnecting, let waitTexture {
+        if viewModel.state.isConnecting, let waitTexture {
             let (width, height) = renderer.size(of: waitTexture)
             let rect = Rect(x: (800 - width) / 2, y: (600 - height) / 2, width: width, height: height)
             renderer.draw(waitTexture, in: rect, tint: nil)

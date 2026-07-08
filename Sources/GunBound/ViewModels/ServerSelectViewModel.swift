@@ -29,6 +29,7 @@ import GunBoundProtocol
 /// centered.
 @MainActor
 public final class ServerSelectViewModel: ScreenViewModel {
+    
     public struct Button: Equatable, Sendable {
         public let name: String
         public let rect: Rect
@@ -53,12 +54,12 @@ public final class ServerSelectViewModel: ScreenViewModel {
 
     public private(set) var hoveredIndex: Int?
 
-    /// Whether a connect attempt is in flight (drives the `waitmessage.img`
-    /// overlay). Settable so tests and SwiftUI previews can show the
-    /// connecting state directly — the production path only flips it from
-    /// `connect()`/`finishConnecting`.
-    public private(set) var isConnecting = false
-
+    /// The screen's lifecycle state: `.loading` while the world list is
+    /// being fetched (input disabled), `.loaded` once rows are shown,
+    /// `.connecting` while a connect attempt is in flight (drives the
+    /// `waitmessage.img` overlay), `.error` when either fails.
+    public private(set) var state: State = .loading
+    
     /// The most world-server entries the client keeps, matching the
     /// decompiled `State02_ServerSelect_ProcessPacket` (`0x4e02b0`): it
     /// unpacks the `0x1102` list into a structure-of-arrays in the global
@@ -95,8 +96,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public private(set) var selectedIndex: Int?
 
     private let delegate: ViewModelDelegate
+    
     private let directoryFetcher: ServerDirectoryFetching
-
+    
+    private var task: Task<Void, Error>?
+    
     public init(delegate: ViewModelDelegate, directoryFetcher: ServerDirectoryFetching = IPv4ServerDirectoryFetcher()) {
         self.delegate = delegate
         self.directoryFetcher = directoryFetcher
@@ -129,17 +133,17 @@ public final class ServerSelectViewModel: ScreenViewModel {
     }
 
     public func onEnter() {
-        isConnecting = false
         hoveredIndex = nil
         selectedIndex = nil  // the real client resets +0x08 to -1 on enter
         // Populate the WORLD LIST up front, like the real client.
-        Task { await fetchDirectory() }
+        reload()
     }
 
     public func onExit() {
-        isConnecting = false
         hoveredIndex = nil
         selectedIndex = nil
+        task?.cancel()
+        task = nil  // let a later re-entry start a fresh reload
     }
 
     public func update(deltaTime: Double) {}
@@ -150,7 +154,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
             hoveredIndex = buttons.firstIndex { $0.rect.contains(x: x, y: y) }
 
         case .pointerDown(let x, let y):
-            guard !isConnecting else { return }
+            // No user interaction while the list is loading or a connect
+            // attempt is already in flight.
+            guard !state.isLoading, !state.isConnecting else { return }
             // Row click first — `WorldListRowHitTest` maps the click through
             // the same grid geometry as the renderer and only accepts online
             // rows (fullness is checked later, at connect time).
@@ -174,9 +180,28 @@ public final class ServerSelectViewModel: ScreenViewModel {
             break
         }
     }
+    
+    /// Refreshes the world list, tracking progress through `state` —
+    /// `.loading` while the broker round-trip runs, then `.loaded` or
+    /// `.error`. No-op while a refresh is already in flight.
+    public func reload() {
+        guard task == nil else {
+            return
+        }
+        self.state = .loading
+        self.task = Task(priority: .userInitiated) {
+            defer { self.task = nil }
+            do {
+                try await fetchDirectory()
+            } catch {
+                print("[GunBound] couldn't reach broker: \(error)")
+                self.state = .error("Couldn't reach the server broker: \(error.localizedDescription)")
+            }
+        }
+    }
 
     private func connect() {
-        isConnecting = true
+        state = .connecting
         Task { await performConnect() }
     }
 
@@ -237,7 +262,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// connect `performConnect()` does afterward.
     func fetchDirectoryAndChooseServer() async -> (address: String, port: UInt16) {
         if availableServers.isEmpty {
-            await fetchDirectory()
+            // Broker unreachable is non-fatal here — fall through to the
+            // manually configured server/port below.
+            try? await fetchDirectory()
         }
         let network = delegate.network
         var worldAddress = network.serverAddress
@@ -261,24 +288,69 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// can't be reached. Called eagerly from `onEnter` — the real client
     /// receives the `0x1102` server list on entering state 2 rather than
     /// waiting for a connect attempt.
-    private func fetchDirectory() async {
+    private func fetchDirectory() async throws {
         let network = delegate.network
-        do {
-            let directory = try await directoryFetcher.fetchServerDirectory(address: network.serverAddress, brokerPort: network.brokerPort)
-            self.availableServers = Array(directory.prefix(Self.maxServers))
-            print("[GunBound] broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
-        } catch {
-            print("[GunBound] couldn't reach broker at \(network.serverAddress):\(network.brokerPort) (\(error))")
-        }
+        let directory = try await directoryFetcher.fetchServerDirectory(
+            address: network.serverAddress,
+            brokerPort: network.brokerPort
+        )
+        self.availableServers = Array(directory.prefix(Self.maxServers))
+        self.state = .loaded
+        print("Broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
     }
 
     private func finishConnecting(client: NetworkClient<GunBoundSocketIPv4TCP>?, success: Bool) {
-        isConnecting = false
         if let client {
             delegate.client = client
         }
         if success {
+            state = .loaded
             delegate.requestTransition(to: .gameRoomList)
+        } else {
+            state = .error("Couldn't connect to the server — check the address and try again.")
+        }
+    }
+}
+
+public extension ServerSelectViewModel {
+    
+    enum State: Equatable, Hashable, Sendable {
+
+        case loading
+        case loaded
+        case connecting
+        case error(String)
+    }
+}
+
+public extension ServerSelectViewModel.State {
+
+    var isLoading: Bool {
+        switch self {
+        case .loading:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether a connect attempt is in flight — drives the
+    /// `waitmessage.img` overlay.
+    var isConnecting: Bool {
+        switch self {
+        case .connecting:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var error: String? {
+        switch self {
+        case let .error(error):
+            return error
+        default:
+            return nil
         }
     }
 }
