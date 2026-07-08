@@ -139,7 +139,21 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
     ) async throws -> Self {
         let fileDescriptor = try SocketDescriptor.tcp(localAddress)  // [.closeOnExec, .nonBlocking])
         let socket = await Socket(fileDescriptor: fileDescriptor)
-        try await socket.connect(to: IPv4SocketAddress(destinationAddress))
+        do {
+            try await socket.connect(to: IPv4SocketAddress(destinationAddress))
+        } catch Errno.socketIsConnected {
+            // PureSwift/Socket's non-blocking connect() retries the raw
+            // connect(2) syscall itself while it returns EINPROGRESS
+            // (`retry(sleep:_:)` in its Util.swift), rather than polling for
+            // writability — so if the connection actually completes in the
+            // background between two of those retries, the *next*
+            // connect(2) call correctly reports EISCONN ("already
+            // connected"), which is the standard success indication for a
+            // non-blocking socket, not a real failure. Without this catch,
+            // every outbound TCP connection here was intermittently (timing-
+            // dependent) failing with "Socket is already connected" even
+            // though the connection had, in fact, succeeded.
+        }
         return await Self(
             fileDescriptor: fileDescriptor,
             address: localAddress
