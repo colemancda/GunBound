@@ -52,7 +52,12 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public var panelRect: Rect = .zero
 
     public private(set) var hoveredIndex: Int?
-    public private(set) var isConnecting = false
+
+    /// Whether a connect attempt is in flight (drives the `waitmessage.img`
+    /// overlay). Settable so tests and SwiftUI previews can show the
+    /// connecting state directly — the production path only flips it from
+    /// `connect()`/`finishConnecting`.
+    public var isConnecting = false
 
     /// The most world-server entries the client keeps, matching the
     /// decompiled `State02_ServerSelect_ProcessPacket` (`0x4e02b0`): it
@@ -80,6 +85,8 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public func onEnter() {
         isConnecting = false
         hoveredIndex = nil
+        // Populate the WORLD LIST up front, like the real client.
+        Task { await fetchDirectory() }
     }
 
     public func onExit() {
@@ -161,36 +168,49 @@ public final class ServerSelectViewModel: ScreenViewModel {
         }
     }
 
-    /// Fetches the broker's server directory (populating `availableServers`)
-    /// and returns the address/port to connect to next — the first enabled
-    /// entry, or the manually configured server/port if the broker can't be
-    /// reached or has no enabled servers.
+    /// Ensures the directory has been fetched (refreshing it if the eager
+    /// `onEnter` fetch produced nothing) and returns the address/port to
+    /// connect to next — the first joinable entry, or the manually
+    /// configured server/port if the broker can't be reached or has no
+    /// joinable servers.
     ///
     /// Not `private` so tests can verify `availableServers` population with
     /// a mock `directoryFetcher` without also exercising the real network
     /// connect `performConnect()` does afterward.
     func fetchDirectoryAndChooseServer() async -> (address: String, port: UInt16) {
+        if availableServers.isEmpty {
+            await fetchDirectory()
+        }
         let network = delegate.network
         var worldAddress = network.serverAddress
         var worldPort = network.serverPort
-        do {
-            let directory = try await directoryFetcher.fetchServerDirectory(address: network.serverAddress, brokerPort: network.brokerPort)
-            availableServers = Array(directory.prefix(Self.maxServers))
-            print("[GunBound] broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
-            // Choose from the capped list — the client only stores the first
-            // 16 entries, so a later one couldn't be selected anyway. Skip
-            // offline and full servers: the decompiled connect handlers
-            // validate the target is online and not full (currentPlayers <
-            // maxCapacity) before opening a socket, so a full-but-online
-            // server can't be joined.
-            if let chosen = availableServers.first(where: \.isJoinable) {
-                worldAddress = chosen.address.rawValue
-                worldPort = chosen.port
-            }
-        } catch {
-            print("[GunBound] couldn't reach broker at \(network.serverAddress):\(network.brokerPort) (\(error)), connecting directly instead")
+        // Choose from the capped list — the client only stores the first
+        // 16 entries, so a later one couldn't be selected anyway. Skip
+        // offline and full servers: the decompiled connect handlers
+        // validate the target is online and not full (currentPlayers <
+        // maxCapacity) before opening a socket, so a full-but-online
+        // server can't be joined.
+        if let chosen = availableServers.first(where: \.isJoinable) {
+            worldAddress = chosen.address.rawValue
+            worldPort = chosen.port
         }
         return (worldAddress, worldPort)
+    }
+
+    /// Fetches the broker's directory into `availableServers` (capped at
+    /// `maxServers`), logging and leaving the list unchanged if the broker
+    /// can't be reached. Called eagerly from `onEnter` — the real client
+    /// receives the `0x1102` server list on entering state 2 rather than
+    /// waiting for a connect attempt.
+    private func fetchDirectory() async {
+        let network = delegate.network
+        do {
+            let directory = try await directoryFetcher.fetchServerDirectory(address: network.serverAddress, brokerPort: network.brokerPort)
+            self.availableServers = Array(directory.prefix(Self.maxServers))
+            print("[GunBound] broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
+        } catch {
+            print("[GunBound] couldn't reach broker at \(network.serverAddress):\(network.brokerPort) (\(error))")
+        }
     }
 
     private func finishConnecting(client: NetworkClient<GunBoundSocketIPv4TCP>?, success: Bool) {
