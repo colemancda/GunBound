@@ -10,13 +10,19 @@ import GunBoundProtocol
 /// and outgoing-encryption bookkeeping this client doesn't need yet) — this
 /// is just enough to prove out real network authentication before building
 /// out the rest of the post-login protocol (room list, chat, etc).
-public actor NetworkClient {
+///
+/// Generic over the socket type (mirroring `Connection<Socket>`'s existing
+/// pattern) purely so tests can substitute a mock `GunBoundSocketTCP`
+/// feeding it canned bytes captured from a real server, instead of opening
+/// an actual connection — production code always uses
+/// `NetworkClient<GunBoundSocketIPv4TCP>`.
+public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
 
     public enum Error: Swift.Error, Equatable {
         case invalidAddress(String)
     }
 
-    private let socket: GunBoundSocketIPv4TCP
+    private let socket: Socket
 
     private let encoder = GunBoundEncoder()
 
@@ -27,19 +33,19 @@ public actor NetworkClient {
     /// encrypt/decrypt its packet body, mirroring `Connection.key`.
     public private(set) var sessionKey: Key?
 
-    private init(socket: GunBoundSocketIPv4TCP) {
+    private init(socket: Socket) {
         self.socket = socket
     }
 
     /// Opens a TCP connection to `config.serverAddress`:`config.serverPort`.
-    public static func connect(_ config: NetworkConfig) async throws -> NetworkClient {
+    public static func connect(_ config: NetworkConfig) async throws -> NetworkClient<Socket> {
         guard let destination = GunBoundAddress(address: config.serverAddress, port: config.serverPort) else {
             throw Error.invalidAddress(config.serverAddress)
         }
         guard let local = GunBoundAddress(address: "0.0.0.0", port: 0) else {
             throw Error.invalidAddress("0.0.0.0")
         }
-        let socket = try await GunBoundSocketIPv4TCP.client(address: local, destination: destination)
+        let socket = try await Socket.client(address: local, destination: destination)
         return NetworkClient(socket: socket)
     }
 
