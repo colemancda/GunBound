@@ -47,10 +47,11 @@ public final class GameRoomListViewModel: ScreenViewModel {
     ]
 
     /// Rooms from the most recent `0x2103` room-list response (capped to the
-    /// six on-screen cards). `internal(set)` so tests can populate it
-    /// directly — the production path fills it from `delegate.client`, which
-    /// is a concrete socket type that can't be mocked at this layer.
-    public internal(set) var rooms: [RoomListResponse.Room] = []
+    /// six on-screen cards). Settable so tests and SwiftUI previews can
+    /// populate it directly — the production path fills it from
+    /// `delegate.client`, which is a concrete socket type that can't be
+    /// mocked at this layer.
+    public var rooms: [RoomListResponse.Room] = []
 
     public private(set) var hoveredButtonIndex: Int?
     public private(set) var hoveredRoomIndex: Int?
