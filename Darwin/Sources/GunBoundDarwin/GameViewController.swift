@@ -17,7 +17,7 @@ final class GameViewController: UIViewController {
         guard let view = view as? SKView else { return }
         guard let scene = DarwinShell.makeScene() else {
             let label = UILabel()
-            label.text = "Couldn't load game assets — run Playgrounds/copy-dependencies.sh and rebuild."
+            label.text = "Couldn't load game assets — run Darwin/copy-dependencies.sh and rebuild."
             label.numberOfLines = 0
             label.textAlignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false

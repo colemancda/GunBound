@@ -53,7 +53,7 @@ enum DarwinShell {
     @MainActor
     static func makeScene() -> GameScene? {
         guard let assetsDirectory = locateAssetsDirectory() else {
-            print("[GunBoundDarwin] graphics.xfs not found — bundle the assets (run Playgrounds/copy-dependencies.sh before building) or place them at ~/Developer/GunBound-Decomp/orig")
+            print("[GunBoundDarwin] graphics.xfs not found — bundle the assets (run Darwin/copy-dependencies.sh before building) or place them at ~/Developer/GunBound-Decomp/orig")
             return nil
         }
         let scene = GameScene()

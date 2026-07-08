@@ -39,7 +39,7 @@
 		D00000000000000000000106 /* AppDelegate_tvOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate_tvOS.swift; sourceTree = "<group>"; };
 		D00000000000000000000107 /* GameViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
 		D00000000000000000000108 /* GunBound-macOS-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GunBound-macOS-Info.plist"; sourceTree = "<group>"; };
-		D00000000000000000000109 /* Resources */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Resources; path = ../Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources; sourceTree = "<group>"; };
+		D00000000000000000000109 /* Resources */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Resources; path = GunBoundSpriteKit.swiftpm/AppModule/Resources; sourceTree = "<group>"; };
 		D0000000000000000000010A /* GunBound-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000000000000000000010B /* GunBound-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -74,7 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				D00000000000000000000402 /* Products */,
-				D00000000000000000000403 /* Shared (Playgrounds/GunBoundSpriteKit.swiftpm/AppModule) */,
+				D00000000000000000000403 /* Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule) */,
 				D00000000000000000000404 /* Darwin (Darwin/Sources/GunBoundDarwin) */,
 				D00000000000000000000108 /* GunBound-macOS-Info.plist */,
 				D00000000000000000000109 /* Resources */,
@@ -90,15 +90,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		D00000000000000000000403 /* Shared (Playgrounds/GunBoundSpriteKit.swiftpm/AppModule) */ = {
+		D00000000000000000000403 /* Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule) */ = {
 			isa = PBXGroup;
 			children = (
 				D00000000000000000000101 /* SpriteKitRenderer.swift */,
 				D00000000000000000000102 /* SpriteKitAudioPlayer.swift */,
 				D00000000000000000000103 /* GameScene.swift */,
 			);
-			name = "Shared (Playgrounds/GunBoundSpriteKit.swiftpm/AppModule)";
-			path = ../Playgrounds/GunBoundSpriteKit.swiftpm/AppModule;
+			name = "Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule)";
+			path = GunBoundSpriteKit.swiftpm/AppModule;
 			sourceTree = "<group>";
 		};
 		D00000000000000000000404 /* Darwin (Darwin/Sources/GunBoundDarwin) */ = {

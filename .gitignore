@@ -92,16 +92,16 @@ iOSInjectionProject/
 .DS_Store
 
 # GunBoundSpriteKit Playground game assets (copied locally, not committed)
-Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
-Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.dat
-Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.xfs
+Darwin/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
+Darwin/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.dat
+Darwin/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.xfs
 
 # GunBoundSpriteKit Playground: vendored library sources (re-copy with copy-dependencies.sh)
-Playgrounds/GunBoundSpriteKit.swiftpm/GunBound/
-Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundProtocol/
-Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundFile/
-Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundClient/
-Playgrounds/GunBoundSpriteKit.swiftpm/BinaryParsing/
+Darwin/GunBoundSpriteKit.swiftpm/GunBound/
+Darwin/GunBoundSpriteKit.swiftpm/GunBoundProtocol/
+Darwin/GunBoundSpriteKit.swiftpm/GunBoundFile/
+Darwin/GunBoundSpriteKit.swiftpm/GunBoundClient/
+Darwin/GunBoundSpriteKit.swiftpm/BinaryParsing/
 
 # The Darwin (macOS/tvOS) Xcode project is real source, not generated cruft —
 # re-include it despite the global *.xcodeproj ignore above (xcuserdata/ and

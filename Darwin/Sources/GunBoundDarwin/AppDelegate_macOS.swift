@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let scene = DarwinShell.makeScene() else {
             let alert = NSAlert()
             alert.messageText = "Couldn't load game assets"
-            alert.informativeText = "graphics.xfs wasn't found. Place the original archives at ~/Developer/GunBound-Decomp/orig (or bundle them by running Playgrounds/copy-dependencies.sh before building)."
+            alert.informativeText = "graphics.xfs wasn't found. Place the original archives at ~/Developer/GunBound-Decomp/orig (or bundle them by running Darwin/copy-dependencies.sh before building)."
             alert.runModal()
             NSApp.terminate(nil)
             return
