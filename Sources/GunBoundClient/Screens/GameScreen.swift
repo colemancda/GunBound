@@ -24,12 +24,15 @@ final class ScreenContext {
     let assets: AssetLibrary
     let renderer: SDLRenderer
     let mixer: SDLMixer
+    let network: NetworkConfig
+    var client: NetworkClient?
     private(set) var pendingMode: ClientMode?
 
-    init(assets: AssetLibrary, renderer: SDLRenderer, mixer: SDLMixer) {
+    init(assets: AssetLibrary, renderer: SDLRenderer, mixer: SDLMixer, network: NetworkConfig) {
         self.assets = assets
         self.renderer = renderer
         self.mixer = mixer
+        self.network = network
     }
 
     func requestTransition(to mode: ClientMode) {
