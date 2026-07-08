@@ -76,4 +76,21 @@ final class GameScene: SKScene {
         stateMachine?.handleInput(motionEvent(for: location))
     }
     #endif
+
+    // macOS mouse input (the Darwin Xcode project's GunBound-macOS target —
+    // see Darwin/). `mouseMoved` only fires if the hosting window has
+    // `acceptsMouseMovedEvents = true`, which AppDelegate_macOS sets.
+    #if os(macOS)
+    override func mouseDown(with event: NSEvent) {
+        stateMachine?.handleInput(inputEvent(for: event.location(in: self)))
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        stateMachine?.handleInput(motionEvent(for: event.location(in: self)))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        stateMachine?.handleInput(motionEvent(for: event.location(in: self)))
+    }
+    #endif
 }
