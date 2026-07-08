@@ -196,6 +196,11 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .testTarget(
+            name: "GunBoundClientTests",
+            dependencies: ["GunBoundClient", "GunBound"],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
             name: "GunBoundFileTests",
             dependencies: ["GunBoundFile"],
             resources: [
