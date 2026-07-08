@@ -22,6 +22,16 @@ class ImageBackgroundScreen: GameScreen {
     private var music: SDLAudio?
     private var track: SDLAudioTrack?
 
+    /// `true` once a music track was successfully started for this screen;
+    /// `false` if there's no music configured or it failed to load — lets
+    /// subclasses (e.g. `TitleScreen`) distinguish "still playing" from
+    /// "never started" when deciding whether to wait on `isMusicPlaying`.
+    var didStartMusic: Bool { track != nil }
+
+    /// Whether the screen's music track is still playing. `false` once it
+    /// finishes (or if no track ever started).
+    var isMusicPlaying: Bool { track?.isPlaying ?? false }
+
     init(backgroundImageName: String, musicName: String?) {
         self.backgroundImageName = backgroundImageName
         self.musicName = musicName
