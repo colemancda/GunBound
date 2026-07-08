@@ -1,5 +1,3 @@
-import CSDL3
-import SDL3Swift
 import GunBound
 
 /// View for the pre-battle Ready Room (state 9) — cancel/start hit-testing
@@ -7,58 +5,56 @@ import GunBound
 /// `ready_selectmap.img`/`ready_selectcharacter.img`/
 /// `b_ready_startgame.img`/`b_ready_cancel.img` and pushes the button rects.
 @MainActor
-final class ReadyRoomScreen: GameScreen {
+public final class ReadyRoomScreen: GameScreen {
     private let viewModel: ReadyRoomViewModel
-    private let visuals = ScreenRenderHelper()
-    private var characterSelectTexture: SDLTexture?
-    private var startTexture: SDLTexture?
-    private var cancelTexture: SDLTexture?
+    private var backgroundTexture: ClientTexture?
+    private var characterSelectTexture: ClientTexture?
+    private var startTexture: ClientTexture?
+    private var cancelTexture: ClientTexture?
 
-    init(viewModel: ReadyRoomViewModel) {
+    public init(viewModel: ReadyRoomViewModel) {
         self.viewModel = viewModel
     }
 
-    func onEnter(context: ScreenContext) throws {
+    public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
-        visuals.loadBackground(named: viewModel.backgroundImageName, context: context)
-        characterSelectTexture = visuals.loadTexture(named: viewModel.characterSelectImageName, context: context)
+        backgroundTexture = context.renderer.texture(named: viewModel.backgroundImageName, assets: context.assets)
+        characterSelectTexture = context.renderer.texture(named: viewModel.characterSelectImageName, assets: context.assets)
 
-        startTexture = visuals.loadTexture(named: viewModel.startButtonImageName, context: context)
-        let (startWidth, startHeight) = size(of: startTexture)
+        startTexture = context.renderer.texture(named: viewModel.startButtonImageName, assets: context.assets)
+        let (startWidth, startHeight) = context.renderer.size(of: startTexture)
         viewModel.startRect = Rect(x: 20, y: 600 - startHeight - 20, width: startWidth, height: startHeight)
 
-        cancelTexture = visuals.loadTexture(named: viewModel.cancelButtonImageName, context: context)
-        let (cancelWidth, cancelHeight) = size(of: cancelTexture)
+        cancelTexture = context.renderer.texture(named: viewModel.cancelButtonImageName, assets: context.assets)
+        let (cancelWidth, cancelHeight) = context.renderer.size(of: cancelTexture)
         viewModel.cancelRect = Rect(x: 20, y: 600 - cancelHeight - 60, width: cancelWidth, height: cancelHeight)
     }
 
-    func onExit() {
+    public func onExit() {
         viewModel.onExit()
-        visuals.unloadBackground()
+        backgroundTexture = nil
         characterSelectTexture = nil
         startTexture = nil
         cancelTexture = nil
     }
 
-    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        guard let input = translate(event) else { return }
-        viewModel.handle(input)
+    public func handleInput(_ event: ScreenInputEvent) {
+        viewModel.handle(event)
     }
 
-    func update(deltaTime: Double, context: ScreenContext) {
+    public func update(deltaTime: Double) {
         viewModel.update(deltaTime: deltaTime)
     }
 
-    func render(_ renderer: SDLRenderer) throws {
-        try visuals.clearAndDrawBackground(renderer)
-        if let characterSelectTexture {
-            try renderer.copy(characterSelectTexture, destination: nativeRect(of: characterSelectTexture))
-        }
+    public func render(_ renderer: ClientRenderer) throws {
+        renderer.clear()
+        drawFullSize(backgroundTexture, using: renderer)
+        drawFullSize(characterSelectTexture, using: renderer)
         if let startTexture {
-            try renderer.copy(startTexture, destination: sdlRect(viewModel.startRect))
+            renderer.draw(startTexture, in: viewModel.startRect, tint: nil)
         }
         if let cancelTexture {
-            try renderer.copy(cancelTexture, destination: sdlRect(viewModel.cancelRect))
+            renderer.draw(cancelTexture, in: viewModel.cancelRect, tint: nil)
         }
     }
 }
