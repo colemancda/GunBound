@@ -13,7 +13,7 @@ struct GunBoundExtract: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "GunBoundExtract",
         abstract: "Extracts and decodes entries from GunBound .xfs archives — a Swift replacement for the decomp repo's Python tools/lzhuf scripts.",
-        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self],
+        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self, Text.self],
         defaultSubcommand: List.self
     )
 }
@@ -255,6 +255,89 @@ extension GunBoundExtract {
             #if canImport(CoreGraphics)
             try writeRGBA(rgba, width: sheetW, height: sheetH, to: URL(fileURLWithPath: outputPath))
             print("wrote \(outputPath): \(count) glyphs at \(width)x\(height) (stride \(glyphSize)B), from index \(start)")
+            #else
+            throw ExtractError.pngUnsupported
+            #endif
+        }
+    }
+}
+
+extension GunBoundExtract {
+
+    /// Renders a text string using `font.fnt`'s ASCII glyphs (the same
+    /// proportional, trimmed glyphs the client draws) to a PNG — a direct
+    /// preview of the in-game bitmap-font rendering.
+    struct Text: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Renders a string with font.fnt to a PNG.")
+
+        @Argument(help: "Path to the .xfs archive (graphics.xfs).")
+        var archivePath: String
+
+        @Argument(help: "The text to render.")
+        var string: String
+
+        @Argument(help: "Output PNG path.")
+        var outputPath: String
+
+        @Option(help: "Integer pixel scale.")
+        var scale: Int = 3
+
+        @Option(help: "Pixels between glyphs (before scaling).")
+        var tracking: Int = 1
+
+        func run() throws {
+            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: archivePath)))
+            let entries = try XFSArchive.readEntries(data)
+            guard let entry = entries.first(where: { $0.name == "font.fnt" }) else {
+                throw ExtractError.entryNotFound("font.fnt")
+            }
+            let glyphs = FntFile.readASCIIGlyphs(try XFSArchive.readEntryData(data, entry: entry))
+            let height = FntFile.glyphHeight
+
+            // Lay glyphs out left-to-right to get the total width.
+            var runs: [(frame: ImgFile.Frame, x: Int)] = []
+            var cursor = 0
+            for character in string.unicodeScalars {
+                let code = Int(character.value)
+                guard code < glyphs.count else { cursor += 4 + tracking; continue }
+                let frame = glyphs[code]
+                runs.append((frame, cursor))
+                cursor += Int(frame.width) + tracking
+            }
+            let totalWidth = max(1, cursor)
+
+            var rgba = [UInt8](repeating: 0, count: totalWidth * height * 4)
+            for pixelIndex in 0..<(totalWidth * height) {
+                let base = pixelIndex * 4
+                rgba[base] = 20; rgba[base + 1] = 20; rgba[base + 2] = 40; rgba[base + 3] = 255
+            }
+            for run in runs {
+                let frame = run.frame
+                for y in 0..<Int(frame.height) {
+                    for x in 0..<Int(frame.width) {
+                        let pixel = frame.pixels[y * Int(frame.width) + x]
+                        guard pixel.alpha > 0 else { continue }
+                        let dst = (y * totalWidth + run.x + x) * 4
+                        rgba[dst] = pixel.red; rgba[dst + 1] = pixel.green; rgba[dst + 2] = pixel.blue; rgba[dst + 3] = 255
+                    }
+                }
+            }
+
+            // Nearest-neighbor upscale for legibility.
+            let outW = totalWidth * scale
+            let outH = height * scale
+            var scaled = [UInt8](repeating: 0, count: outW * outH * 4)
+            for y in 0..<outH {
+                for x in 0..<outW {
+                    let src = ((y / scale) * totalWidth + (x / scale)) * 4
+                    let dst = (y * outW + x) * 4
+                    scaled[dst] = rgba[src]; scaled[dst + 1] = rgba[src + 1]; scaled[dst + 2] = rgba[src + 2]; scaled[dst + 3] = rgba[src + 3]
+                }
+            }
+
+            #if canImport(CoreGraphics)
+            try writeRGBA(scaled, width: outW, height: outH, to: URL(fileURLWithPath: outputPath))
+            print("wrote \(outputPath): \"\(string)\" at \(scale)x")
             #else
             throw ExtractError.pngUnsupported
             #endif

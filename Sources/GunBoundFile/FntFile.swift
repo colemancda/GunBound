@@ -18,7 +18,7 @@
 public enum FntFile {
 
     public static let asciiGlyphCount = 128
-    static let glyphHeight = 12
+    public static let glyphHeight = 12
     static let asciiGlyphWidth = 8
     static let asciiGlyphStride = 12  // bytes per glyph (one byte per row)
 
