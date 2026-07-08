@@ -10,6 +10,7 @@ final class MockViewModelDelegate: ViewModelDelegate {
     let network: NetworkConfig
     var client: NetworkClient<GunBoundSocketIPv4TCP>?
     private(set) var requestedTransitions: [ClientMode] = []
+    private(set) var quitRequested = false
 
     init(network: NetworkConfig) {
         self.network = network
@@ -17,6 +18,10 @@ final class MockViewModelDelegate: ViewModelDelegate {
 
     func requestTransition(to mode: ClientMode) {
         requestedTransitions.append(mode)
+    }
+
+    func requestQuit() {
+        quitRequested = true
     }
 }
 
