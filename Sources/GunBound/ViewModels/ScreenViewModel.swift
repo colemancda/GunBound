@@ -22,6 +22,6 @@ public protocol ScreenViewModel: AnyObject {
 @MainActor
 public protocol ViewModelDelegate: AnyObject {
     var network: NetworkConfig { get }
-    var client: NetworkClient? { get set }
+    var client: NetworkClient<GunBoundSocketIPv4TCP>? { get set }
     func requestTransition(to mode: ClientMode)
 }
