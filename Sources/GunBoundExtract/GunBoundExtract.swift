@@ -13,7 +13,7 @@ struct GunBoundExtract: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "GunBoundExtract",
         abstract: "Extracts and decodes entries from GunBound .xfs archives — a Swift replacement for the decomp repo's Python tools/lzhuf scripts.",
-        subcommands: [List.self, Image.self, Raw.self],
+        subcommands: [List.self, Image.self, Raw.self, Montage.self],
         defaultSubcommand: List.self
     )
 }
@@ -103,6 +103,78 @@ extension GunBoundExtract {
     }
 }
 
+extension GunBoundExtract {
+
+    /// Lays out a run of a multi-frame sprite's frames into one grid PNG, one
+    /// frame per cell (frames left-aligned in each cell), so a font sheet's
+    /// character ordering can be read at a glance.
+    struct Montage: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Composites a run of frames into a contact-sheet PNG.")
+
+        @Argument(help: "Path to the .xfs archive.")
+        var archivePath: String
+
+        @Argument(help: "Entry name (e.g. numfont.img).")
+        var entryName: String
+
+        @Argument(help: "Output PNG path.")
+        var outputPath: String
+
+        @Option(help: "First frame to include.")
+        var start: Int = 0
+
+        @Option(help: "Number of frames to include.")
+        var count: Int = 64
+
+        @Option(help: "Frames per row.")
+        var columns: Int = 16
+
+        @Option(help: "Cell size in pixels (square).")
+        var cell: Int = 20
+
+        func run() throws {
+            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: archivePath)))
+            let entries = try XFSArchive.readEntries(data)
+            guard let entry = entries.first(where: { $0.name == entryName }) else {
+                throw ExtractError.entryNotFound(entryName)
+            }
+            let frames = try ImgFile.readFrames(try XFSArchive.readEntryData(data, entry: entry))
+            let end = min(start + count, frames.count)
+            let rows = (max(0, end - start) + columns - 1) / columns
+            let sheetWidth = columns * cell
+            let sheetHeight = max(1, rows) * cell
+            var rgba = [UInt8](repeating: 0, count: sheetWidth * sheetHeight * 4)
+
+            for (position, frameIndex) in (start..<end).enumerated() {
+                let frame = frames[frameIndex]
+                let cellX = (position % columns) * cell
+                let cellY = (position / columns) * cell
+                let w = min(Int(frame.width), cell)
+                let h = min(Int(frame.height), cell)
+                for y in 0..<h {
+                    for x in 0..<w {
+                        let pixel = frame.pixels[y * Int(frame.width) + x]
+                        let dstX = cellX + x
+                        let dstY = cellY + y
+                        let dst = (dstY * sheetWidth + dstX) * 4
+                        rgba[dst] = pixel.red
+                        rgba[dst + 1] = pixel.green
+                        rgba[dst + 2] = pixel.blue
+                        rgba[dst + 3] = pixel.alpha
+                    }
+                }
+            }
+
+            #if canImport(CoreGraphics)
+            try writeRGBA(rgba, width: sheetWidth, height: sheetHeight, to: URL(fileURLWithPath: outputPath))
+            print("wrote \(outputPath): frames \(start)..<\(end) in a \(columns)-wide grid, \(cell)px cells")
+            #else
+            throw ExtractError.pngUnsupported
+            #endif
+        }
+    }
+}
+
 enum ExtractError: Swift.Error, CustomStringConvertible {
     case entryNotFound(String)
     case frameNotFound(Int, Int)
@@ -130,9 +202,12 @@ func writePNG(_ frame: ImgFile.Frame, to url: URL) throws {
         rgba.append(pixel.blue)
         rgba.append(pixel.alpha)
     }
+    try writeRGBA(rgba, width: Int(frame.width), height: Int(frame.height), to: url)
+}
 
-    let width = Int(frame.width)
-    let height = Int(frame.height)
+/// Writes a straight-RGBA (non-premultiplied, 8-bit/channel) pixel buffer to
+/// a PNG via ImageIO.
+func writeRGBA(_ rgba: [UInt8], width: Int, height: Int, to url: URL) throws {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     // Straight (non-premultiplied) alpha, matching how ImgFile.Pixel decodes
     // RGB565/ARGB4444 — each channel independently, not premultiplied.
