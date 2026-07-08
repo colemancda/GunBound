@@ -32,12 +32,12 @@ final class SpriteKitRenderer: ClientRenderer {
         self.scene = scene
     }
 
-    func texture(named name: String, assets: AssetLibrary) -> ClientTexture? {
+    func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? {
         do {
-            let frame = try assets.firstImageFrame(named: name)
+            let frame = try assets.imageFrame(named: name, at: frameIndex)
             return SpriteKitClientTexture(makeTexture(from: frame))
         } catch {
-            print("[GunBoundSpriteKit] warning: couldn't load image '\(name)': \(error)")
+            print("[GunBoundSpriteKit] warning: couldn't load image '\(name)#\(frameIndex)': \(error)")
             return nil
         }
     }

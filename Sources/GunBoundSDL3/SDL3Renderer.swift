@@ -25,13 +25,13 @@ final class SDL3Renderer: ClientRenderer {
         self.renderer = renderer
     }
 
-    func texture(named name: String, assets: AssetLibrary) -> ClientTexture? {
+    func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? {
         do {
-            let frame = try assets.firstImageFrame(named: name)
+            let frame = try assets.imageFrame(named: name, at: frameIndex)
             let texture = try FrameTexture.make(renderer: renderer, frame: frame)
             return SDL3ClientTexture(texture)
         } catch {
-            print("[GunBoundSDL3] warning: couldn't load image '\(name)': \(error)")
+            print("[GunBoundSDL3] warning: couldn't load image '\(name)#\(frameIndex)': \(error)")
             return nil
         }
     }

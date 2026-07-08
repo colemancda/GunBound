@@ -14,11 +14,11 @@ public protocol ClientTexture: AnyObject {}
 /// or any other backend that implements it.
 @MainActor
 public protocol ClientRenderer: AnyObject {
-    /// Loads (decoding via `AssetLibrary` as needed) a texture for a named
-    /// `.img` resource, or `nil` if it couldn't be loaded (logged by the
-    /// implementation — screens treat a missing asset as "just don't draw
-    /// it" rather than a fatal error).
-    func texture(named name: String, assets: AssetLibrary) -> ClientTexture?
+    /// Loads (decoding via `AssetLibrary` as needed) a texture for a specific
+    /// frame of a named `.img` sprite sheet, or `nil` if it couldn't be
+    /// loaded (logged by the implementation — screens treat a missing asset
+    /// as "just don't draw it" rather than a fatal error).
+    func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture?
 
     /// The texture's pixel size, `(0, 0)` if unavailable.
     func size(of texture: ClientTexture?) -> (width: Float, height: Float)
@@ -35,6 +35,14 @@ public protocol ClientRenderer: AnyObject {
     /// Presents the frame — called once per frame by the state machine
     /// after the current screen has drawn, not per-screen.
     func present()
+}
+
+public extension ClientRenderer {
+    /// Loads the first frame of a named `.img` resource — the common case
+    /// for full-window backgrounds and single-frame button chrome.
+    func texture(named name: String, assets: AssetLibrary) -> ClientTexture? {
+        texture(named: name, frame: 0, assets: assets)
+    }
 }
 
 /// Draws `texture` at the origin, at its own native pixel size — the common
