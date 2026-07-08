@@ -54,6 +54,17 @@ public extension Key {
         bytes += [lengthBytes.0, lengthBytes.1]
         return bytes
     }
+
+    /// Encrypts a raw 16-byte AES-ECB block with this key — no opcode-based
+    /// checksum wrapping, unlike `Packet.encrypt(key:)`. This is the
+    /// client-side counterpart of the username decryption `authenticate(_:)`
+    /// performs server-side (`Crypto.AES.decrypt(_:key:)`, the 2-argument
+    /// overload): `AuthenticationRequest.encryptedUsername` is a single raw
+    /// block encrypted directly with `Key.login`, not a whole encrypted
+    /// packet.
+    func encryptRawBlock(_ data: [UInt8]) throws -> [UInt8] {
+        [UInt8](try Crypto.AES.encrypt(Data(data), key: self))
+    }
 }
 
 // MARK: - CustomStringConvertible
