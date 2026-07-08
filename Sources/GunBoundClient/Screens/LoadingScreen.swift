@@ -2,44 +2,44 @@ import CSDL3
 import SDL3Swift
 import GunBound
 
-/// State 10 — Loading (`load_back.img`, `load_stage00.img`). Real client shows
-/// per-player ready icons here; this pass just shows the loading chrome for
-/// a fixed short duration before advancing to the (also minimal) In-Battle
-/// level render — there's no session/player-ready logic to wait on since
-/// there's no networking yet.
+/// View for the Loading screen (state 10) — the fixed-duration timer lives
+/// in `LoadingViewModel`; this loads/draws `load_back.img`/
+/// `load_stage00.img`.
 @MainActor
-final class LoadingScreen: ImageBackgroundScreen {
-    private var stageOverlay: SDLTexture?
-    private var elapsed: Double = 0
-    private let duration: Double = 1.2
+final class LoadingScreen: GameScreen {
+    private let viewModel: LoadingViewModel
+    private let visuals = ScreenRenderHelper()
+    private var stageOverlayTexture: SDLTexture?
 
-    init() {
-        super.init(backgroundImageName: "load_back.img", musicName: nil)
+    init(viewModel: LoadingViewModel) {
+        self.viewModel = viewModel
     }
 
-    override func onEnter(context: ScreenContext) throws {
-        elapsed = 0
-        try super.onEnter(context: context)
-        stageOverlay = loadTexture(named: "load_stage00.img", context: context)
+    func onEnter(context: ScreenContext) throws {
+        viewModel.onEnter()
+        visuals.loadBackground(named: viewModel.backgroundImageName, context: context)
+        stageOverlayTexture = visuals.loadTexture(named: viewModel.stageOverlayImageName, context: context)
     }
 
-    override func onExit() {
-        stageOverlay = nil
-        super.onExit()
+    func onExit() {
+        viewModel.onExit()
+        visuals.unloadBackground()
+        stageOverlayTexture = nil
     }
 
-    override func update(deltaTime: Double, context: ScreenContext) {
-        elapsed += deltaTime
-        if elapsed >= duration {
-            context.requestTransition(to: .inGameSession)
-        }
+    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
+        guard let input = translate(event) else { return }
+        viewModel.handle(input)
     }
 
-    override func render(_ renderer: SDLRenderer) throws {
-        try super.render(renderer)
-        if let stageOverlay {
-            let attributes = try stageOverlay.attributes()
-            try renderer.copy(stageOverlay, destination: SDL_FRect(x: 0, y: 0, w: Float(attributes.width), h: Float(attributes.height)))
+    func update(deltaTime: Double, context: ScreenContext) {
+        viewModel.update(deltaTime: deltaTime)
+    }
+
+    func render(_ renderer: SDLRenderer) throws {
+        try visuals.clearAndDrawBackground(renderer)
+        if let stageOverlayTexture {
+            try renderer.copy(stageOverlayTexture, destination: nativeRect(of: stageOverlayTexture))
         }
     }
 }
