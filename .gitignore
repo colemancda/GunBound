@@ -93,3 +93,5 @@ iOSInjectionProject/
 
 # GunBoundSpriteKit Playground game assets (copied locally, not committed)
 Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
+Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.dat
+Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.xfs

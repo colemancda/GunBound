@@ -8,9 +8,12 @@ import GunBoundClient
 /// archive would otherwise just silently print to the console instead of
 /// surfacing anything on screen.
 struct LoginView: View {
-    @State private var username = "admin"
-    @State private var password = "1234"
-    @State private var serverIP = "127.0.0.1"
+    @AppStorage("login.username") 
+    private var username = "admin"
+    @AppStorage("login.password") 
+    private var password = "1234"
+    @AppStorage("login.serverIP") 
+    private var serverIP = "127.0.0.1"
     @State private var errorMessage: String?
     @State private var assetsDirectory: URL?
 
@@ -87,8 +90,7 @@ struct LoginView: View {
             throw AssetsError.missingBundleResourceURL
         }
         let candidates = [
-            resourceURL.appendingPathComponent("Resources/orig", isDirectory: true),
-            resourceURL.appendingPathComponent("orig", isDirectory: true)
+            resourceURL.appendingPathComponent("Resources", isDirectory: true)
         ]
         for candidate in candidates {
             if FileManager.default.fileExists(atPath: candidate.appendingPathComponent("graphics.xfs").path) {

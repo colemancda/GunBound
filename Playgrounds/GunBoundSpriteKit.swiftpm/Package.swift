@@ -44,7 +44,10 @@ let package = Package(
                 .product(name: "GunBoundFile", package: "GunBound"),
                 .product(name: "GunBoundClient", package: "GunBound")
             ],
-            path: "AppModule"
+            path: "AppModule",
+            resources: [
+                .copy("Resources")
+            ]
         )
     ]
 )
