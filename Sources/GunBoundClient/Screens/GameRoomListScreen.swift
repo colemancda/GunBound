@@ -1,5 +1,3 @@
-import CSDL3
-import SDL3Swift
 import GunBound
 
 /// View for the Game Room List / channel lobby (state 3) — all button
@@ -7,56 +5,52 @@ import GunBound
 /// button's texture, lays them out left-to-right, and pushes the resulting
 /// hit-testing rects into the view model.
 @MainActor
-final class GameRoomListScreen: GameScreen {
+public final class GameRoomListScreen: GameScreen {
     private let viewModel: GameRoomListViewModel
-    private let visuals = ScreenRenderHelper()
-    private var buttonTextures: [SDLTexture?] = []
+    private var backgroundTexture: ClientTexture?
+    private var buttonTextures: [ClientTexture?] = []
 
-    init(viewModel: GameRoomListViewModel) {
+    public init(viewModel: GameRoomListViewModel) {
         self.viewModel = viewModel
     }
 
-    func onEnter(context: ScreenContext) throws {
+    public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
-        visuals.loadBackground(named: viewModel.backgroundImageName, context: context)
+        backgroundTexture = context.renderer.texture(named: viewModel.backgroundImageName, assets: context.assets)
 
         var x: Float = 20
         let y: Float = 540
         buttonTextures = []
         for (index, button) in viewModel.buttons.enumerated() {
-            let texture = visuals.loadTexture(named: button.name, context: context)
+            let texture = context.renderer.texture(named: button.name, assets: context.assets)
             buttonTextures.append(texture)
-            let (width, height) = size(of: texture)
+            let (width, height) = context.renderer.size(of: texture)
             viewModel.setRect(Rect(x: x, y: y, width: width, height: height), forButtonAt: index)
             x += width + 10
         }
     }
 
-    func onExit() {
+    public func onExit() {
         viewModel.onExit()
-        visuals.unloadBackground()
+        backgroundTexture = nil
         buttonTextures = []
     }
 
-    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        guard let input = translate(event) else { return }
-        viewModel.handle(input)
+    public func handleInput(_ event: ScreenInputEvent) {
+        viewModel.handle(event)
     }
 
-    func update(deltaTime: Double, context: ScreenContext) {
+    public func update(deltaTime: Double) {
         viewModel.update(deltaTime: deltaTime)
     }
 
-    func render(_ renderer: SDLRenderer) throws {
-        try visuals.clearAndDrawBackground(renderer)
+    public func render(_ renderer: ClientRenderer) throws {
+        renderer.clear()
+        drawFullSize(backgroundTexture, using: renderer)
         for (index, button) in viewModel.buttons.enumerated() {
             guard let texture = buttonTextures[index] else { continue }
-            if index == viewModel.hoveredIndex {
-                try texture.setColorModulation(red: 200, green: 200, blue: 255)
-            } else {
-                try texture.setColorModulation(red: 255, green: 255, blue: 255)
-            }
-            try renderer.copy(texture, destination: sdlRect(button.rect))
+            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
+            renderer.draw(texture, in: button.rect, tint: tint)
         }
     }
 }
