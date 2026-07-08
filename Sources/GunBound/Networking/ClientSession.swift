@@ -17,9 +17,21 @@ public final class ClientSession {
     /// `JoinRoomResponse`), or `nil` in the lobby.
     public var currentRoom: JoinRoomResponse?
 
-    /// The player's owned avatar items, once the Avatar Store has fetched
-    /// them (each is one `0x6002` `InventoryItem`).
-    public var inventory: [AvatarInventoryResponse]?
+    /// The player's equipped avatar + owned item IDs, once the Avatar Store
+    /// (or anything else) has fetched them.
+    public var avatar: PlayerAvatar?
 
     public init() {}
+}
+
+/// The player's avatar state decoded from a `getAvatarResponse` (`0x6001`):
+/// the equipped-items bitmask plus the list of owned item IDs.
+public struct PlayerAvatar: Equatable, Sendable {
+    public var equipped: UInt64
+    public var inventory: [UInt32]
+
+    public init(equipped: UInt64, inventory: [UInt32]) {
+        self.equipped = equipped
+        self.inventory = inventory
+    }
 }
