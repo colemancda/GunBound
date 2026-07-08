@@ -63,6 +63,18 @@ public extension ServerDirectoryResponse {
             self.capacity = capacity
             self.isEnabled = isEnabled
         }
+
+        /// Whether the server has no free slots (`currentPlayers >=
+        /// maxCapacity`). The decompiled connect handlers
+        /// (`FUN_004e1170`/`FUN_004e1430`) refuse to connect to a full
+        /// server, comparing `currentPlayers < maxCapacity` for "has room";
+        /// `utilization`/`capacity` are those two fields.
+        public var isFull: Bool { utilization >= capacity }
+
+        /// Whether this server can actually be connected to right now — the
+        /// online-and-not-full check the client's connect path performs
+        /// before opening a socket.
+        public var isJoinable: Bool { isEnabled && !isFull }
     }
 }
 
