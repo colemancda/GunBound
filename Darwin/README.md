@@ -26,13 +26,13 @@ App Playground that also runs in Swift Playgrounds on iPad — see its README).
 
 ## Assets
 
-- **macOS** reads `~/Developer/GunBound-Decomp/orig` directly (same default as
-  `GunBoundSDL3`), falling back to bundled resources if present. Nothing to
-  copy for local dev.
-- **tvOS** has no filesystem to read from, so its target bundles the
-  Playground's `AppModule/Resources` folder (a folder reference). That folder
-  is gitignored — run `../Playgrounds/copy-dependencies.sh` **before building
-  the tvOS target** or the resource-copy phase will fail.
+Both targets bundle the Playground's `AppModule/Resources` folder (a folder
+reference) into the app, so the built `.app` is self-contained on macOS and
+tvOS alike. That folder is gitignored — run
+`../Playgrounds/copy-dependencies.sh` **before building** or the
+resource-copy phase will fail. On macOS, if the bundle copy is somehow absent
+at runtime, the app additionally falls back to reading
+`~/Developer/GunBound-Decomp/orig` directly (same default as `GunBoundSDL3`).
 
 ## Server configuration
 

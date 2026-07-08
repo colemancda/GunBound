@@ -8,11 +8,11 @@ import GunBound
 /// and the iOS Playground's `LoginView` asset check.
 enum DarwinShell {
 
-    /// Where the game archives live. Checks the app bundle first (the tvOS
-    /// target copies the Playground's `AppModule/Resources` folder in, so the
+    /// Where the game archives live. Checks the app bundle first (both
+    /// targets copy the Playground's `AppModule/Resources` folder in, so the
     /// same layouts `LoginView` handles apply), then — macOS only, where
     /// there's a real filesystem to read — the decomp checkout path
-    /// `GunBoundSDL3` also defaults to.
+    /// `GunBoundSDL3` also defaults to, as a fallback.
     static func locateAssetsDirectory() -> URL? {
         var candidates: [URL] = []
         if let resourceURL = Bundle.main.resourceURL {
