@@ -13,6 +13,7 @@ public final class ClientContext: ViewModelDelegate {
     public let renderer: ClientRenderer
     public let network: NetworkConfig
     public var client: NetworkClient<GunBoundSocketIPv4TCP>?
+    public let session = ClientSession()
 
     /// Set by `requestQuit()` (e.g. the Server Select screen's "Exit"
     /// button) — the host app's main loop polls this each frame and stops

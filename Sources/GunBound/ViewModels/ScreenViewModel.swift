@@ -23,6 +23,11 @@ public protocol ScreenViewModel: AnyObject {
 public protocol ViewModelDelegate: AnyObject {
     var network: NetworkConfig { get }
     var client: NetworkClient<GunBoundSocketIPv4TCP>? { get set }
+
+    /// Session state shared across screens (channel, current room + roster,
+    /// inventory) — how one screen hands data to the next.
+    var session: ClientSession { get }
+
     func requestTransition(to mode: ClientMode)
 
     /// Requests that the app quit — e.g. the Server Select screen's "Exit"
