@@ -2,15 +2,24 @@ import GunBound
 
 /// View for Server / Channel select (state 2) — all connect/login logic
 /// lives in `ServerSelectViewModel`; this loads/draws
-/// `server_back.img`/`server_list.img`/`b_server_choiceserver.img`/
-/// `waitmessage.img` and pushes the button's hit-testing rect (computed from
-/// the loaded texture's size) into the view model.
+/// `server_back.img`/`server_list.img`/the three confirmed button
+/// images/`waitmessage.img`. Button rects come straight from the view
+/// model (confirmed decomp positions, not computed here).
+///
+/// `panelRect` is (0,0) — visually confirmed, not decomp-confirmed:
+/// `server_back.img` already contains a full "WORLD LIST" panel baked in
+/// (empty/placeholder-character-art state, at the screen's top-left), and
+/// `server_list.img` is a second, same-sized (546x530) rendering of that
+/// *same* panel in its populated-with-servers state. They're two states of
+/// one panel meant to overlay exactly, not a background+separately-placed
+/// overlay — drawing `server_list.img` anywhere but (0,0) misaligns it
+/// against `server_back.img`'s own panel border/scrollbar.
 @MainActor
 public final class ServerSelectScreen: GameScreen {
     private let viewModel: ServerSelectViewModel
     private var backgroundTexture: ClientTexture?
     private var panelTexture: ClientTexture?
-    private var buttonTexture: ClientTexture?
+    private var buttonTextures: [ClientTexture?] = []
     private var waitTexture: ClientTexture?
     private var audio: ClientAudioPlayer?
 
@@ -28,10 +37,10 @@ public final class ServerSelectScreen: GameScreen {
         }
 
         panelTexture = context.renderer.texture(named: viewModel.panelImageName, assets: context.assets)
+        let (panelWidth, panelHeight) = context.renderer.size(of: panelTexture)
+        viewModel.panelRect = Rect(x: 0, y: 0, width: panelWidth, height: panelHeight)
 
-        buttonTexture = context.renderer.texture(named: viewModel.buttonImageName, assets: context.assets)
-        let (buttonWidth, buttonHeight) = context.renderer.size(of: buttonTexture)
-        viewModel.buttonRect = Rect(x: 20, y: 600 - buttonHeight - 20, width: buttonWidth, height: buttonHeight)
+        buttonTextures = viewModel.buttons.map { context.renderer.texture(named: $0.name, assets: context.assets) }
 
         waitTexture = context.renderer.texture(named: viewModel.waitImageName, assets: context.assets)
     }
@@ -40,7 +49,7 @@ public final class ServerSelectScreen: GameScreen {
         viewModel.onExit()
         backgroundTexture = nil
         panelTexture = nil
-        buttonTexture = nil
+        buttonTextures = []
         waitTexture = nil
         audio?.stop()
         audio = nil
@@ -58,9 +67,13 @@ public final class ServerSelectScreen: GameScreen {
     public func render(_ renderer: ClientRenderer) throws {
         renderer.clear()
         drawFullSize(backgroundTexture, using: renderer)
-        drawFullSize(panelTexture, using: renderer)
-        if let buttonTexture {
-            renderer.draw(buttonTexture, in: viewModel.buttonRect, tint: nil)
+        if let panelTexture {
+            renderer.draw(panelTexture, in: viewModel.panelRect, tint: nil)
+        }
+        for (index, button) in viewModel.buttons.enumerated() {
+            guard let texture = buttonTextures[index] else { continue }
+            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
+            renderer.draw(texture, in: button.rect, tint: tint)
         }
         if viewModel.isConnecting, let waitTexture {
             let (width, height) = renderer.size(of: waitTexture)
