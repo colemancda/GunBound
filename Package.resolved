@@ -1,5 +1,5 @@
 {
-  "originHash" : "b6b5f628489c8868ade5f8b5c52a9ffc2191f12dc3a87e16f97e7131ff037472",
+  "originHash" : "e70d4a38c4d3a7f26229c513a975ed5fe00ffbd7ed35685214842a019a9a5e8f",
   "pins" : [
     {
       "identity" : "cryptoswift",
@@ -25,7 +25,7 @@
       "location" : "https://github.com/PureSwift/Socket",
       "state" : {
         "branch" : "main",
-        "revision" : "489e63b9cf0998f820f9f994f25cd5cb5f602404"
+        "revision" : "579c0fc29cf2dc9f227f89403fb44d4726a4af44"
       }
     },
     {
@@ -58,10 +58,10 @@
     {
       "identity" : "swift-system",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/PureSwift/swift-system",
+      "location" : "https://github.com/apple/swift-system",
       "state" : {
-        "branch" : "feature/dynamic-lib",
-        "revision" : "bd3d1f6321a489ee443860ebe0f26ff689c938ad"
+        "revision" : "b5544ba79a70a0cb3563e75bf26dc198d6b40ed3",
+        "version" : "1.7.4"
       }
     }
   ],
