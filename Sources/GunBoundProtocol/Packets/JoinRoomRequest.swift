@@ -21,7 +21,15 @@ public struct JoinRoomRequest: GunBoundPacket, GunBoundPacketDecodable, GunBound
     /// The ID of the room to join
     public var room: RoomID
 
-    /// Room password (empty string for public rooms)
+    /// Room password (empty for public rooms).
+    ///
+    /// The decompiled client (`docs/screens/03_game_room_list.md`) confirms
+    /// `0x2110` is a fixed 8-byte packet — `[u16 opcode][u16 roomNumber]
+    /// [u32 payload]` — where this trailing field is a **fixed 4-byte value**,
+    /// not a variable-length name (correcting an earlier misread). Our
+    /// `RoomPassword` is exactly that fixed 4 bytes, so the wire format
+    /// matches; the field's real meaning is unconfirmed in the decomp (we use
+    /// it as the room password).
     public var password: RoomPassword
 
     public init(
