@@ -104,6 +104,25 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         return response
     }
 
+    /// Confirm-connect step (State 2 → State 3 in the decompiled client):
+    /// after authenticating, the client joins a channel and waits for the
+    /// server's acknowledgement (opcode `0x2001`, `JoinChannelResponse`).
+    /// The decompiled `State02_ServerSelect_ProcessPacket` treats a
+    /// zero-status `0x2001` as "connection accepted" and transitions into
+    /// that server's Game Room List — this returns the same response so the
+    /// caller can check `isSuccess` before doing the equivalent transition,
+    /// and hands back the initial channel roster the response carries.
+    ///
+    /// `channel` defaults to `0xFFFF`, the "auto-join the default channel"
+    /// sentinel the real client sends when the player hasn't picked a
+    /// specific channel (there's no channel-picker UI in this build, same as
+    /// there's no server-row picker — see the server-list decomp notes).
+    /// `joinChannelRequest`/`Response` aren't opcode-encrypted, so this
+    /// needs no session key.
+    public func joinChannel(_ channel: ChannelID = 0xFFFF) async throws -> JoinChannelResponse {
+        try await request(JoinChannelRequest(channel: channel), response: JoinChannelResponse.self)
+    }
+
     /// Sends `requestValue` and decodes the next packet read off the socket
     /// as `Response`. No request/response ID matching or queueing (unlike
     /// `Connection`) — fine for the strictly-sequential login handshake this
