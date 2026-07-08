@@ -6,14 +6,16 @@ import GunBound
 /// images/`waitmessage.img`. Button rects come straight from the view
 /// model (confirmed decomp positions, not computed here).
 ///
-/// `panelRect` is (0,0) — visually confirmed, not decomp-confirmed:
-/// `server_back.img` already contains a full "WORLD LIST" panel baked in
-/// (empty/placeholder-character-art state, at the screen's top-left), and
+/// `panelRect`'s origin, (11,13), is visually confirmed (not
+/// decomp-confirmed): `server_back.img` already contains a full "WORLD
+/// LIST" panel baked in (empty/placeholder-character-art state), and
 /// `server_list.img` is a second, same-sized (546x530) rendering of that
-/// *same* panel in its populated-with-servers state. They're two states of
-/// one panel meant to overlay exactly, not a background+separately-placed
-/// overlay — drawing `server_list.img` anywhere but (0,0) misaligns it
-/// against `server_back.img`'s own panel border/scrollbar.
+/// *same* panel in its populated-with-servers state — two states of one
+/// panel meant to overlay exactly. (11,13) was found by comparing the two
+/// extracted PNGs' border-region pixels (excluding the differing interior
+/// artwork) across candidate offsets and taking the minimum pixel
+/// difference — a clean, isolated best match (~34 avg channel diff vs. the
+/// next-closest candidate's ~53), not just eyeballed.
 @MainActor
 public final class ServerSelectScreen: GameScreen {
     private let viewModel: ServerSelectViewModel
@@ -38,7 +40,7 @@ public final class ServerSelectScreen: GameScreen {
 
         panelTexture = context.renderer.texture(named: viewModel.panelImageName, assets: context.assets)
         let (panelWidth, panelHeight) = context.renderer.size(of: panelTexture)
-        viewModel.panelRect = Rect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+        viewModel.panelRect = Rect(x: 11, y: 13, width: panelWidth, height: panelHeight)
 
         buttonTextures = viewModel.buttons.map { context.renderer.texture(named: $0.name, assets: context.assets) }
 
