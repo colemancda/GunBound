@@ -63,13 +63,16 @@ public final class AssetLibrary {
         return try XFSArchive.readEntryData(archive.data, entry: entry)
     }
 
-    /// Decodes every frame of a named `.img` entry from `graphics.xfs`.
+    /// Decodes every frame of a named entry from `graphics.xfs`. Regular
+    /// `.img` sprites decode via `ImgFile`; the `font.fnt` bitmap font decodes
+    /// via `FntFile` into one frame per ASCII code (frame index == char code),
+    /// so font glyphs flow through the same texture pipeline as any sprite.
     public func image(named name: String) throws -> [ImgFile.Frame] {
         if let cached = imageCache[name] {
             return cached
         }
         let decoded = try entryData(name, in: "graphics.xfs")
-        let frames = try ImgFile.readFrames(decoded)
+        let frames = name.hasSuffix(".fnt") ? FntFile.readASCIIGlyphs(decoded) : try ImgFile.readFrames(decoded)
         imageCache[name] = frames
         return frames
     }
