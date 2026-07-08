@@ -27,7 +27,13 @@ let embeddedSwiftSettings: [SwiftSetting] =
 let package = Package(
     name: "GunBound",
     platforms: [
-        .macOS(embedded ? "14.0" : "13.0")
+        .macOS(embedded ? "14.0" : "13.0"),
+        // Lets the GunBoundSpriteKit app playground (Playgrounds/) depend on
+        // GunBound/GunBoundProtocol/GunBoundFile/GunBoundClient as a local
+        // package — none of those targets use anything iOS can't build;
+        // only GunBoundServer/GunBoundSDL3 (ArgumentParser CLI, SDL3) are
+        // meaningless on iOS and simply aren't part of an iOS build request.
+        .iOS("17.0")
     ],
     products: [
         .executable(
