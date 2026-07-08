@@ -15,24 +15,38 @@ struct GunBoundClient: ParsableCommand {
 
     static let configuration = CommandConfiguration(
         commandName: "GunBoundClient",
-        abstract: "Native SDL3 GunBound client (GUI shell + asset loading; no game session yet)."
+        abstract: "Native SDL3 GunBound client"
     )
 
     @Option(help: "Directory containing graphics.xfs, sound.xfs, avatar.xfs, and the .dat game-data files.")
-    var assetsPath: String = ("~/Developer/GunBound-Decomp/orig" as NSString).expandingTildeInPath
+    var assetsPath: String?
 
     @Flag(help: "Run in fullscreen instead of a window.")
     var fullscreen: Bool = false
 
+    @Option(help: "Username to log in with. (Will move to a settings file in the future.)")
+    var username: String = "admin"
+
+    @Option(help: "Password to log in with. (Will move to a settings file in the future.)")
+    var password: String = "admin"
+
+    @Option(help: "GunBound world server address to connect to.")
+    var server: String = "127.0.0.1"
+
+    @Option(help: "GunBound world server port to connect to.")
+    var port: UInt16 = 8370
+
     mutating func run() throws {
+        let assetsPath = assetsPath ?? FileManager.default.currentDirectoryPath
+        let network = NetworkConfig(username: username, password: password, serverAddress: server, serverPort: port)
         try MainActor.assumeIsolated {
-            try runClient(assetsDirectory: URL(fileURLWithPath: assetsPath, isDirectory: true), fullscreen: fullscreen)
+            try runClient(assetsDirectory: URL(fileURLWithPath: assetsPath, isDirectory: true), fullscreen: fullscreen, network: network)
         }
     }
 }
 
 @MainActor
-func runClient(assetsDirectory: URL, fullscreen: Bool) throws {
+func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) throws {
     try SDL.initialize(subSystems: [.video, .audio, .events])
     defer { SDL.quit() }
     try SDL.initializeMixer()
@@ -51,7 +65,7 @@ func runClient(assetsDirectory: URL, fullscreen: Bool) throws {
 
     let mixer = try SDLMixer()
     let assets = AssetLibrary(directory: assetsDirectory)
-    let context = ScreenContext(assets: assets, renderer: renderer, mixer: mixer)
+    let context = ScreenContext(assets: assets, renderer: renderer, mixer: mixer, network: network)
 
     let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { mode in
         switch mode {
@@ -65,6 +79,14 @@ func runClient(assetsDirectory: URL, fullscreen: Bool) throws {
             return ServerSelectScreen()
         case .gameRoomList:
             return GameRoomListScreen()
+        case .readyRoom:
+            return ReadyRoomScreen()
+        case .avatarShop:
+            return AvatarShopScreen()
+        case .loading:
+            return LoadingScreen()
+        case .inGameSession:
+            return InBattleScreen()
         default:
             return nil
         }
