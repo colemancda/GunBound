@@ -35,8 +35,8 @@ let package = Package(
             targets: ["GunBoundServer"]
         ),
         .executable(
-            name: "GunBoundClient",
-            targets: ["GunBoundClient"]
+            name: "GunBoundSDL3",
+            targets: ["GunBoundSDL3"]
         ),
         .library(
             name: "GunBound",
@@ -49,6 +49,10 @@ let package = Package(
         .library(
             name: "GunBoundFile",
             targets: ["GunBoundFile"]
+        ),
+        .library(
+            name: "GunBoundClient",
+            targets: ["GunBoundClient"]
         )
     ],
     dependencies: [
@@ -120,12 +124,22 @@ let package = Package(
             ],
             swiftSettings: swiftSettings
         ),
-        .executableTarget(
+        .target(
             name: "GunBoundClient",
             dependencies: [
                 "GunBound",
                 "GunBoundProtocol",
+                "GunBoundFile"
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "GunBoundSDL3",
+            dependencies: [
+                "GunBound",
+                "GunBoundProtocol",
                 "GunBoundFile",
+                "GunBoundClient",
                 .product(name: "SDL3Swift", package: "SDL"),
                 .product(name: "SDL3Mixer", package: "SDL"),
                 .product(
