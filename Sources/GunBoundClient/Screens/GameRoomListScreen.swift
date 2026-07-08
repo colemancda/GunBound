@@ -21,6 +21,7 @@ public final class GameRoomListScreen: GameScreen {
     private var cardHighlightTexture: ClientTexture?
     private var statusTextures: [GameRoomListViewModel.RoomStatus: ClientTexture] = [:]
     private var font: LoadedFont?
+    private var textFont: LoadedFont?
 
     public init(viewModel: GameRoomListViewModel) {
         self.viewModel = viewModel
@@ -42,6 +43,7 @@ public final class GameRoomListScreen: GameScreen {
         }
 
         font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
+        textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         var x: Float = 20
         let y: Float = 540
@@ -63,6 +65,7 @@ public final class GameRoomListScreen: GameScreen {
         cardHighlightTexture = nil
         statusTextures = [:]
         font = nil
+        textFont = nil
     }
 
     public func handleInput(_ event: ScreenInputEvent) {
@@ -101,7 +104,10 @@ public final class GameRoomListScreen: GameScreen {
             // (bottom-left) — the decomp's `%d` and `%3d/%3d` overlays. Room
             // *name* needs the general `font.fnt`, not decoded yet.
             if let font {
-                font.draw("\(index + 1)", x: rect.x + 8, y: rect.y + 6, using: renderer)
+                let numberText = "\(index + 1)"
+                font.draw(numberText, x: rect.x + 8, y: rect.y + 6, using: renderer)
+                // Room name (Latin bitmap font) to the right of the number.
+                textFont?.draw(room.name, x: rect.x + 8 + font.width(of: numberText) + 8, y: rect.y + 6, using: renderer)
                 font.draw("\(room.playerCount)/\(room.capacity.rawValue)", x: rect.x + 8, y: rect.y + rect.height - font.lineHeight - 6, using: renderer)
             }
         }
