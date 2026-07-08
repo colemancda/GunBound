@@ -12,6 +12,14 @@ import GunBound
 import GunBoundClient
 
 #Preview("Avatar Shop") {
+    avatarShopScreenPreview()
+}
+
+/// Preview body lives in a plain function (not the #Preview closure)
+/// because tvOS's #Preview expands to a ViewBuilder closure that
+/// rejects the explicit `return` this setup needs.
+@MainActor
+private func avatarShopScreenPreview() -> some View {
     let delegate = ScreenPreviewDelegate()
     // This build's archives ship no per-item NNNNN.img sprites (stripped
     // private-server build), so the grid draws each item's ID in the bitmap

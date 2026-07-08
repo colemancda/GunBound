@@ -1,10 +1,11 @@
 #if os(macOS)
 import Cocoa
-import SpriteKit
+import SwiftUI
 
-/// macOS-only: creates the window/`SKView`/`GameScene`. See
-/// `AppDelegate_tvOS.swift` + `GameViewController.swift` for the UIKit
-/// equivalent.
+/// macOS-only: creates the window and hosts the shared SwiftUI `LoginView`
+/// (username/password/server IP → asset check → `GameSceneView`), the same
+/// entry flow as the iOS Playground. See `AppDelegate_tvOS.swift` for the
+/// UIKit equivalent.
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
@@ -13,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `static func main()` (which just calls the classic `NSApplicationMain`
     /// C entry point) — that default relies on a storyboard/nib to
     /// instantiate the delegate and assign it to `NSApp.delegate`, and this
-    /// project has neither (pure-code SpriteKit app). Without this override
+    /// project has neither (pure-code app). Without this override
     /// `NSApp.delegate` stays `nil`, `applicationDidFinishLaunching` never
     /// runs, and the app sits in its event loop with zero windows — the same
     /// pitfall junkbot-swift's Darwin port documents from lldb.
@@ -40,19 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // windows don't deliver by default.
         window.acceptsMouseMovedEvents = true
 
-        let view = SKView(frame: contentRect)
-        view.autoresizingMask = [.width, .height]
-        window.contentView = view
-
-        guard let scene = DarwinShell.makeScene() else {
-            let alert = NSAlert()
-            alert.messageText = "Couldn't load game assets"
-            alert.informativeText = "graphics.xfs wasn't found. Place the original archives at ~/Developer/GunBound-Decomp/orig (or bundle them by running Darwin/copy-dependencies.sh before building)."
-            alert.runModal()
-            NSApp.terminate(nil)
-            return
-        }
-        view.presentScene(scene)
+        window.contentView = NSHostingView(rootView: LoginView())
 
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

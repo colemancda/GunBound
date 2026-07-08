@@ -94,6 +94,14 @@ private final class PreviewDelegate: ViewModelDelegate {
 }
 
 #Preview {
+    logoScreenPreview()
+}
+
+/// Preview body lives in a plain function (not the #Preview closure)
+/// because tvOS's #Preview expands to a ViewBuilder closure that
+/// rejects the explicit `return` this setup needs.
+@MainActor
+private func logoScreenPreview() -> some View {
     let delegate = PreviewDelegate()
     let viewModel = LogoViewModel(
         imageName: "logomode.img",

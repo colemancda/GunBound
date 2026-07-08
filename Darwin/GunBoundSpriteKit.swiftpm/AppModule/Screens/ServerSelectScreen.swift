@@ -13,7 +13,23 @@ import GunBound
 import GunBoundClient
 
 #Preview("Server Select") {
+    serverSelectScreenPreview()
+}
+
+/// Preview body lives in a plain function (not the #Preview closure)
+/// because tvOS's #Preview expands to a ViewBuilder closure that
+/// rejects the explicit `return` this setup needs.
+@MainActor
+private func serverSelectScreenPreview() -> some View {
     let delegate = ScreenPreviewDelegate()
-    return ScreenPreviewView(screen: ServerSelectScreen(viewModel: ServerSelectViewModel(delegate: delegate)))
+    let viewModel = ServerSelectViewModel(delegate: delegate)
+    // Flip to the "connecting" wait state a moment after the screen enters
+    // (onEnter resets the flag), so the preview also shows the
+    // waitmessage.img overlay.
+    Task { @MainActor in
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        viewModel.isConnecting = true
+    }
+    return ScreenPreviewView(screen: ServerSelectScreen(viewModel: viewModel))
         .frame(width: 800, height: 600)
 }

@@ -1,9 +1,11 @@
 #if os(tvOS)
 import UIKit
+import SwiftUI
 
-/// tvOS-only: sets `GameViewController` as the window's root view controller
+/// tvOS-only: hosts the shared SwiftUI `LoginView` (username/password/server
+/// IP → asset check → `GameSceneView`) as the window's root view controller
 /// directly (no storyboard) — the UIKit counterpart of
-/// `AppDelegate_macOS.swift`.
+/// `AppDelegate_macOS.swift`, with the same entry flow as the iOS Playground.
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -13,7 +15,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         let window = UIWindow(frame: UIScreen.main.bounds)
-        window.rootViewController = GameViewController()
+        window.rootViewController = UIHostingController(rootView: LoginView())
         window.makeKeyAndVisible()
         self.window = window
         return true

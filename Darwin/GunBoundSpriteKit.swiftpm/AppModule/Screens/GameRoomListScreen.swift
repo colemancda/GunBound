@@ -13,6 +13,14 @@ import GunBoundProtocol
 import GunBoundClient
 
 #Preview("Game Room List") {
+    gameRoomListScreenPreview()
+}
+
+/// Preview body lives in a plain function (not the #Preview closure)
+/// because tvOS's #Preview expands to a ViewBuilder closure that
+/// rejects the explicit `return` this setup needs.
+@MainActor
+private func gameRoomListScreenPreview() -> some View {
     let delegate = ScreenPreviewDelegate()
     let viewModel = GameRoomListViewModel(delegate: delegate)
     viewModel.rooms = [

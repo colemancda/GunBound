@@ -31,7 +31,9 @@ struct LoginView: View {
                     )
                 )
                 .ignoresSafeArea()
+#if os(iOS)
                 .statusBarHidden()
+#endif
             } else {
                 form
             }
@@ -51,13 +53,17 @@ struct LoginView: View {
         Form {
             Section("Login") {
                 TextField("Username", text: $username)
-                    .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+#if !os(macOS)
+                    .textInputAutocapitalization(.never)
+#endif
                 SecureField("Password", text: $password)
                 TextField("Server IP", text: $serverIP)
-                    .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+#if !os(macOS)
+                    .textInputAutocapitalization(.never)
                     .keyboardType(.numbersAndPunctuation)
+#endif
             }
             Section {
                 Button("Play") { play() }
@@ -91,12 +97,21 @@ struct LoginView: View {
         guard let resourceURL = Bundle.main.resourceURL else {
             throw AssetsError.missingBundleResourceURL
         }
-        let candidates = [
+        var candidates = [
             resourceURL.appendingPathComponent("Resources", isDirectory: true),
             resourceURL,
             resourceURL.appendingPathComponent("Resources/orig", isDirectory: true),
             resourceURL.appendingPathComponent("orig", isDirectory: true)
         ]
+        #if os(macOS)
+        // macOS has a real filesystem to read — fall back to the decomp
+        // checkout path GunBoundSDL3 also defaults to, for running without
+        // bundled assets.
+        candidates.append(
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Developer/GunBound-Decomp/orig", isDirectory: true)
+        )
+        #endif
         for candidate in candidates {
             if FileManager.default.fileExists(atPath: candidate.appendingPathComponent("graphics.xfs").path) {
                 return candidate

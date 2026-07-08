@@ -9,17 +9,18 @@ that also runs in Swift Playgrounds on iPad — see its README).
 
 - **Shared with the iOS Playground** (file references pointing directly at
   `GunBoundSpriteKit.swiftpm/AppModule/*.swift`):
-  `SpriteKitRenderer.swift`, `SpriteKitAudioPlayer.swift`, and
-  `GameScene.swift` (which carries both the UIKit touch handlers and the
-  `#if os(macOS)` mouse handlers). The SwiftUI pieces (`LoginView.swift`,
-  `GunBoundSpriteKitApp.swift`) are **not** shared — they're iOS-flavored
-  SwiftUI; the Darwin targets use pure-code app delegates instead.
-- **Darwin-only** (`Sources/GunBoundDarwin/`): `DarwinShell.swift` (asset
-  location + `UserDefaults`-backed network config, same `login.*` keys the
-  Playground's `LoginView` persists), `AppDelegate_macOS.swift` (pure-code
-  AppKit window/`SKView`, including the `static func main()` override a
-  storyboard-less `NSApplicationDelegate` needs), `AppDelegate_tvOS.swift` +
-  `GameViewController.swift` (the UIKit equivalent).
+  `SpriteKitRenderer.swift`, `SpriteKitAudioPlayer.swift`, `GameScene.swift`
+  (which carries both the UIKit touch handlers and the `#if os(macOS)` mouse
+  handlers), **`LoginView.swift` + `GameSceneView.swift`** (the SwiftUI entry
+  flow — username/password/server IP, asset check, then the game scene; the
+  iOS-only modifiers are platform-guarded), and the `Screens/` preview files.
+  Only the Playground's `@main` `GunBoundSpriteKitApp.swift` is not shared —
+  each Darwin target has its own app delegate instead.
+- **Darwin-only** (`Sources/GunBoundDarwin/`): `AppDelegate_macOS.swift`
+  (pure-code AppKit window hosting `LoginView` via `NSHostingView`, including
+  the `static func main()` override a storyboard-less
+  `NSApplicationDelegate` needs) and `AppDelegate_tvOS.swift` (the UIKit
+  equivalent, via `UIHostingController`).
 - The project consumes `GunBound`/`GunBoundProtocol`/`GunBoundFile`/
   `GunBoundClient` via a **local Swift Package reference to the repo root** —
   no vendoring; edits to `Sources/` show up immediately.
