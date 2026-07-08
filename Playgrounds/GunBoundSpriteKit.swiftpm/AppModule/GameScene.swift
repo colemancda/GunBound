@@ -23,10 +23,20 @@ final class GameScene: SKScene {
 
         let renderer = SpriteKitRenderer(scene: self)
 
-        // Same Mac filesystem path GunBoundSDL3 defaults to — only resolves
-        // when run in the iOS Simulator on this Mac (a real device has no
-        // such path; see this Playground's README).
-        let assetsDirectory = URL(fileURLWithPath: "/Users/coleman/Developer/GunBound-Decomp/orig", isDirectory: true)
+        // The Simulator/device sandbox can't reach an arbitrary Mac
+        // filesystem path, so the archives are copied into
+        // `AppModule/Resources/orig` (gitignored — see this Playground's
+        // README) and bundled as an app resource instead.
+        guard let resourceURL = Bundle.main.resourceURL else {
+            fatalError("Missing app bundle resource URL")
+        }
+        // Xcode may bundle the `Resources` folder reference either flattened
+        // into the bundle root or preserved as a `Resources/` subfolder,
+        // depending on how it regenerates this Playground's project — check
+        // both rather than assume one.
+        let nestedURL = resourceURL.appendingPathComponent("Resources/orig", isDirectory: true)
+        let flatURL = resourceURL.appendingPathComponent("orig", isDirectory: true)
+        let assetsDirectory = FileManager.default.fileExists(atPath: nestedURL.path) ? nestedURL : flatURL
         let assets = AssetLibrary(directory: assetsDirectory)
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let context = ClientContext(assets: assets, renderer: renderer, network: network) {
