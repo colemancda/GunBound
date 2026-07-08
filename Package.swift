@@ -34,6 +34,10 @@ let package = Package(
             name: "GunBoundServer",
             targets: ["GunBoundServer"]
         ),
+        .executable(
+            name: "GunBoundClient",
+            targets: ["GunBoundClient"]
+        ),
         .library(
             name: "GunBound",
             targets: ["GunBound"]
@@ -64,6 +68,10 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-binary-parsing",
             .upToNextMinor(from: "0.0.2")
+        ),
+        .package(
+            url: "https://github.com/PureSwift/SDL",
+            .upToNextMajor(from: "3.1.0")
         )
     ],
     targets: [
@@ -105,6 +113,21 @@ let package = Package(
             dependencies: [
                 "GunBound",
                 "GunBoundProtocol",
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "GunBoundClient",
+            dependencies: [
+                "GunBound",
+                "GunBoundProtocol",
+                "GunBoundFile",
+                .product(name: "SDL3Swift", package: "SDL"),
+                .product(name: "SDL3Mixer", package: "SDL"),
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
