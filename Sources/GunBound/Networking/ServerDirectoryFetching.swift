@@ -9,7 +9,7 @@ public protocol ServerDirectoryFetching: Sendable {
 
 /// Default production implementation — opens a real TCP connection via
 /// `NetworkClient<GunBoundSocketIPv4TCP>`.
-public struct LiveServerDirectoryFetcher: ServerDirectoryFetching {
+public struct IPv4ServerDirectoryFetcher: ServerDirectoryFetching {
     public init() {}
 
     public func fetchServerDirectory(address: String, brokerPort: UInt16) async throws -> [ServerDirectoryResponse.Server] {
