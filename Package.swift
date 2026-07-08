@@ -28,12 +28,14 @@ let package = Package(
     name: "GunBound",
     platforms: [
         .macOS(embedded ? "14.0" : "13.0"),
-        // Lets the GunBoundSpriteKit app playground (Playgrounds/) depend on
+        // Lets the GunBoundSpriteKit app playground (Playgrounds/) and the
+        // Darwin Xcode project (Darwin/, macOS + tvOS app targets) depend on
         // GunBound/GunBoundProtocol/GunBoundFile/GunBoundClient as a local
-        // package — none of those targets use anything iOS can't build;
+        // package — none of those targets use anything iOS/tvOS can't build;
         // only GunBoundServer/GunBoundSDL3 (ArgumentParser CLI, SDL3) are
-        // meaningless on iOS and simply aren't part of an iOS build request.
-        .iOS("17.0")
+        // meaningless there and simply aren't part of those build requests.
+        .iOS("17.0"),
+        .tvOS("17.0")
     ],
     products: [
         .executable(
