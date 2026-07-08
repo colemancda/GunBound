@@ -1,25 +1,30 @@
 import SwiftUI
 import SpriteKit
+import GunBound
 
 @main
 struct GunBoundSpriteKitApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            LoginView()
         }
     }
 }
 
-struct ContentView: View {
-    private let scene: GameScene = {
+/// Hosts `GameScene` once `LoginView` has confirmed the assets directory
+/// exists and decodes real data.
+struct GameSceneView: View {
+    private let scene: GameScene
+
+    init(assetsDirectory: URL, network: NetworkConfig) {
         let scene = GameScene()
         scene.scaleMode = .aspectFit
-        return scene
-    }()
+        scene.assetsDirectory = assetsDirectory
+        scene.network = network
+        self.scene = scene
+    }
 
     var body: some View {
         SpriteView(scene: scene)
-            .ignoresSafeArea()
-            .statusBarHidden()
     }
 }
