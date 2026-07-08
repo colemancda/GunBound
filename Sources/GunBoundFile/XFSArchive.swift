@@ -264,6 +264,29 @@ public enum XFSArchive {
         }
     }
 
+    /// Every per-entry `EntryBlock` only ever expands to at most this many
+    /// decompressed bytes (matching the LZSS ring-buffer size, `LZHUF.N`).
+    /// Entries whose `decompressedSize` exceeds this are stored as a
+    /// **sequence of consecutive `EntryBlock`s** — the same chunking shape
+    /// the table-of-contents itself uses — each decoded independently
+    /// (fresh Huffman tree/ring buffer per chunk) and concatenated, not as
+    /// one monolithic LZHUF stream.
+    ///
+    /// Confirmed empirically decoding `titlemode.img` (`graphics.xfs`,
+    /// 800x600, 960,048-byte decompressed size): treating its `EntryBlock`
+    /// as a single block only recovers the first 4096 output bytes
+    /// correctly (exactly this boundary) before the Huffman decoder runs
+    /// out of real compressed input and free-runs on implicit zero bits,
+    /// producing plausible-looking but wrong static for the remainder.
+    /// Reading it as consecutive 4096-byte chunks instead recovers the
+    /// real image byte-for-byte, and the chunk stream's total on-disk
+    /// length matches the table-of-contents entry's own `compressedSize`
+    /// field exactly. Every previously "verified" `.img` example
+    /// (`avataimsi.img`, `bullet1n.img`, `tank1.img` frame 0, `presentmode.img`)
+    /// happens to decompress to under 4096 bytes, which is why this only
+    /// surfaced on full-screen-sized assets.
+    static let maxChunkDecodedSize = 4096
+
     /// Reads and decompresses (if needed) a single entry's data.
     public static func readEntryData(_ data: [UInt8], entry: Entry) throws -> [UInt8] {
         try data.withParserSpan { input in
@@ -274,13 +297,20 @@ public enum XFSArchive {
     /// Reads and decompresses (if needed) a single entry's data from a
     /// `ParserSpan` covering the whole archive file.
     public static func readEntryData(parsing input: inout ParserSpan, entry: Entry) throws -> [UInt8] {
-        if entry.isCompressed {
-            var entrySpan = try input.seeking(toAbsoluteOffset: entry.fileOffset)
-            let block = try readEntryBlock(parsing: &entrySpan)
-            return decompressEntry(block, decodedSize: Int(entry.decompressedSize))
-        } else {
+        guard entry.isCompressed else {
             var entrySpan = try input.seeking(toAbsoluteOffset: entry.fileOffset)
             return try [UInt8](parsing: &entrySpan, byteCount: Int(entry.decompressedSize))
         }
+        var entrySpan = try input.seeking(toAbsoluteOffset: entry.fileOffset)
+        var output = [UInt8]()
+        output.reserveCapacity(Int(entry.decompressedSize))
+        var remaining = Int(entry.decompressedSize)
+        while remaining > 0 {
+            let block = try readEntryBlock(parsing: &entrySpan)
+            let wantedSize = min(maxChunkDecodedSize, remaining)
+            output.append(contentsOf: LZHUF.decompress(block.compressedData, decodedSize: wantedSize))
+            remaining -= wantedSize
+        }
+        return output
     }
 }
