@@ -7,6 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D00000000000000000000211 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
+		D00000000000000000000212 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
+		D00000000000000000000213 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
+		D00000000000000000000214 /* ServerSelectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000114 /* ServerSelectScreen.swift */; };
+		D00000000000000000000215 /* GameRoomListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000115 /* GameRoomListScreen.swift */; };
+		D00000000000000000000216 /* ReadyRoomScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000116 /* ReadyRoomScreen.swift */; };
+		D00000000000000000000217 /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
+		D00000000000000000000218 /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
+		D00000000000000000000219 /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
+		D00000000000000000000311 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
+		D00000000000000000000312 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
+		D00000000000000000000313 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
+		D00000000000000000000314 /* ServerSelectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000114 /* ServerSelectScreen.swift */; };
+		D00000000000000000000315 /* GameRoomListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000115 /* GameRoomListScreen.swift */; };
+		D00000000000000000000316 /* ReadyRoomScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000116 /* ReadyRoomScreen.swift */; };
+		D00000000000000000000317 /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
+		D00000000000000000000318 /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
+		D00000000000000000000319 /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
 		D00000000000000000000201 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
 		D00000000000000000000202 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
 		D00000000000000000000203 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
@@ -40,6 +58,15 @@
 		D00000000000000000000107 /* GameViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
 		D00000000000000000000108 /* GunBound-macOS-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GunBound-macOS-Info.plist"; sourceTree = "<group>"; };
 		D00000000000000000000109 /* Resources */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Resources; path = GunBoundSpriteKit.swiftpm/AppModule/Resources; sourceTree = "<group>"; };
+		D00000000000000000000111 /* ScreenPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenPreview.swift; sourceTree = "<group>"; };
+		D00000000000000000000112 /* LogoScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogoScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000113 /* TitleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TitleScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000114 /* ServerSelectScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerSelectScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000115 /* GameRoomListScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameRoomListScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000116 /* ReadyRoomScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReadyRoomScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000117 /* AvatarShopScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AvatarShopScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000118 /* LoadingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
 		D0000000000000000000010A /* GunBound-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000000000000000000010B /* GunBound-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -96,9 +123,26 @@
 				D00000000000000000000101 /* SpriteKitRenderer.swift */,
 				D00000000000000000000102 /* SpriteKitAudioPlayer.swift */,
 				D00000000000000000000103 /* GameScene.swift */,
+				D00000000000000000000405 /* Screens */,
 			);
 			name = "Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule)";
 			path = GunBoundSpriteKit.swiftpm/AppModule;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000405 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000111 /* ScreenPreview.swift */,
+				D00000000000000000000112 /* LogoScreen.swift */,
+				D00000000000000000000113 /* TitleScreen.swift */,
+				D00000000000000000000114 /* ServerSelectScreen.swift */,
+				D00000000000000000000115 /* GameRoomListScreen.swift */,
+				D00000000000000000000116 /* ReadyRoomScreen.swift */,
+				D00000000000000000000117 /* AvatarShopScreen.swift */,
+				D00000000000000000000118 /* LoadingScreen.swift */,
+				D00000000000000000000119 /* InBattleScreen.swift */,
+			);
+			path = Screens;
 			sourceTree = "<group>";
 		};
 		D00000000000000000000404 /* Darwin (Darwin/Sources/GunBoundDarwin) */ = {
@@ -222,6 +266,15 @@
 				D00000000000000000000203 /* GameScene.swift in Sources */,
 				D00000000000000000000204 /* DarwinShell.swift in Sources */,
 				D00000000000000000000205 /* AppDelegate_macOS.swift in Sources */,
+				D00000000000000000000211 /* ScreenPreview.swift in Sources */,
+				D00000000000000000000212 /* LogoScreen.swift in Sources */,
+				D00000000000000000000213 /* TitleScreen.swift in Sources */,
+				D00000000000000000000214 /* ServerSelectScreen.swift in Sources */,
+				D00000000000000000000215 /* GameRoomListScreen.swift in Sources */,
+				D00000000000000000000216 /* ReadyRoomScreen.swift in Sources */,
+				D00000000000000000000217 /* AvatarShopScreen.swift in Sources */,
+				D00000000000000000000218 /* LoadingScreen.swift in Sources */,
+				D00000000000000000000219 /* InBattleScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +288,15 @@
 				D00000000000000000000304 /* DarwinShell.swift in Sources */,
 				D00000000000000000000305 /* AppDelegate_tvOS.swift in Sources */,
 				D00000000000000000000306 /* GameViewController.swift in Sources */,
+				D00000000000000000000311 /* ScreenPreview.swift in Sources */,
+				D00000000000000000000312 /* LogoScreen.swift in Sources */,
+				D00000000000000000000313 /* TitleScreen.swift in Sources */,
+				D00000000000000000000314 /* ServerSelectScreen.swift in Sources */,
+				D00000000000000000000315 /* GameRoomListScreen.swift in Sources */,
+				D00000000000000000000316 /* ReadyRoomScreen.swift in Sources */,
+				D00000000000000000000317 /* AvatarShopScreen.swift in Sources */,
+				D00000000000000000000318 /* LoadingScreen.swift in Sources */,
+				D00000000000000000000319 /* InBattleScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
