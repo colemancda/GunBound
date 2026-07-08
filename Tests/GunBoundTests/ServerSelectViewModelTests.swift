@@ -131,6 +131,38 @@ struct ServerSelectViewModelTests {
         #expect(chosen.port == 8370)
     }
 
+    @Test func fetchDirectorySkipsFullServers() async throws {
+        // The client's connect path validates the target is online AND not
+        // full before opening a socket, so an enabled-but-full server (like
+        // the fixture's "Full Server", utilization == capacity) can't be the
+        // chosen one — the first *joinable* server is.
+        let template = try #require(try Self.decodedServerDirectory().first)
+        func server(name: String, port: UInt16, utilization: UInt16, capacity: UInt16, isEnabled: Bool) -> ServerDirectoryResponse.Server {
+            ServerDirectoryResponse.Server(
+                name: name,
+                descriptionText: template.descriptionText,
+                address: template.address,
+                port: port,
+                utilization: utilization,
+                capacity: capacity,
+                isEnabled: isEnabled
+            )
+        }
+        let servers = [
+            server(name: "Offline", port: 1, utilization: 0, capacity: 100, isEnabled: false),
+            server(name: "Full", port: 2, utilization: 100, capacity: 100, isEnabled: true),
+            server(name: "Joinable", port: 3, utilization: 50, capacity: 100, isEnabled: true),
+        ]
+
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+
+        let chosen = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(chosen.port == 3)  // "Joinable", not "Offline" or "Full"
+    }
+
     @Test func fetchDirectoryFallsBackToConfiguredServerWhenBrokerUnreachable() async throws {
         struct FailingFetcher: ServerDirectoryFetching {
             struct Failure: Error {}
