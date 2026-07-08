@@ -90,3 +90,6 @@ iOSInjectionProject/
 
 # Finder
 .DS_Store
+
+# GunBoundSpriteKit Playground game assets (copied locally, not committed)
+Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
