@@ -8,22 +8,48 @@ import GunBoundProtocol
 /// servers, then runs the nonce + login handshake against whichever server
 /// it lands on.
 ///
-/// Rects are pushed in by the view once it knows loaded-texture sizes
-/// (`server_back.img` full backdrop, `server_list.img` panel/chrome overlay,
-/// `b_server_choiceserver.img` button, `waitmessage.img` connecting overlay)
-/// — this view model never touches a texture, only named resources and
-/// `Rect` hit-testing state.
+/// Button positions are **confirmed**, not guessed: decompiling
+/// `State02_ServerSelect_OnEnter` (`0x4e14b0`) found its three
+/// `CreateButtonWidget` calls with explicit x/y/width/height args —
+/// `b_server_exitgame` at (40, 551), `b_server_buddygame` at (163, 551),
+/// `b_server_choiceserver` at (409, 551), all 107×45 — so those are used
+/// verbatim here rather than computed from loaded-texture size.
+///
+/// `server_list.img`'s own on-screen position isn't decomp-confirmed (no
+/// decompiled code path references it by name), but it's visually
+/// unambiguous: `server_back.img` already has a full "WORLD LIST" panel
+/// baked in at the top-left (its empty/placeholder-character-art state —
+/// same border, title bar, and scrollbar), and `server_list.img` is a
+/// second, identically-sized (546×530) rendering of that *same* panel in
+/// its populated-with-servers state. They're two states of one panel meant
+/// to overlay exactly, not a background plus a separately-placed overlay —
+/// so `panelRect` is (0,0), matching `server_back.img`'s own panel
+/// position, not centered or otherwise offset.
 @MainActor
 public final class ServerSelectViewModel: ScreenViewModel {
+    public struct Button: Equatable, Sendable {
+        public let name: String
+        public let rect: Rect
+    }
+
     public let backgroundImageName = "server_back.img"
     public let panelImageName = "server_list.img"
-    public let buttonImageName = "b_server_choiceserver.img"
     public let waitImageName = "waitmessage.img"
     public let musicName: String? = "channel.mp3"
     public let loopMusic = true
 
-    public var buttonRect: Rect = .zero
+    /// Confirmed positions — see the type-level doc comment.
+    public let buttons: [Button] = [
+        Button(name: "b_server_exitgame.img", rect: Rect(x: 40, y: 551, width: 107, height: 45)),
+        Button(name: "b_server_buddygame.img", rect: Rect(x: 163, y: 551, width: 107, height: 45)),
+        Button(name: "b_server_choiceserver.img", rect: Rect(x: 409, y: 551, width: 107, height: 45)),
+    ]
 
+    /// Not decomp-confirmed — see the type-level doc comment. Set by the
+    /// view once it knows `server_list.img`'s loaded size.
+    public var panelRect: Rect = .zero
+
+    public private(set) var hoveredIndex: Int?
     public private(set) var isConnecting = false
 
     /// Servers returned by the most recent broker fetch — the real,
@@ -34,25 +60,42 @@ public final class ServerSelectViewModel: ScreenViewModel {
     private let delegate: ViewModelDelegate
     private let directoryFetcher: ServerDirectoryFetching
 
-    public init(delegate: ViewModelDelegate, directoryFetcher: ServerDirectoryFetching = LiveServerDirectoryFetcher()) {
+    public init(delegate: ViewModelDelegate, directoryFetcher: ServerDirectoryFetching = IPv4ServerDirectoryFetcher()) {
         self.delegate = delegate
         self.directoryFetcher = directoryFetcher
     }
 
     public func onEnter() {
         isConnecting = false
+        hoveredIndex = nil
     }
 
     public func onExit() {
         isConnecting = false
+        hoveredIndex = nil
     }
 
     public func update(deltaTime: Double) {}
 
     public func handle(_ event: ScreenInputEvent) {
-        guard case .pointerDown(let x, let y) = event else { return }
-        guard !isConnecting, buttonRect.contains(x: x, y: y) else { return }
-        connect()
+        switch event {
+        case .pointerMoved(let x, let y):
+            hoveredIndex = buttons.firstIndex { $0.rect.contains(x: x, y: y) }
+
+        case .pointerDown(let x, let y):
+            guard !isConnecting, let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
+            switch buttons[index].name {
+            case "b_server_choiceserver.img":
+                connect()
+            case "b_server_exitgame.img":
+                delegate.requestQuit()
+            default:
+                print("[GunBound] clicked server-select button: \(buttons[index].name)")
+            }
+
+        case .activate:
+            break
+        }
     }
 
     private func connect() {
