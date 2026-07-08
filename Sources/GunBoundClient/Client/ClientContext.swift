@@ -14,6 +14,12 @@ public final class ClientContext: ViewModelDelegate {
     public let network: NetworkConfig
     public var client: NetworkClient<GunBoundSocketIPv4TCP>?
 
+    /// Set by `requestQuit()` (e.g. the Server Select screen's "Exit"
+    /// button) — the host app's main loop polls this each frame and stops
+    /// when it's `true`. Not every host can act on it (there's no real
+    /// "quit" on iOS); ones that can't just never check it.
+    public private(set) var quitRequested = false
+
     private let makeAudioPlayerClosure: () -> ClientAudioPlayer
     private(set) var pendingMode: ClientMode?
 
@@ -38,6 +44,10 @@ public final class ClientContext: ViewModelDelegate {
 
     public func requestTransition(to mode: ClientMode) {
         pendingMode = mode
+    }
+
+    public func requestQuit() {
+        quitRequested = true
     }
 
     func consumePendingTransition() -> ClientMode? {
