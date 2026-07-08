@@ -177,8 +177,12 @@ public final class ServerSelectViewModel: ScreenViewModel {
             availableServers = Array(directory.prefix(Self.maxServers))
             print("[GunBound] broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
             // Choose from the capped list — the client only stores the first
-            // 16 entries, so a later one couldn't be selected anyway.
-            if let chosen = availableServers.first(where: \.isEnabled) {
+            // 16 entries, so a later one couldn't be selected anyway. Skip
+            // offline and full servers: the decompiled connect handlers
+            // validate the target is online and not full (currentPlayers <
+            // maxCapacity) before opening a socket, so a full-but-online
+            // server can't be joined.
+            if let chosen = availableServers.first(where: \.isJoinable) {
                 worldAddress = chosen.address.rawValue
                 worldPort = chosen.port
             }
