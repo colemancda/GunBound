@@ -32,6 +32,13 @@ public extension ServerDirectoryResponse {
     /// A single game server entry in the directory listing.
     struct Server: Equatable, Hashable, Sendable {
 
+        /// The wire `serverId` (u16). The decompiled row renderer draws the
+        /// row number as `serverId + 1`, and opcode `0x2001`'s
+        /// confirm-connect copies it into the "current server" global.
+        /// Defaulted so existing call sites (and the encoder, which writes
+        /// the entry's index) don't need to supply one.
+        public var id: UInt16
+
         public var name: String
 
         public var descriptionText: String
@@ -47,6 +54,7 @@ public extension ServerDirectoryResponse {
         public var isEnabled: Bool
 
         public init(
+            id: UInt16 = 0,
             name: String,
             descriptionText: String,
             address: IPv4Address,
@@ -55,6 +63,7 @@ public extension ServerDirectoryResponse {
             capacity: UInt16,
             isEnabled: Bool
         ) {
+            self.id = id
             self.name = name
             self.descriptionText = descriptionText
             self.address = address
@@ -96,16 +105,13 @@ extension ServerDirectoryResponse.Server {
     //   u16  maxCapacity       (…against this, in both button handlers)
     //   u8   onlineFlag        (0 = offline)
     //
-    // Our field names map: address = serverIp, utilization = currentPlayers,
-    // capacity = maxCapacity, isEnabled = onlineFlag. serverId/regionOrType
-    // aren't surfaced yet (only opcode 0x2001's confirm-connect reads
-    // serverId back out, which this client doesn't implement), so they're
-    // parsed and dropped. Note the real client auto-connects to the first
-    // entry with onlineFlag set — the same choice ServerSelectViewModel
-    // makes via `directory.first(where: \.isEnabled)`.
+    // Our field names map: id = serverId, address = serverIp,
+    // utilization = currentPlayers, capacity = maxCapacity,
+    // isEnabled = onlineFlag. regionOrType isn't surfaced (nothing reads it
+    // yet), so it's parsed and dropped.
     public init(parsing input: inout ParserSpan) throws {
-        _ = try UInt16(parsingLittleEndian: &input)  // serverId
-        _ = try UInt8(parsing: &input)               // regionOrType
+        self.id = try UInt16(parsingLittleEndian: &input)  // serverId
+        _ = try UInt8(parsing: &input)                     // regionOrType
         self.name = try String(parsingLengthPrefixedASCII: &input)
         self.descriptionText = try String(parsingLengthPrefixedASCII: &input)
         self.address = try IPv4Address(parsing: &input)
@@ -148,10 +154,11 @@ extension ServerDirectoryResponse {
 
         // encode each — see the field-by-field wire format documented on
         // `Server.init(parsing:)`. serverId is written as the entry index
-        // (u16, low byte first) and regionOrType as 0; the unidentified
+        // (u16, low byte first — deliberately ignoring `server.id`, since our
+        // server assigns sequential IDs and this reproduces the real captured
+        // fixtures byte-for-byte) and regionOrType as 0; the unidentified
         // `unknownField2` slot is filled with the same value as
-        // currentPlayers (our server has no distinct value for it, and this
-        // reproduces the real captured fixtures byte-for-byte).
+        // currentPlayers (our server has no distinct value for it).
         for (index, server) in directory.enumerated() {
             output.write(UInt8(index))  // serverId (u16, LE low byte)
             output.write(UInt8(0x00))   // serverId high byte
