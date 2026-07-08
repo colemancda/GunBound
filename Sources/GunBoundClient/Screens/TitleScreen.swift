@@ -1,44 +1,48 @@
-import SDL3Swift
 import GunBound
 
 /// View for the Title screen (state 1) — all logic lives in
 /// `TitleViewModel`; this loads/draws `titlemode.img`/`title.mp3` and
 /// reports music-playback state upward each frame (audio polling is
-/// SDL-specific, so the view model can't do it itself).
+/// backend-specific, so the view model can't do it itself).
 @MainActor
-final class TitleScreen: GameScreen {
+public final class TitleScreen: GameScreen {
     private let viewModel: TitleViewModel
-    private let visuals = ScreenRenderHelper()
+    private var backgroundTexture: ClientTexture?
+    private var audio: ClientAudioPlayer?
 
-    init(viewModel: TitleViewModel) {
+    public init(viewModel: TitleViewModel) {
         self.viewModel = viewModel
     }
 
-    func onEnter(context: ScreenContext) throws {
+    public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
-        visuals.loadBackground(named: viewModel.imageName, context: context)
+        backgroundTexture = context.renderer.texture(named: viewModel.imageName, assets: context.assets)
         if let musicName = viewModel.musicName {
-            visuals.playMusic(named: musicName, context: context)
+            let audio = context.makeAudioPlayer()
+            audio.play(named: musicName, assets: context.assets, loop: false)
+            self.audio = audio
         }
     }
 
-    func onExit() {
+    public func onExit() {
         viewModel.onExit()
-        visuals.unloadBackground()
-        visuals.stopMusic()
+        backgroundTexture = nil
+        audio?.stop()
+        audio = nil
     }
 
-    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        guard let input = translate(event) else { return }
-        viewModel.handle(input)
+    public func handleInput(_ event: ScreenInputEvent) {
+        viewModel.handle(event)
     }
 
-    func update(deltaTime: Double, context: ScreenContext) {
-        viewModel.musicPlaybackChanged(isPlaying: visuals.isMusicPlaying)
+    public func update(deltaTime: Double) {
+        audio?.update(deltaTime: deltaTime)
+        viewModel.musicPlaybackChanged(isPlaying: audio?.isPlaying ?? false)
         viewModel.update(deltaTime: deltaTime)
     }
 
-    func render(_ renderer: SDLRenderer) throws {
-        try visuals.clearAndDrawBackground(renderer)
+    public func render(_ renderer: ClientRenderer) throws {
+        renderer.clear()
+        drawFullSize(backgroundTexture, using: renderer)
     }
 }
