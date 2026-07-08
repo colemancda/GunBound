@@ -12,7 +12,7 @@ public final class ClientContext: ViewModelDelegate {
     public let assets: AssetLibrary
     public let renderer: ClientRenderer
     public let network: NetworkConfig
-    public var client: NetworkClient?
+    public var client: NetworkClient<GunBoundSocketIPv4TCP>?
 
     private let makeAudioPlayerClosure: () -> ClientAudioPlayer
     private(set) var pendingMode: ClientMode?
