@@ -83,19 +83,30 @@ final class SpriteKitRenderer: ClientRenderer {
 
     /// Builds an `SKTexture` from a decoded `.img` frame's `Pixel` array —
     /// frames are already fully decoded to 8-bit-per-channel RGBA
-    /// (`ImgFile.Pixel`), so this just hands the raw bytes to
-    /// `SKTexture(data:size:)` directly, no image-file loader needed.
+    /// (`ImgFile.Pixel`), so this just repacks the raw bytes for
+    /// `SKTexture(data:size:)`, no image-file loader needed.
+    ///
+    /// `SKTexture(data:size:)` reads the buffer bottom-up: its *first* pixel
+    /// row becomes the *bottom* row of the texture (OpenGL bottom-left
+    /// origin). `.img` frames are stored top-down (row 0 = top), so the rows
+    /// are emitted in reverse here — otherwise every sprite renders
+    /// vertically flipped (upside-down logo/text/panels).
     private func makeTexture(from frame: ImgFile.Frame) -> SKTexture {
+        let width = Int(frame.width)
+        let height = Int(frame.height)
         var rgba = [UInt8]()
-        rgba.reserveCapacity(frame.pixels.count * 4)
-        for pixel in frame.pixels {
-            rgba.append(pixel.red)
-            rgba.append(pixel.green)
-            rgba.append(pixel.blue)
-            rgba.append(pixel.alpha)
+        rgba.reserveCapacity(width * height * 4)
+        for y in stride(from: height - 1, through: 0, by: -1) {
+            for x in 0..<width {
+                let pixel = frame.pixels[y * width + x]
+                rgba.append(pixel.red)
+                rgba.append(pixel.green)
+                rgba.append(pixel.blue)
+                rgba.append(pixel.alpha)
+            }
         }
         let data = Data(rgba)
-        let texture = SKTexture(data: data, size: CGSize(width: Int(frame.width), height: Int(frame.height)))
+        let texture = SKTexture(data: data, size: CGSize(width: width, height: height))
         texture.filteringMode = .nearest
         return texture
     }
