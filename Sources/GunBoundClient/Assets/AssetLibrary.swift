@@ -77,10 +77,18 @@ public final class AssetLibrary {
     /// The first (and, for UI chrome, usually only) frame of a named `.img`
     /// entry — the common case for backgrounds/buttons.
     public func firstImageFrame(named name: String) throws -> ImgFile.Frame {
-        guard let frame = try image(named: name).first else {
-            throw Error.missingEntry(name)
+        try imageFrame(named: name, at: 0)
+    }
+
+    /// A specific frame of a multi-frame `.img` sprite sheet (e.g. the Game
+    /// Room List's room-card states and status icons all live as separate
+    /// frames inside `gamelist_back.img`).
+    public func imageFrame(named name: String, at index: Int) throws -> ImgFile.Frame {
+        let frames = try image(named: name)
+        guard frames.indices.contains(index) else {
+            throw Error.missingEntry("\(name)#\(index)")
         }
-        return frame
+        return frames[index]
     }
 
     /// A playable file URL for a named `.mp3` track stored in `sound.xfs`.
