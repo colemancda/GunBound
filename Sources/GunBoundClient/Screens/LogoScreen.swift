@@ -1,40 +1,42 @@
 import SDL3Swift
 import GunBound
 
-/// Publisher splash screen (states 5/6 in the decomp's `CGameState` table) —
-/// loads a full-window logo image + jingle, and auto-advances after a fixed
-/// duration (matching `ARCHITECTURE.md`'s "~2 second, non-interactive
-/// publisher splash" note), or immediately on any click/keypress.
+/// View for the publisher splash screens (states 5/6) — all logic/timing
+/// lives in `LogoViewModel`; this just loads/draws the named resources it
+/// exposes and forwards input.
 @MainActor
-final class LogoScreen: ImageBackgroundScreen {
-    private let nextMode: ClientMode
-    private let duration: Double
-    private var elapsed: Double = 0
+final class LogoScreen: GameScreen {
+    private let viewModel: LogoViewModel
+    private let visuals = ScreenRenderHelper()
 
-    init(imageName: String, musicName: String?, duration: Double = 2.5, next: ClientMode) {
-        self.nextMode = next
-        self.duration = duration
-        super.init(backgroundImageName: imageName, musicName: musicName)
+    init(viewModel: LogoViewModel) {
+        self.viewModel = viewModel
     }
 
-    override func onEnter(context: ScreenContext) throws {
-        elapsed = 0
-        try super.onEnter(context: context)
-    }
-
-    override func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        switch event {
-        case .mouseButtonDown, .keyDown:
-            context.requestTransition(to: nextMode)
-        default:
-            break
+    func onEnter(context: ScreenContext) throws {
+        viewModel.onEnter()
+        visuals.loadBackground(named: viewModel.imageName, context: context)
+        if let musicName = viewModel.musicName {
+            visuals.playMusic(named: musicName, context: context)
         }
     }
 
-    override func update(deltaTime: Double, context: ScreenContext) {
-        elapsed += deltaTime
-        if elapsed >= duration {
-            context.requestTransition(to: nextMode)
-        }
+    func onExit() {
+        viewModel.onExit()
+        visuals.unloadBackground()
+        visuals.stopMusic()
+    }
+
+    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
+        guard let input = translate(event) else { return }
+        viewModel.handle(input)
+    }
+
+    func update(deltaTime: Double, context: ScreenContext) {
+        viewModel.update(deltaTime: deltaTime)
+    }
+
+    func render(_ renderer: SDLRenderer) throws {
+        try visuals.clearAndDrawBackground(renderer)
     }
 }
