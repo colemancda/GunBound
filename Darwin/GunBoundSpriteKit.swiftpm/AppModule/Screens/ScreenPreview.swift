@@ -96,6 +96,22 @@ final class ScreenPreviewScene: SKScene {
         screen.handleInput(input(for: location, moved: true))
     }
     #endif
+
+    // The macOS targets' preview canvas delivers mouse events, not touches —
+    // mirror GameScene's handlers so previews are interactive there too.
+    #if os(macOS)
+    override func mouseDown(with event: NSEvent) {
+        screen.handleInput(input(for: event.location(in: self), moved: false))
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        screen.handleInput(input(for: event.location(in: self), moved: true))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        screen.handleInput(input(for: event.location(in: self), moved: true))
+    }
+    #endif
 }
 
 /// Mirrors `MockViewModelDelegate` from `GunBoundTests` — records nothing
