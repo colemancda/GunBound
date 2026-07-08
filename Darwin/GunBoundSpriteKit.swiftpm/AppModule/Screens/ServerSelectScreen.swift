@@ -9,13 +9,18 @@
 //  to the selection and fails quietly with no real server running.
 //
 
+import Foundation
 import SwiftUI
 import GunBound
 import GunBoundClient
 import GunBoundProtocol
 
 #Preview("Server Select") {
-    serverSelectScreenPreview()
+    serverSelectScreenPreview(result: .success(mockServers))
+}
+
+#Preview("Server Select Error") {
+    serverSelectScreenPreview(result: .failure(URLError(.cannotFindHost)))
 }
 
 let mockServers = [
@@ -82,6 +87,10 @@ struct MockDirectoryFetcher: ServerDirectoryFetching {
     init(servers: [ServerDirectoryResponse.Server]) {
         self.result = .success(servers)
     }
+    
+    init(result: Result<[ServerDirectoryResponse.Server], Error>) {
+        self.result = result
+    }
 
     func fetchServerDirectory(address: String, brokerPort: UInt16) async throws -> [ServerDirectoryResponse.Server] {
         try await Task.sleep(for: .seconds(1))
@@ -93,11 +102,11 @@ struct MockDirectoryFetcher: ServerDirectoryFetching {
 /// because tvOS's #Preview expands to a ViewBuilder closure that
 /// rejects the explicit `return` this setup needs.
 @MainActor
-private func serverSelectScreenPreview() -> some View {
+private func serverSelectScreenPreview(result: Result<[ServerDirectoryResponse.Server], Error>) -> some View {
     let delegate = ScreenPreviewDelegate()
     let viewModel = ServerSelectViewModel(
         delegate: delegate,
-        directoryFetcher: MockDirectoryFetcher(servers: mockServers)
+        directoryFetcher: MockDirectoryFetcher(result: result)
     )
     return ScreenPreviewView(screen: ServerSelectScreen(viewModel: viewModel))
         .frame(width: 800, height: 600)
