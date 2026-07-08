@@ -20,6 +20,7 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
 
     public enum Error: Swift.Error, Equatable {
         case invalidAddress(String)
+        case notAuthenticated
     }
 
     private let socket: Socket
@@ -142,6 +143,44 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     /// `0x3231`). Not opcode-encrypted, so no session key is needed.
     public func setReady(_ isReady: Bool) async throws -> UserReadyResponse {
         try await request(UserReadyRequest(isReady: isReady), response: UserReadyResponse.self)
+    }
+
+    /// Fetches the player's avatar (opcode `0x6000` → `0x6001`) — equipped
+    /// bitmask + owned item IDs. The response body is a 2-byte RTC prefix
+    /// followed by an AES blob (encrypted with the session key outside the
+    /// normal opcode scheme), so it's decrypted here and parsed:
+    /// `equipped` (u64 LE), `count` (u16 LE), then `count` item IDs (u32 LE).
+    public func fetchAvatar() async throws -> PlayerAvatar {
+        guard let key = sessionKey else { throw Error.notAuthenticated }
+        let response = try await request(GetAvatarRequest(sendExtended: true), response: GetAvatarResponse.self)
+        let bytes = response.rtcAndEncryptedData
+        guard bytes.count > 2 else { return PlayerAvatar(equipped: 0, inventory: []) }
+        let plaintext = [UInt8](try Crypto.AES.decrypt(Data(bytes[2...]), key: key, opcode: .getAvatarResponse))
+        return Self.parseAvatar(plaintext)
+    }
+
+    /// Parses a decrypted avatar plaintext (`equipped` u64 LE, `count` u16 LE,
+    /// then `count` × u32 LE item IDs). Truncated/partial data yields whatever
+    /// parsed cleanly rather than throwing.
+    static func parseAvatar(_ plaintext: [UInt8]) -> PlayerAvatar {
+        guard plaintext.count >= 8 else { return PlayerAvatar(equipped: 0, inventory: []) }
+        var equipped: UInt64 = 0
+        for i in 0..<8 { equipped |= UInt64(plaintext[i]) << (8 * i) }
+
+        var items = [UInt32]()
+        if plaintext.count >= 10 {
+            let count = Int(plaintext[8]) | (Int(plaintext[9]) << 8)
+            var offset = 10
+            for _ in 0..<count where offset + 4 <= plaintext.count {
+                let id = UInt32(plaintext[offset])
+                    | (UInt32(plaintext[offset + 1]) << 8)
+                    | (UInt32(plaintext[offset + 2]) << 16)
+                    | (UInt32(plaintext[offset + 3]) << 24)
+                items.append(id)
+                offset += 4
+            }
+        }
+        return PlayerAvatar(equipped: equipped, inventory: items)
     }
 
     /// Sends `requestValue` and decodes the next packet read off the socket
