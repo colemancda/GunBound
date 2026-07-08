@@ -22,13 +22,22 @@ independently against an iOS Simulator SDK build of `GunBound`/
 
 ## Assets
 
-Like `GunBoundSDL3`, this reads `graphics.xfs`/`sound.xfs`/etc. from a
-filesystem path — `GameScene.swift` hardcodes
-`/Users/coleman/Developer/GunBound-Decomp/orig`. That only resolves when run
-in the **iOS Simulator on this Mac** (the Simulator shares the host's real
-filesystem); a real device has no such path and would need the assets bundled
-into the app instead (out of scope for this proof-of-concept — see the
-in-source comment).
+Unlike `GunBoundSDL3`, this can't read `graphics.xfs`/`sound.xfs`/etc. from an
+arbitrary Mac filesystem path — the Simulator/device sandbox can't reach
+`~/Developer/GunBound-Decomp/orig`. Instead, the archives are copied into
+`AppModule/Resources/orig/` and bundled as an app resource; `GameScene.swift`
+loads them from `Bundle.main.resourceURL` at runtime.
+
+`AppModule/Resources/orig/` is **gitignored** (these are the original game's
+binary assets, not something to commit) — after cloning, re-copy them with:
+
+```sh
+cp ~/Developer/GunBound-Decomp/orig/{graphics.xfs,sound.xfs,avatar.xfs,characterdata.dat,itemdata.dat,specialdata.dat,stage.dat} \
+   Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
+```
+
+before opening the Playground in Xcode, or the app will fail to find them at
+runtime.
 
 ## What it doesn't do
 
