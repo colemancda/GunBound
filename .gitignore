@@ -95,3 +95,9 @@ iOSInjectionProject/
 Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
 Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.dat
 Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/*.xfs
+
+# GunBoundSpriteKit Playground: vendored library sources (re-copy with copy-dependencies.sh)
+Playgrounds/GunBoundSpriteKit.swiftpm/GunBound/
+Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundProtocol/
+Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundFile/
+Playgrounds/GunBoundSpriteKit.swiftpm/GunBoundClient/
