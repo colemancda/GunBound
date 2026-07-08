@@ -180,7 +180,8 @@ public final class GameRoomListViewModel: ScreenViewModel {
             do {
                 let response = try await client.joinRoom(room.id)
                 if response.isSuccess {
-                    print("[GunBound] joined room \(room.id) '\(room.name)'")
+                    print("[GunBound] joined room \(room.id) '\(room.name)' (\(response.players.count) player(s))")
+                    delegate.session.currentRoom = response
                     delegate.requestTransition(to: .readyRoom)
                 } else {
                     print("[GunBound] room join rejected for \(room.id)")

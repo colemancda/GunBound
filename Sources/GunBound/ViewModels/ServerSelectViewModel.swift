@@ -153,6 +153,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
                 return
             }
             print("[GunBound] joined channel \(joinResponse.channel) (\(joinResponse.users.count) user(s) present)")
+            delegate.session.channel = joinResponse
             finishConnecting(client: client, success: true)
         } catch {
             print("[GunBound] connection failed: \(error)")
