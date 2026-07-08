@@ -47,6 +47,26 @@
 		D0000000000000000000030A /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A09 /* GunBoundClient */; };
 		D0000000000000000000030B /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000109 /* Resources */; };
 		D00000000000000000000210 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000109 /* Resources */; };
+		D0000000000000000000C01 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
+		D0000000000000000000C02 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
+		D0000000000000000000C03 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
+		D0000000000000000000C04 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000120 /* LoginView.swift */; };
+		D0000000000000000000C05 /* GameSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000121 /* GameSceneView.swift */; };
+		D0000000000000000000C06 /* GunBoundSpriteKitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000122 /* GunBoundSpriteKitApp.swift */; };
+		D0000000000000000000C07 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
+		D0000000000000000000C08 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
+		D0000000000000000000C09 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
+		D0000000000000000000C0A /* ServerSelectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000114 /* ServerSelectScreen.swift */; };
+		D0000000000000000000C0B /* GameRoomListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000115 /* GameRoomListScreen.swift */; };
+		D0000000000000000000C0C /* ReadyRoomScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000116 /* ReadyRoomScreen.swift */; };
+		D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
+		D0000000000000000000C0E /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
+		D0000000000000000000C0F /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
+		D00000000000000000000C10 /* GunBound in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0A /* GunBound */; };
+		D00000000000000000000C11 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0B /* GunBoundProtocol */; };
+		D00000000000000000000C12 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0C /* GunBoundFile */; };
+		D00000000000000000000C13 /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0D /* GunBoundClient */; };
+		D00000000000000000000C14 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000109 /* Resources */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +77,7 @@
 		D00000000000000000000106 /* AppDelegate_tvOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate_tvOS.swift; sourceTree = "<group>"; };
 		D00000000000000000000108 /* GunBound-macOS-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GunBound-macOS-Info.plist"; sourceTree = "<group>"; };
 		D00000000000000000000109 /* Resources */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = Resources; path = GunBoundSpriteKit.swiftpm/AppModule/Resources; sourceTree = "<group>"; };
+		D00000000000000000000122 /* GunBoundSpriteKitApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GunBoundSpriteKitApp.swift; sourceTree = "<group>"; };
 		D00000000000000000000120 /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		D00000000000000000000121 /* GameSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameSceneView.swift; sourceTree = "<group>"; };
 		D00000000000000000000111 /* ScreenPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenPreview.swift; sourceTree = "<group>"; };
@@ -70,6 +91,7 @@
 		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
 		D0000000000000000000010A /* GunBound-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000000000000000000010B /* GunBound-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0000000000000000000010C /* GunBound-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +117,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D00000000000000000000C61 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000C10 /* GunBound in Frameworks */,
+				D00000000000000000000C11 /* GunBoundProtocol in Frameworks */,
+				D00000000000000000000C12 /* GunBoundFile in Frameworks */,
+				D00000000000000000000C13 /* GunBoundClient in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -114,6 +147,7 @@
 			children = (
 				D0000000000000000000010A /* GunBound-macOS.app */,
 				D0000000000000000000010B /* GunBound-tvOS.app */,
+				D0000000000000000000010C /* GunBound-iOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -126,6 +160,7 @@
 				D00000000000000000000103 /* GameScene.swift */,
 				D00000000000000000000120 /* LoginView.swift */,
 				D00000000000000000000121 /* GameSceneView.swift */,
+				D00000000000000000000122 /* GunBoundSpriteKitApp.swift */,
 				D00000000000000000000405 /* Screens */,
 			);
 			name = "Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule)";
@@ -207,6 +242,29 @@
 			productReference = D0000000000000000000010B /* GunBound-tvOS.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D00000000000000000000C50 /* GunBound-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D00000000000000000000C80 /* Build configuration list for PBXNativeTarget "GunBound-iOS" */;
+			buildPhases = (
+				D00000000000000000000C60 /* Sources */,
+				D00000000000000000000C61 /* Frameworks */,
+				D00000000000000000000C62 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "GunBound-iOS";
+			packageProductDependencies = (
+				D00000000000000000000A0A /* GunBound */,
+				D00000000000000000000A0B /* GunBoundProtocol */,
+				D00000000000000000000A0C /* GunBoundFile */,
+				D00000000000000000000A0D /* GunBoundClient */,
+			);
+			productName = "GunBound-iOS";
+			productReference = D0000000000000000000010C /* GunBound-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -234,6 +292,7 @@
 			targets = (
 				D00000000000000000000501 /* GunBound-macOS */,
 				D00000000000000000000502 /* GunBound-tvOS */,
+				D00000000000000000000C50 /* GunBound-iOS */,
 			);
 		};
 /* End PBXProject section */
@@ -252,6 +311,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				D00000000000000000000210 /* Resources in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000C62 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000C14 /* Resources in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +366,28 @@
 				D00000000000000000000317 /* AvatarShopScreen.swift in Sources */,
 				D00000000000000000000318 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000319 /* InBattleScreen.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000C60 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0000000000000000000C01 /* SpriteKitRenderer.swift in Sources */,
+				D0000000000000000000C02 /* SpriteKitAudioPlayer.swift in Sources */,
+				D0000000000000000000C03 /* GameScene.swift in Sources */,
+				D0000000000000000000C04 /* LoginView.swift in Sources */,
+				D0000000000000000000C05 /* GameSceneView.swift in Sources */,
+				D0000000000000000000C06 /* GunBoundSpriteKitApp.swift in Sources */,
+				D0000000000000000000C07 /* ScreenPreview.swift in Sources */,
+				D0000000000000000000C08 /* LogoScreen.swift in Sources */,
+				D0000000000000000000C09 /* TitleScreen.swift in Sources */,
+				D0000000000000000000C0A /* ServerSelectScreen.swift in Sources */,
+				D0000000000000000000C0B /* GameRoomListScreen.swift in Sources */,
+				D0000000000000000000C0C /* ReadyRoomScreen.swift in Sources */,
+				D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */,
+				D0000000000000000000C0E /* LoadingScreen.swift in Sources */,
+				D0000000000000000000C0F /* InBattleScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -429,6 +518,47 @@
 			};
 			name = Release;
 		};
+		D00000000000000000000C71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.ios;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D00000000000000000000C72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.ios;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -455,6 +585,15 @@
 			buildConfigurations = (
 				D00000000000000000000805 /* Debug */,
 				D00000000000000000000806 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D00000000000000000000C80 /* Build configuration list for PBXNativeTarget "GunBound-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000C71 /* Debug */,
+				D00000000000000000000C72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -505,6 +644,26 @@
 			productName = GunBoundFile;
 		};
 		D00000000000000000000A09 /* GunBoundClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundClient;
+		};
+		D00000000000000000000A0A /* GunBound */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBound;
+		};
+		D00000000000000000000A0B /* GunBoundProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundProtocol;
+		};
+		D00000000000000000000A0C /* GunBoundFile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundFile;
+		};
+		D00000000000000000000A0D /* GunBoundClient */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
 			productName = GunBoundClient;
