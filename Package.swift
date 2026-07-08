@@ -44,6 +44,10 @@ let package = Package(
             name: "GunBoundSDL3",
             targets: ["GunBoundSDL3"]
         ),
+        .executable(
+            name: "GunBoundExtract",
+            targets: ["GunBoundExtract"]
+        ),
         .library(
             name: "GunBound",
             targets: ["GunBound"]
@@ -148,6 +152,17 @@ let package = Package(
                 "GunBoundClient",
                 .product(name: "SDL3Swift", package: "SDL"),
                 .product(name: "SDL3Mixer", package: "SDL"),
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "GunBoundExtract",
+            dependencies: [
+                "GunBoundFile",
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
