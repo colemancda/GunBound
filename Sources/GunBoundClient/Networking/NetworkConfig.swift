@@ -10,11 +10,17 @@ public struct NetworkConfig: Equatable, Sendable {
     public var password: String
     public var serverAddress: String
     public var serverPort: UInt16
+    /// Port of the broker/directory server at `serverAddress` — real
+    /// GunBound looks up available world servers here (`ServerDirectoryRequest`/
+    /// `Response`) before connecting to whichever one is picked, rather than
+    /// connecting to a world server directly.
+    public var brokerPort: UInt16
 
-    public init(username: String, password: String, serverAddress: String, serverPort: UInt16) {
+    public init(username: String, password: String, serverAddress: String, serverPort: UInt16, brokerPort: UInt16) {
         self.username = username
         self.password = password
         self.serverAddress = serverAddress
         self.serverPort = serverPort
+        self.brokerPort = brokerPort
     }
 }
