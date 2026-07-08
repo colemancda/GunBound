@@ -57,7 +57,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// overlay). Settable so tests and SwiftUI previews can show the
     /// connecting state directly — the production path only flips it from
     /// `connect()`/`finishConnecting`.
-    public var isConnecting = false
+    public private(set) var isConnecting = false
 
     /// The most world-server entries the client keeps, matching the
     /// decompiled `State02_ServerSelect_ProcessPacket` (`0x4e02b0`): it
