@@ -10,6 +10,12 @@ public final class AvatarShopScreen: GameScreen {
     private var backgroundTexture: ClientTexture?
     private var categoryTextures: [ClientTexture?] = []
     private var cancelTexture: ClientTexture?
+    /// Item icons loaded lazily by ID — the inventory arrives asynchronously,
+    /// so item textures can't be preloaded in `onEnter`. `NSNull`-style: a
+    /// cached `nil` marks "already tried, missing" so it isn't re-requested.
+    private var itemTextures: [UInt32: ClientTexture?] = [:]
+    private weak var renderer: ClientRenderer?
+    private var assets: AssetLibrary?
 
     public init(viewModel: AvatarShopViewModel) {
         self.viewModel = viewModel
@@ -17,6 +23,8 @@ public final class AvatarShopScreen: GameScreen {
 
     public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
+        renderer = context.renderer
+        assets = context.assets
         backgroundTexture = context.renderer.texture(named: viewModel.backgroundImageName, assets: context.assets)
 
         var x: Float = 20
@@ -40,6 +48,19 @@ public final class AvatarShopScreen: GameScreen {
         backgroundTexture = nil
         categoryTextures = []
         cancelTexture = nil
+        itemTextures = [:]
+        renderer = nil
+        assets = nil
+    }
+
+    /// Loads (and caches) the icon for an item ID on demand — the inventory
+    /// isn't known until the async fetch completes.
+    private func itemTexture(for id: UInt32) -> ClientTexture? {
+        if let cached = itemTextures[id] { return cached }
+        guard let renderer, let assets else { return nil }
+        let texture = renderer.texture(named: AvatarShopViewModel.itemSpriteName(for: id), assets: assets)
+        itemTextures[id] = texture
+        return texture
     }
 
     public func handleInput(_ event: ScreenInputEvent) {
@@ -53,9 +74,24 @@ public final class AvatarShopScreen: GameScreen {
     public func render(_ renderer: ClientRenderer) throws {
         renderer.clear()
         drawFullSize(backgroundTexture, using: renderer)
+
+        // Owned-item grid.
+        for (index, itemID) in viewModel.items.enumerated() {
+            guard let texture = itemTexture(for: itemID) else { continue }
+            let selected = index == viewModel.selectedItemIndex
+            renderer.draw(texture, in: viewModel.itemRect(at: index), tint: selected ? (255, 240, 160) : nil)
+        }
+
         for (index, button) in viewModel.categoryButtons.enumerated() {
             guard let texture = categoryTextures[index] else { continue }
-            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
+            let tint: (r: UInt8, g: UInt8, b: UInt8)?
+            if index == viewModel.selectedCategory {
+                tint = (255, 255, 160)  // active tab
+            } else if index == viewModel.hoveredIndex {
+                tint = (200, 200, 255)  // hovered
+            } else {
+                tint = nil
+            }
             renderer.draw(texture, in: button.rect, tint: tint)
         }
         if let cancelTexture {
