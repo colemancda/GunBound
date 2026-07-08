@@ -1,41 +1,44 @@
 import SDL3Swift
 import GunBound
 
-/// State 1 — Title screen (`titlemode.img`, `title.mp3`). Advances to
-/// Server/Channel Select once `title.mp3` finishes playing; a click or
-/// keypress also skips ahead immediately, matching the original's
-/// title-screen "press any key" convention.
+/// View for the Title screen (state 1) — all logic lives in
+/// `TitleViewModel`; this loads/draws `titlemode.img`/`title.mp3` and
+/// reports music-playback state upward each frame (audio polling is
+/// SDL-specific, so the view model can't do it itself).
 @MainActor
-final class TitleScreen: ImageBackgroundScreen {
-    /// Guards against checking `isMusicPlaying` before playback has actually
-    /// started (it's `false` both before the track starts and after it
-    /// finishes) — set once the track is confirmed playing.
-    private var hasConfirmedPlaying = false
+final class TitleScreen: GameScreen {
+    private let viewModel: TitleViewModel
+    private let visuals = ScreenRenderHelper()
 
-    init() {
-        super.init(backgroundImageName: "titlemode.img", musicName: "title.mp3")
+    init(viewModel: TitleViewModel) {
+        self.viewModel = viewModel
     }
 
-    override func onEnter(context: ScreenContext) throws {
-        hasConfirmedPlaying = false
-        try super.onEnter(context: context)
-    }
-
-    override func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        switch event {
-        case .mouseButtonDown, .keyDown:
-            context.requestTransition(to: .serverSelect)
-        default:
-            break
+    func onEnter(context: ScreenContext) throws {
+        viewModel.onEnter()
+        visuals.loadBackground(named: viewModel.imageName, context: context)
+        if let musicName = viewModel.musicName {
+            visuals.playMusic(named: musicName, context: context)
         }
     }
 
-    override func update(deltaTime: Double, context: ScreenContext) {
-        guard didStartMusic else { return }
-        if isMusicPlaying {
-            hasConfirmedPlaying = true
-        } else if hasConfirmedPlaying {
-            context.requestTransition(to: .serverSelect)
-        }
+    func onExit() {
+        viewModel.onExit()
+        visuals.unloadBackground()
+        visuals.stopMusic()
+    }
+
+    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
+        guard let input = translate(event) else { return }
+        viewModel.handle(input)
+    }
+
+    func update(deltaTime: Double, context: ScreenContext) {
+        viewModel.musicPlaybackChanged(isPlaying: visuals.isMusicPlaying)
+        viewModel.update(deltaTime: deltaTime)
+    }
+
+    func render(_ renderer: SDLRenderer) throws {
+        try visuals.clearAndDrawBackground(renderer)
     }
 }
