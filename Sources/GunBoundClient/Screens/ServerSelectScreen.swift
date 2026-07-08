@@ -3,19 +3,23 @@ import GunBound
 /// View for Server / Channel select (state 2) — all connect/login logic
 /// lives in `ServerSelectViewModel`; this loads/draws
 /// `server_back.img`/`server_list.img`/the three confirmed button
-/// images/`waitmessage.img`. Button rects come straight from the view
-/// model (confirmed decomp positions, not computed here).
+/// images/`waitmessage.img`, plus the WORLD LIST rows. Button and row rects
+/// come straight from the view model (confirmed decomp positions/geometry,
+/// not computed here).
 ///
-/// `panelRect`'s origin, (11,13), is visually confirmed (not
-/// decomp-confirmed): `server_back.img` already contains a full "WORLD
-/// LIST" panel baked in (empty/placeholder-character-art state), and
-/// `server_list.img` is a second, same-sized (546x530) rendering of that
-/// *same* panel in its populated-with-servers state — two states of one
-/// panel meant to overlay exactly. (11,13) was found by comparing the two
-/// extracted PNGs' border-region pixels (excluding the differing interior
-/// artwork) across candidate offsets and taking the minimum pixel
-/// difference — a clean, isolated best match (~34 avg channel diff vs. the
-/// next-closest candidate's ~53), not just eyeballed.
+/// `panelRect`'s origin, (11,13), was first found empirically (comparing the
+/// two extracted PNGs' border-region pixels across candidate offsets) and
+/// has since been decomp-confirmed: `BuildWorldListPanel` (`0x5099d0`)
+/// creates the ~545×530 panel at exactly `(0xb, 0xd)`.
+///
+/// The world-list rows are drawn from `server_list.img`'s own frames — 1–4
+/// are the row-background states (base/offline/connecting/highlighted) and
+/// 5–9 the five population-gauge levels — matching the decompiled
+/// `RenderWorldListRow` (`0x50dc80`): row background by selection state,
+/// server number, name + description lines, and the population dial.
+/// Server-side pagination (the scrollbar re-requesting pages via `0x1100`
+/// with a scroll offset) isn't implemented: our broker returns a single
+/// ≤16-entry page, which is all this build's fixed 16-slot storage holds.
 @MainActor
 public final class ServerSelectScreen: GameScreen {
     private let viewModel: ServerSelectViewModel
@@ -24,6 +28,14 @@ public final class ServerSelectScreen: GameScreen {
     private var buttonTextures: [ClientTexture?] = []
     private var waitTexture: ClientTexture?
     private var audio: ClientAudioPlayer?
+    /// server_list.img frames 1–4: row background per state.
+    private var rowBaseTexture: ClientTexture?
+    private var rowOfflineTexture: ClientTexture?
+    private var rowSelectedTexture: ClientTexture?
+    /// server_list.img frames 5–9: the five population-gauge levels.
+    private var gaugeTextures: [ClientTexture?] = []
+    private var numberFont: LoadedFont?
+    private var textFont: LoadedFont?
 
     public init(viewModel: ServerSelectViewModel) {
         self.viewModel = viewModel
@@ -31,20 +43,33 @@ public final class ServerSelectScreen: GameScreen {
 
     public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
-        backgroundTexture = context.renderer.texture(named: viewModel.backgroundImageName, assets: context.assets)
+        let renderer = context.renderer
+        let assets = context.assets
+        backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
         if let musicName = viewModel.musicName {
             let audio = context.makeAudioPlayer()
-            audio.play(named: musicName, assets: context.assets, loop: viewModel.loopMusic)
+            audio.play(named: musicName, assets: assets, loop: viewModel.loopMusic)
             self.audio = audio
         }
 
-        panelTexture = context.renderer.texture(named: viewModel.panelImageName, assets: context.assets)
-        let (panelWidth, panelHeight) = context.renderer.size(of: panelTexture)
+        panelTexture = renderer.texture(named: viewModel.panelImageName, assets: assets)
+        let (panelWidth, panelHeight) = renderer.size(of: panelTexture)
         viewModel.panelRect = Rect(x: 11, y: 13, width: panelWidth, height: panelHeight)
 
-        buttonTextures = viewModel.buttons.map { context.renderer.texture(named: $0.name, assets: context.assets) }
+        // Row-state backgrounds and gauge levels live as frames of the same
+        // sheet. Frame mapping (sprite "state" + 1, since frame 0 is the
+        // panel): 1 = online base, 2 = offline, 4 = highlighted.
+        rowBaseTexture = renderer.texture(named: viewModel.panelImageName, frame: 1, assets: assets)
+        rowOfflineTexture = renderer.texture(named: viewModel.panelImageName, frame: 2, assets: assets)
+        rowSelectedTexture = renderer.texture(named: viewModel.panelImageName, frame: 4, assets: assets)
+        gaugeTextures = (5...9).map { renderer.texture(named: viewModel.panelImageName, frame: $0, assets: assets) }
 
-        waitTexture = context.renderer.texture(named: viewModel.waitImageName, assets: context.assets)
+        numberFont = LoadedFont(.numberFont, renderer: renderer, assets: assets)
+        textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
+
+        buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
+
+        waitTexture = renderer.texture(named: viewModel.waitImageName, assets: assets)
     }
 
     public func onExit() {
@@ -53,6 +78,12 @@ public final class ServerSelectScreen: GameScreen {
         panelTexture = nil
         buttonTextures = []
         waitTexture = nil
+        rowBaseTexture = nil
+        rowOfflineTexture = nil
+        rowSelectedTexture = nil
+        gaugeTextures = []
+        numberFont = nil
+        textFont = nil
         audio?.stop()
         audio = nil
     }
@@ -72,6 +103,49 @@ public final class ServerSelectScreen: GameScreen {
         if let panelTexture {
             renderer.draw(panelTexture, in: viewModel.panelRect, tint: nil)
         }
+
+        for (index, server) in viewModel.availableServers.enumerated() {
+            let rect = viewModel.rowRect(at: index)
+
+            // Row background by state.
+            let background: ClientTexture?
+            if index == viewModel.selectedIndex {
+                background = rowSelectedTexture ?? rowBaseTexture
+            } else if !server.isEnabled {
+                background = rowOfflineTexture ?? rowBaseTexture
+            } else {
+                background = rowBaseTexture
+            }
+            if let background {
+                renderer.draw(background, in: rect, tint: nil)
+            }
+
+            // Server number (the wire serverId + 1) in the row's title bar,
+            // then name + up to two description lines below (the decomp's
+            // y+0x1e origin with a 14px line pitch).
+            numberFont?.draw("\(server.id + 1)", x: rect.x + 8, y: rect.y + 7, using: renderer)
+            if let textFont {
+                textFont.draw(server.name, x: rect.x + 30, y: rect.y + 6, using: renderer)
+                let descriptionLines = server.descriptionText
+                    .replacingOccurrences(of: "\\n", with: "\n")
+                    .split(separator: "\n", omittingEmptySubsequences: true)
+                    .prefix(2)
+                for (line, text) in descriptionLines.enumerated() {
+                    textFont.draw(
+                        String(text).trimmingCharacters(in: .whitespaces),
+                        x: rect.x + 10,
+                        y: rect.y + 30 + Float(line) * 14,
+                        using: renderer
+                    )
+                }
+            }
+
+            // Population gauge (F/E dial) beside the row.
+            if let gauge = gaugeTextures[viewModel.populationLevel(of: server)] {
+                renderer.draw(gauge, in: viewModel.gaugeRect(at: index), tint: nil)
+            }
+        }
+
         for (index, button) in viewModel.buttons.enumerated() {
             guard let texture = buttonTextures[index] else { continue }
             let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
