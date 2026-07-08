@@ -68,7 +68,12 @@ echo "  copied BinaryParsing ($(find "$BP_DST" -name '*.swift' | wc -l | tr -d '
 
 echo "Copying game assets from $ASSETS_SRC"
 if [[ -d "$ASSETS_SRC" ]]; then
-    dst="$PLAYGROUND/AppModule/Resources/"
+    # Nested under orig/ (not flat in Resources/): the Xcode app targets copy
+    # the orig folder itself into their bundles, because a top-level directory
+    # literally named "Resources" inside a flat iOS/tvOS bundle is a reserved
+    # name — CFBundle misdetects the bundle layout and the simulator installer
+    # fails with a bogus "Missing bundle ID" (IXErrorDomain 13).
+    dst="$PLAYGROUND/AppModule/Resources/orig"
     mkdir -p "$dst"
     for file in "${ASSET_FILES[@]}"; do
         if [[ -f "$ASSETS_SRC/$file" ]]; then
