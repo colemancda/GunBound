@@ -24,4 +24,9 @@ public protocol ViewModelDelegate: AnyObject {
     var network: NetworkConfig { get }
     var client: NetworkClient<GunBoundSocketIPv4TCP>? { get set }
     func requestTransition(to mode: ClientMode)
+
+    /// Requests that the app quit — e.g. the Server Select screen's "Exit"
+    /// button. Not every backend can act on this (there's no real "quit" on
+    /// iOS), so implementations that can't are free to no-op.
+    func requestQuit()
 }
