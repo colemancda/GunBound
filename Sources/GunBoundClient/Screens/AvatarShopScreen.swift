@@ -1,5 +1,3 @@
-import CSDL3
-import SDL3Swift
 import GunBound
 
 /// View for the Avatar Store / Shop (state 7) — all button routing/hover
@@ -7,65 +5,61 @@ import GunBound
 /// button's texture and pushes the resulting hit-testing rects into the
 /// view model.
 @MainActor
-final class AvatarShopScreen: GameScreen {
+public final class AvatarShopScreen: GameScreen {
     private let viewModel: AvatarShopViewModel
-    private let visuals = ScreenRenderHelper()
-    private var categoryTextures: [SDLTexture?] = []
-    private var cancelTexture: SDLTexture?
+    private var backgroundTexture: ClientTexture?
+    private var categoryTextures: [ClientTexture?] = []
+    private var cancelTexture: ClientTexture?
 
-    init(viewModel: AvatarShopViewModel) {
+    public init(viewModel: AvatarShopViewModel) {
         self.viewModel = viewModel
     }
 
-    func onEnter(context: ScreenContext) throws {
+    public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
-        visuals.loadBackground(named: viewModel.backgroundImageName, context: context)
+        backgroundTexture = context.renderer.texture(named: viewModel.backgroundImageName, assets: context.assets)
 
         var x: Float = 20
         let y: Float = 20
         categoryTextures = []
         for (index, button) in viewModel.categoryButtons.enumerated() {
-            let texture = visuals.loadTexture(named: button.name, context: context)
+            let texture = context.renderer.texture(named: button.name, assets: context.assets)
             categoryTextures.append(texture)
-            let (width, height) = size(of: texture)
+            let (width, height) = context.renderer.size(of: texture)
             viewModel.setRect(Rect(x: x, y: y, width: width, height: height), forCategoryAt: index)
             x += width + 10
         }
 
-        cancelTexture = visuals.loadTexture(named: viewModel.cancelButtonImageName, context: context)
-        let (cancelWidth, cancelHeight) = size(of: cancelTexture)
+        cancelTexture = context.renderer.texture(named: viewModel.cancelButtonImageName, assets: context.assets)
+        let (cancelWidth, cancelHeight) = context.renderer.size(of: cancelTexture)
         viewModel.cancelRect = Rect(x: 20, y: 600 - cancelHeight - 20, width: cancelWidth, height: cancelHeight)
     }
 
-    func onExit() {
+    public func onExit() {
         viewModel.onExit()
-        visuals.unloadBackground()
+        backgroundTexture = nil
         categoryTextures = []
         cancelTexture = nil
     }
 
-    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        guard let input = translate(event) else { return }
-        viewModel.handle(input)
+    public func handleInput(_ event: ScreenInputEvent) {
+        viewModel.handle(event)
     }
 
-    func update(deltaTime: Double, context: ScreenContext) {
+    public func update(deltaTime: Double) {
         viewModel.update(deltaTime: deltaTime)
     }
 
-    func render(_ renderer: SDLRenderer) throws {
-        try visuals.clearAndDrawBackground(renderer)
+    public func render(_ renderer: ClientRenderer) throws {
+        renderer.clear()
+        drawFullSize(backgroundTexture, using: renderer)
         for (index, button) in viewModel.categoryButtons.enumerated() {
             guard let texture = categoryTextures[index] else { continue }
-            if index == viewModel.hoveredIndex {
-                try texture.setColorModulation(red: 200, green: 200, blue: 255)
-            } else {
-                try texture.setColorModulation(red: 255, green: 255, blue: 255)
-            }
-            try renderer.copy(texture, destination: sdlRect(button.rect))
+            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
+            renderer.draw(texture, in: button.rect, tint: tint)
         }
         if let cancelTexture {
-            try renderer.copy(cancelTexture, destination: sdlRect(viewModel.cancelRect))
+            renderer.draw(cancelTexture, in: viewModel.cancelRect, tint: nil)
         }
     }
 }
