@@ -35,6 +35,19 @@ public struct BitmapFont: Sendable {
         sheetName: "numfont.img",
         glyphs: ["0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "/": 11]
     )
+
+    /// The general Latin font from `font.fnt` — `AssetLibrary` decodes that
+    /// file into one frame per ASCII code (frame index == character code), so
+    /// every printable ASCII character maps to its own code. Covers room
+    /// names, usernames, and chat (non-ASCII/Korean characters fall back to a
+    /// space until the DBCS glyph block is decoded).
+    public static let latinFont: BitmapFont = {
+        var glyphs: [Character: Int] = [:]
+        for code in 0x20...0x7E {
+            glyphs[Character(UnicodeScalar(UInt8(code)))] = code
+        }
+        return BitmapFont(sheetName: "font.fnt", glyphs: glyphs, tracking: 1, spaceWidth: 4)
+    }()
 }
 
 /// A `BitmapFont` with its glyph frames pre-loaded into backend textures for
