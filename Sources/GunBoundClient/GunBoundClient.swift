@@ -4,6 +4,9 @@ import CSDL3
 import SDL3Swift
 import SDL3Mixer
 import GunBound
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// The fixed logical canvas — matches the decomp's confirmed fullscreen
 /// exclusive resolution (`ARCHITECTURE.md`: "fullscreen = hardcoded 800×600").
@@ -62,6 +65,18 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
     )
     let renderer = try SDLRenderer(window: window)
     try renderer.setLogicalSize(width: windowWidth, height: windowHeight, presentation: .letterbox)
+
+    // A bare (non-bundled) executable launched under a debugger (e.g. Xcode's
+    // "Run") doesn't reliably become the frontmost/key app the way it does
+    // when double-clicked or run from Terminal — without this, the window
+    // appears but never receives mouse/keyboard events, which looks exactly
+    // like the app being "stuck" on the first screen that requires input
+    // (Title, since Logo1/Logo2 auto-advance on a timer regardless).
+    #if canImport(AppKit)
+    NSApp.setActivationPolicy(.regular)
+    NSApp.activate(ignoringOtherApps: true)
+    #endif
+    window.raise()
 
     let mixer = try SDLMixer()
     let assets = AssetLibrary(directory: assetsDirectory)
