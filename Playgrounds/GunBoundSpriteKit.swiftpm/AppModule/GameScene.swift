@@ -14,6 +14,12 @@ final class GameScene: SKScene {
     private var stateMachine: GameStateMachine?
     private var lastUpdateTime: TimeInterval?
 
+    /// Set by `LoginView` before this scene is presented — by that point the
+    /// assets directory has already been confirmed to exist and decode a
+    /// real sprite successfully, so this scene doesn't re-validate it.
+    var assetsDirectory: URL!
+    var network: NetworkConfig!
+
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         scaleMode = .aspectFit
@@ -22,23 +28,7 @@ final class GameScene: SKScene {
         anchorPoint = CGPoint(x: 0, y: 0)
 
         let renderer = SpriteKitRenderer(scene: self)
-
-        // The Simulator/device sandbox can't reach an arbitrary Mac
-        // filesystem path, so the archives are copied into
-        // `AppModule/Resources/orig` (gitignored — see this Playground's
-        // README) and bundled as an app resource instead.
-        guard let resourceURL = Bundle.main.resourceURL else {
-            fatalError("Missing app bundle resource URL")
-        }
-        // Xcode may bundle the `Resources` folder reference either flattened
-        // into the bundle root or preserved as a `Resources/` subfolder,
-        // depending on how it regenerates this Playground's project — check
-        // both rather than assume one.
-        let nestedURL = resourceURL.appendingPathComponent("Resources/orig", isDirectory: true)
-        let flatURL = resourceURL.appendingPathComponent("orig", isDirectory: true)
-        let assetsDirectory = FileManager.default.fileExists(atPath: nestedURL.path) ? nestedURL : flatURL
         let assets = AssetLibrary(directory: assetsDirectory)
-        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let context = ClientContext(assets: assets, renderer: renderer, network: network) {
             SpriteKitAudioPlayer()
         }
