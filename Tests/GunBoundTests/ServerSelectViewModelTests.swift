@@ -90,6 +90,33 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.availableServers.map(\.isEnabled) == [true, true, false, true, true])
     }
 
+    @Test func fetchDirectoryCapsAtSixteenServers() async throws {
+        // The client stores a fixed-size 16-entry structure-of-arrays, so a
+        // broker returning more than 16 servers has the overflow dropped.
+        let template = try #require(try Self.decodedServerDirectory().first)
+        let oversized = (0..<20).map { index in
+            ServerDirectoryResponse.Server(
+                name: "Server \(index)",
+                descriptionText: template.descriptionText,
+                address: template.address,
+                port: template.port,
+                utilization: template.utilization,
+                capacity: template.capacity,
+                isEnabled: true
+            )
+        }
+
+        let fetcher = MockServerDirectoryFetcher(servers: oversized)
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: fetcher)
+
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(viewModel.availableServers.count == ServerSelectViewModel.maxServers)
+        #expect(viewModel.availableServers.map(\.name) == (0..<16).map { "Server \($0)" })
+    }
+
     @Test func fetchDirectoryChoosesFirstEnabledServer() async throws {
         let servers = try Self.decodedServerDirectory()
         let fetcher = MockServerDirectoryFetcher(servers: servers)
