@@ -165,7 +165,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
         backlog: Int = 100
     ) async throws -> Self {
         let fileDescriptor = try SocketDescriptor.tcp(address)  // [.closeOnExec, .nonBlocking])
-        try fileDescriptor.closeIfThrows {
+        try await fileDescriptor.closeIfThrows {
             try fileDescriptor.listen(backlog: backlog)
             try fileDescriptor.setNonblocking()
         }
@@ -234,7 +234,7 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
 
     public init(address: GunBoundAddress) async throws {
         let fileDescriptor = try SocketDescriptor.udp(address)
-        try fileDescriptor.closeIfThrows {
+        try await fileDescriptor.closeIfThrows {
             try fileDescriptor.setNonblocking()
         }
         self.address = address
