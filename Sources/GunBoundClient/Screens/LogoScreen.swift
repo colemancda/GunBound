@@ -1,42 +1,46 @@
-import SDL3Swift
 import GunBound
 
 /// View for the publisher splash screens (states 5/6) — all logic/timing
 /// lives in `LogoViewModel`; this just loads/draws the named resources it
 /// exposes and forwards input.
 @MainActor
-final class LogoScreen: GameScreen {
+public final class LogoScreen: GameScreen {
     private let viewModel: LogoViewModel
-    private let visuals = ScreenRenderHelper()
+    private var backgroundTexture: ClientTexture?
+    private var audio: ClientAudioPlayer?
 
-    init(viewModel: LogoViewModel) {
+    public init(viewModel: LogoViewModel) {
         self.viewModel = viewModel
     }
 
-    func onEnter(context: ScreenContext) throws {
+    public func onEnter(context: ClientContext) throws {
         viewModel.onEnter()
-        visuals.loadBackground(named: viewModel.imageName, context: context)
+        backgroundTexture = context.renderer.texture(named: viewModel.imageName, assets: context.assets)
         if let musicName = viewModel.musicName {
-            visuals.playMusic(named: musicName, context: context)
+            let audio = context.makeAudioPlayer()
+            audio.play(named: musicName, assets: context.assets, loop: false)
+            self.audio = audio
         }
     }
 
-    func onExit() {
+    public func onExit() {
         viewModel.onExit()
-        visuals.unloadBackground()
-        visuals.stopMusic()
+        backgroundTexture = nil
+        audio?.stop()
+        audio = nil
     }
 
-    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        guard let input = translate(event) else { return }
-        viewModel.handle(input)
+    public func handleInput(_ event: ScreenInputEvent) {
+        viewModel.handle(event)
     }
 
-    func update(deltaTime: Double, context: ScreenContext) {
+    public func update(deltaTime: Double) {
+        audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
     }
 
-    func render(_ renderer: SDLRenderer) throws {
-        try visuals.clearAndDrawBackground(renderer)
+    public func render(_ renderer: ClientRenderer) throws {
+        renderer.clear()
+        drawFullSize(backgroundTexture, using: renderer)
     }
 }
