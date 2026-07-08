@@ -3,9 +3,11 @@ import SDL3Swift
 import GunBound
 
 /// State 3 — Game Room List / channel lobby (`gamelist_back.img`,
-/// `gamelist_create.img`, `b_gamelist_join/ranking/avatar/buddy.img`). Last
-/// screen in this pass's scope — buttons render and respond to hover/click,
-/// but aren't wired to any protocol packets yet (no networking here).
+/// `gamelist_create.img`, `b_gamelist_join/ranking/avatar/buddy.img`).
+/// "Create" and "Avatar" transition locally to the Ready Room / Avatar Shop
+/// screens; "Join"/"Ranking"/"Buddy" have no local-only screen to go to
+/// (they're server-driven lists/dialogs) so they just log the click — none
+/// of this is wired to any protocol packets yet (no networking here).
 ///
 /// Button screen positions aren't reverse-engineered in the decomp docs, so
 /// they're laid out in a simple row along the bottom of the window purely to
@@ -63,7 +65,16 @@ final class GameRoomListScreen: ImageBackgroundScreen {
 
         case .mouseButtonDown(_, let x, let y, _):
             if let index = buttons.firstIndex(where: { contains($0.rect, x: x, y: y) }) {
-                print("[GunBoundClient] clicked room-list button: \(buttons[index].name)")
+                let name = buttons[index].name
+                print("[GunBoundClient] clicked room-list button: \(name)")
+                switch name {
+                case "gamelist_create.img":
+                    context.requestTransition(to: .readyRoom)
+                case "b_gamelist_avatar.img":
+                    context.requestTransition(to: .avatarShop)
+                default:
+                    break
+                }
             }
 
         default:
