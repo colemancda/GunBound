@@ -53,7 +53,7 @@ public enum ImgFile {
 
         static let transparent = Pixel(argb4444: 0)
 
-        private init(red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8) {
+        public init(red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8) {
             self.red = red
             self.green = green
             self.blue = blue
@@ -90,6 +90,33 @@ public enum ImgFile {
 
         /// Decoded pixels, row-major, `width * height` entries.
         public let pixels: [Pixel]
+
+        /// Builds a frame from raw decoded pixels — used both by the `.img`
+        /// parser and to synthesize frames that don't come from an `.img`
+        /// record (e.g. `font.fnt` glyphs, which only need width/height/pixels).
+        public init(
+            transparencyType: TransparencyType = .simple,
+            width: Int32,
+            height: Int32,
+            xCenter: Int32 = 0,
+            yCenter: Int32 = 0,
+            flippedX: Int32 = 0,
+            flippedY: Int32 = 0,
+            unknown1: Int32 = 0,
+            unknown2: Int32 = 0,
+            pixels: [Pixel]
+        ) {
+            self.transparencyType = transparencyType
+            self.width = width
+            self.height = height
+            self.xCenter = xCenter
+            self.yCenter = yCenter
+            self.flippedX = flippedX
+            self.flippedY = flippedY
+            self.unknown1 = unknown1
+            self.unknown2 = unknown2
+            self.pixels = pixels
+        }
     }
 
     /// Parses every frame in a decompressed `.img` entry's bytes.
