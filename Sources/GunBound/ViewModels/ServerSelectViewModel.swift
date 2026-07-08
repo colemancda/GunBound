@@ -18,13 +18,15 @@ import GunBoundProtocol
 /// `server_list.img`'s own on-screen position isn't decomp-confirmed (no
 /// decompiled code path references it by name), but it's visually
 /// unambiguous: `server_back.img` already has a full "WORLD LIST" panel
-/// baked in at the top-left (its empty/placeholder-character-art state —
-/// same border, title bar, and scrollbar), and `server_list.img` is a
-/// second, identically-sized (546×530) rendering of that *same* panel in
-/// its populated-with-servers state. They're two states of one panel meant
-/// to overlay exactly, not a background plus a separately-placed overlay —
-/// so `panelRect` is (0,0), matching `server_back.img`'s own panel
-/// position, not centered or otherwise offset.
+/// baked in (its empty/placeholder-character-art state — same border, title
+/// bar, and scrollbar), and `server_list.img` is a second, identically-sized
+/// (546×530) rendering of that *same* panel in its populated-with-servers
+/// state. They're two states of one panel meant to overlay exactly, not a
+/// background plus a separately-placed overlay — so `panelRect`'s origin is
+/// `server_back.img`'s own panel position, (11,13), found by comparing the
+/// two images' border-region pixels across candidate offsets and taking the
+/// minimum difference (a clean, isolated best match), not eyeballed or
+/// centered.
 @MainActor
 public final class ServerSelectViewModel: ScreenViewModel {
     public struct Button: Equatable, Sendable {
