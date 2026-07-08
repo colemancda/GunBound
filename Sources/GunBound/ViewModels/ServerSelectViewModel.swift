@@ -123,14 +123,27 @@ public final class ServerSelectViewModel: ScreenViewModel {
                 NetworkConfig(username: network.username, password: network.password, serverAddress: worldAddress, serverPort: worldPort, brokerPort: network.brokerPort)
             )
             let response = try await client.authenticate(username: network.username, password: network.password)
-            if response.status == .success {
-                print("[GunBound] authenticated as \(network.username)")
-                finishConnecting(client: client, success: true)
-            } else {
+            guard response.status == .success else {
                 print("[GunBound] authentication failed: \(response.status)")
                 await client.close()
                 finishConnecting(client: nil, success: false)
+                return
             }
+            print("[GunBound] authenticated as \(network.username)")
+
+            // Confirm-connect: join the default channel and wait for the
+            // server's 0x2001 ack. Mirrors the decompiled State-2 client,
+            // which only advances to the Game Room List (ChangeGameState(3))
+            // once this acknowledgement comes back with a zero status.
+            let joinResponse = try await client.joinChannel()
+            guard joinResponse.isSuccess else {
+                print("[GunBound] channel join rejected (status non-zero)")
+                await client.close()
+                finishConnecting(client: nil, success: false)
+                return
+            }
+            print("[GunBound] joined channel \(joinResponse.channel) (\(joinResponse.users.count) user(s) present)")
+            finishConnecting(client: client, success: true)
         } catch {
             print("[GunBound] connection failed: \(error)")
             finishConnecting(client: nil, success: false)
