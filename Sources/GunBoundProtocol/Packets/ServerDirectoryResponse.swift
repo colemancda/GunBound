@@ -68,20 +68,38 @@ public extension ServerDirectoryResponse {
 
 extension ServerDirectoryResponse.Server {
 
+    // Wire format confirmed field-by-field in GunBound-Decomp
+    // (PROTOCOL.md, opcode 0x1102, from a full Ghidra decompile of
+    // State02_ServerSelect_ProcessPacket's parse loop):
+    //
+    //   u16  serverId
+    //   u8   regionOrType     (client forces to 3 when offline)
+    //   u8   nameLen; char name[nameLen]     (not NUL-terminated on wire)
+    //   u8   descLen; char desc[descLen]     (not NUL-terminated on wire)
+    //   u32  unknownField      (raw; decomp's best guess: packed IP)
+    //   u16  port              (htons/big-endian)
+    //   u16  unknownField2     (raw copy, not yet identified)
+    //   u16  currentPlayers    (the "is server full" check compares this…
+    //   u16  maxCapacity       (…against this, in both button handlers)
+    //   u8   onlineFlag        (0 = offline)
+    //
+    // Our field names map: address = unknownField (u32, treated as the
+    // packed IP — decomp's own hypothesis), utilization = currentPlayers,
+    // capacity = maxCapacity, isEnabled = onlineFlag. serverId/regionOrType
+    // aren't surfaced yet (only opcode 0x2001's confirm-connect reads
+    // serverId back out, which this client doesn't implement), so they're
+    // parsed and dropped.
     public init(parsing input: inout ParserSpan) throws {
-        // Server Index
-        _ = try UInt8(parsing: &input)
-        _ = try UInt8(parsing: &input)
-        _ = try UInt8(parsing: &input)
-        // values
+        _ = try UInt16(parsingLittleEndian: &input)  // serverId
+        _ = try UInt8(parsing: &input)               // regionOrType
         self.name = try String(parsingLengthPrefixedASCII: &input)
         self.descriptionText = try String(parsingLengthPrefixedASCII: &input)
         self.address = try IPv4Address(parsing: &input)
         self.port = try UInt16(parsingBigEndian: &input)
-        self.utilization = try UInt16(parsingBigEndian: &input)
-        _ = try UInt16(parsingBigEndian: &input)  // duplicate utilization write in encode
-        self.capacity = try UInt16(parsingBigEndian: &input)
-        self.isEnabled = try UInt8(parsing: &input) != 0
+        _ = try UInt16(parsingBigEndian: &input)  // unknownField2
+        self.utilization = try UInt16(parsingBigEndian: &input)  // currentPlayers
+        self.capacity = try UInt16(parsingBigEndian: &input)     // maxCapacity
+        self.isEnabled = try UInt8(parsing: &input) != 0         // onlineFlag
     }
 }
 
@@ -114,21 +132,24 @@ extension ServerDirectoryResponse {
         // number of servers
         output.write(UInt8(directory.count))
 
-        // encode each
+        // encode each — see the field-by-field wire format documented on
+        // `Server.init(parsing:)`. serverId is written as the entry index
+        // (u16, low byte first) and regionOrType as 0; the unidentified
+        // `unknownField2` slot is filled with the same value as
+        // currentPlayers (our server has no distinct value for it, and this
+        // reproduces the real captured fixtures byte-for-byte).
         for (index, server) in directory.enumerated() {
-            // Server Index
-            output.write(UInt8(index))
-            output.write(UInt8(0x00))
-            output.write(UInt8(0x00))
-            // values
+            output.write(UInt8(index))  // serverId (u16, LE low byte)
+            output.write(UInt8(0x00))   // serverId high byte
+            output.write(UInt8(0x00))   // regionOrType
             output.writeLengthPrefixed(ascii: server.name)
             output.writeLengthPrefixed(ascii: server.descriptionText)
             server.address.encode(to: &output)
             output.write(server.port, endianness: .big)
-            output.write(server.utilization, endianness: .big)
-            output.write(server.utilization, endianness: .big)
-            output.write(server.capacity, endianness: .big)
-            output.write(server.isEnabled)
+            output.write(server.utilization, endianness: .big)  // unknownField2
+            output.write(server.utilization, endianness: .big)  // currentPlayers
+            output.write(server.capacity, endianness: .big)     // maxCapacity
+            output.write(server.isEnabled)                      // onlineFlag
         }
     }
 }
