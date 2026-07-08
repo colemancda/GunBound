@@ -54,9 +54,19 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public private(set) var hoveredIndex: Int?
     public private(set) var isConnecting = false
 
+    /// The most world-server entries the client keeps, matching the
+    /// decompiled `State02_ServerSelect_ProcessPacket` (`0x4e02b0`): it
+    /// unpacks the `0x1102` list into a structure-of-arrays in the global
+    /// client arena (`g_clientContext + 0x3f808`) whose backing tables are
+    /// sized for exactly 16 entries (e.g. the 256-byte `desc` table is
+    /// `0x1000` = 16 × 256), and the Enter-key selection loop bounds its
+    /// scan at `i < 0x10`. Anything the broker sends past 16 is dropped.
+    public static let maxServers = 16
+
     /// Servers returned by the most recent broker fetch — the real,
     /// server-driven data behind the "WORLD LIST" panel (`server_list.img`
-    /// itself is just static chrome/art with no live data baked in).
+    /// itself is just static chrome/art with no live data baked in), capped
+    /// at `maxServers` to match the client's fixed-size storage.
     public private(set) var availableServers: [ServerDirectoryResponse.Server] = []
 
     private let delegate: ViewModelDelegate
@@ -164,9 +174,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
         var worldPort = network.serverPort
         do {
             let directory = try await directoryFetcher.fetchServerDirectory(address: network.serverAddress, brokerPort: network.brokerPort)
-            availableServers = directory
-            print("[GunBound] broker returned \(directory.count) server(s): \(directory.map(\.name))")
-            if let chosen = directory.first(where: \.isEnabled) {
+            availableServers = Array(directory.prefix(Self.maxServers))
+            print("[GunBound] broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
+            // Choose from the capped list — the client only stores the first
+            // 16 entries, so a later one couldn't be selected anyway.
+            if let chosen = availableServers.first(where: \.isEnabled) {
                 worldAddress = chosen.address.rawValue
                 worldPort = chosen.port
             }
