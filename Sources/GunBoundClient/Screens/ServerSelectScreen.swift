@@ -68,10 +68,31 @@ final class ServerSelectScreen: ImageBackgroundScreen {
             guard !isConnecting else { return }
             isConnecting = true
             let network = context.network
-            print("[GunBoundClient] connecting to \(network.serverAddress):\(network.serverPort) as \(network.username)")
             Task {
                 do {
-                    let client = try await NetworkClient.connect(network)
+                    // Real GunBound looks up the world-server list from a
+                    // broker/directory server first — fall back to the
+                    // manually configured server/port directly (e.g. for a
+                    // standalone `GunBoundServer world` with no broker
+                    // running) if the broker can't be reached or has no
+                    // enabled servers.
+                    var worldAddress = network.serverAddress
+                    var worldPort = network.serverPort
+                    do {
+                        let directory = try await NetworkClient.fetchServerDirectory(address: network.serverAddress, brokerPort: network.brokerPort)
+                        print("[GunBoundClient] broker returned \(directory.count) server(s): \(directory.map(\.name))")
+                        if let chosen = directory.first(where: \.isEnabled) {
+                            worldAddress = chosen.address.rawValue
+                            worldPort = chosen.port
+                        }
+                    } catch {
+                        print("[GunBoundClient] couldn't reach broker at \(network.serverAddress):\(network.brokerPort) (\(error)), connecting directly instead")
+                    }
+
+                    print("[GunBoundClient] connecting to \(worldAddress):\(worldPort) as \(network.username)")
+                    let client = try await NetworkClient.connect(
+                        NetworkConfig(username: network.username, password: network.password, serverAddress: worldAddress, serverPort: worldPort, brokerPort: network.brokerPort)
+                    )
                     let response = try await client.authenticate(username: network.username, password: network.password)
                     if response.status == .success {
                         print("[GunBoundClient] authenticated as \(network.username)")
