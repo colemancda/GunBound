@@ -164,6 +164,92 @@ struct ServerSelectViewModelTests {
         #expect(chosen.port == 3)  // "Joinable", not "Offline" or "Full"
     }
 
+    /// The wire `serverId` is surfaced as `id` — the row number the world
+    /// list draws is `id + 1`.
+    @Test func decodesServerIds() throws {
+        let servers = try Self.decodedServerDirectory()
+        #expect(servers.map(\.id) == [0, 1, 2, 3, 4])
+    }
+
+    /// Rows lay out 2-across with the decomp-confirmed pitch: x = (i%2)·247
+    /// + 22 + panelX, y = (i/2)·73 + 45 + panelY, 181×65 backgrounds.
+    @Test func worldListRowGeometry() {
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let viewModel = ServerSelectViewModel(delegate: MockViewModelDelegate(network: network))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+
+        #expect(viewModel.rowRect(at: 0) == Rect(x: 33, y: 58, width: 181, height: 65))
+        #expect(viewModel.rowRect(at: 1) == Rect(x: 280, y: 58, width: 181, height: 65))
+        #expect(viewModel.rowRect(at: 2) == Rect(x: 33, y: 131, width: 181, height: 65))
+        // Gauge sits beside the row background.
+        #expect(viewModel.gaugeRect(at: 0).x == 33 + 181 + 2)
+    }
+
+    /// Clicking a row selects it — but only online rows, mirroring
+    /// `WorldListRowHitTest` (fullness is only checked at connect time).
+    @Test func rowClickSelectsOnlineRowsOnly() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(viewModel.selectedIndex == nil)
+
+        // Click the center of row 1 ("Free Play", online).
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + row1.width / 2, y: row1.y + row1.height / 2))
+        #expect(viewModel.selectedIndex == 1)
+
+        // Clicking row 2 ("Disabled Server", offline) leaves the selection.
+        let row2 = viewModel.rowRect(at: 2)
+        viewModel.handle(.pointerDown(x: row2.x + 5, y: row2.y + 5))
+        #expect(viewModel.selectedIndex == 1)
+    }
+
+    /// The SERVER button connects to the clicked row; a full selection (or
+    /// none) falls back to the first joinable server — the Enter-key
+    /// auto-select.
+    @Test func connectHonorsSelectedRow() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        // Select "Free Play" (row 1, port 8361) and connect.
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        let chosen = await viewModel.fetchDirectoryAndChooseServer()
+        #expect(chosen.port == 8361)
+
+        // Select "Full Server" (row 3, enabled but full): connect falls back
+        // to the first joinable ("JG Test Broker", port 8370).
+        let row3 = viewModel.rowRect(at: 3)
+        viewModel.handle(.pointerDown(x: row3.x + 5, y: row3.y + 5))
+        #expect(viewModel.selectedIndex == 3)
+        let fallback = await viewModel.fetchDirectoryAndChooseServer()
+        #expect(fallback.port == 8370)
+    }
+
+    /// Population gauge levels: currentPlayers·100/maxCapacity in five 20%
+    /// buckets.
+    @Test func populationGaugeLevels() {
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let viewModel = ServerSelectViewModel(delegate: MockViewModelDelegate(network: network))
+        func server(_ players: UInt16, of capacity: UInt16) -> ServerDirectoryResponse.Server {
+            ServerDirectoryResponse.Server(name: "", descriptionText: "", address: IPv4Address(127, 0, 0, 1), port: 0, utilization: players, capacity: capacity, isEnabled: true)
+        }
+        #expect(viewModel.populationLevel(of: server(0, of: 100)) == 0)
+        #expect(viewModel.populationLevel(of: server(39, of: 100)) == 1)
+        #expect(viewModel.populationLevel(of: server(50, of: 100)) == 2)
+        #expect(viewModel.populationLevel(of: server(80, of: 100)) == 4)
+        #expect(viewModel.populationLevel(of: server(100, of: 100)) == 4)
+        #expect(viewModel.populationLevel(of: server(0, of: 0)) == 4)  // no capacity = full
+    }
+
     @Test func fetchDirectoryFallsBackToConfiguredServerWhenBrokerUnreachable() async throws {
         struct FailingFetcher: ServerDirectoryFetching {
             struct Failure: Error {}
