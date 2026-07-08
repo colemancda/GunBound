@@ -1,9 +1,14 @@
-# GunBound Darwin port (macOS/tvOS)
+# GunBound Darwin port (macOS/iOS/tvOS)
 
-`GunBound.xcodeproj` — `GunBound-macOS` and `GunBound-tvOS` app targets, both
-rendering through **SpriteKit**, mirroring junkbot-swift's `ports/Darwin`
-layout. iOS lives alongside in `GunBoundSpriteKit.swiftpm` (an App Playground
-that also runs in Swift Playgrounds on iPad — see its README).
+`GunBound.xcodeproj` — `GunBound-macOS`, `GunBound-iOS`, and `GunBound-tvOS`
+app targets, all rendering through **SpriteKit**, mirroring junkbot-swift's
+`ports/Darwin` layout. The iOS App Playground lives alongside in
+`GunBoundSpriteKit.swiftpm` (it also runs in Swift Playgrounds on iPad — see
+its README); the `GunBound-iOS` Xcode target compiles the *same* Playground
+sources by reference — including the Playground's `@main`
+`GunBoundSpriteKitApp.swift`, so it adds **zero** files of its own — for
+running on iPhone/iPad from Xcode without the Playground's vendored-package
+setup (it uses the repo-root package reference like the other two targets).
 
 ## What's shared vs. Darwin-only
 
