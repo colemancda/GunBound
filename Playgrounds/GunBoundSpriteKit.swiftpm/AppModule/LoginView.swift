@@ -81,16 +81,21 @@ struct LoginView: View {
         }
     }
 
-    /// Checks both places Xcode might have bundled the `Resources` folder
-    /// reference (flattened into the bundle root, or preserved as a
-    /// `Resources/` subfolder) and confirms `graphics.xfs` is actually
-    /// there — not just that the directory exists.
+    /// Finds the directory holding the game archives. `copy-dependencies.sh`
+    /// copies them into `AppModule/Resources/`, but SwiftPM's `.copy` can
+    /// surface that in a few shapes depending on the build system (flattened
+    /// into the bundle root, kept as a `Resources/` subfolder, or an older
+    /// `orig/` subfolder), so every plausible location is checked for
+    /// `graphics.xfs` — not just that a directory exists.
     private static func locateAssetsDirectory() throws -> URL {
         guard let resourceURL = Bundle.main.resourceURL else {
             throw AssetsError.missingBundleResourceURL
         }
         let candidates = [
-            resourceURL.appendingPathComponent("Resources", isDirectory: true)
+            resourceURL.appendingPathComponent("Resources", isDirectory: true),
+            resourceURL,
+            resourceURL.appendingPathComponent("Resources/orig", isDirectory: true),
+            resourceURL.appendingPathComponent("orig", isDirectory: true)
         ]
         for candidate in candidates {
             if FileManager.default.fileExists(atPath: candidate.appendingPathComponent("graphics.xfs").path) {
@@ -111,9 +116,13 @@ struct LoginView: View {
             return "The app bundle has no resource URL."
         case AssetsError.missingArchives(let searched):
             let paths = searched.map(\.path).joined(separator: "\n")
-            return "graphics.xfs wasn't found in any of:\n\(paths)\n\nRe-copy the archives into AppModule/Resources/orig/ (see this Playground's README) and rebuild."
+            return "graphics.xfs wasn't found in any of:\n\(paths)\n\nRun Playgrounds/copy-dependencies.sh to copy the archives into AppModule/Resources/ (see this Playground's README) and rebuild."
         default:
             return "\(error)"
         }
     }
+}
+
+#Preview {
+    LoginView()
 }
