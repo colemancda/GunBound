@@ -17,7 +17,7 @@ let package = Package(
             name: "GunBoundSpriteKit",
             targets: ["AppModule"],
             bundleIdentifier: "org.pureswift.Gtest1",
-            teamIdentifier: "E795R2E2E8",
+            teamIdentifier: "4W79SG34MW",
             displayVersion: "1.0",
             bundleVersion: "1",
             appIcon: .asset("AppIcon"),

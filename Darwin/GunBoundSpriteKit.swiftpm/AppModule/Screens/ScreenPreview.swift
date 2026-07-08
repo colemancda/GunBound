@@ -32,7 +32,7 @@ struct ScreenPreviewView: View {
 }
 
 /// Where the previews load the game archives from — the bundled
-/// `AppModule/Resources` folder (run `Playgrounds/copy-dependencies.sh` to
+/// `AppModule/Resources` folder (run `Darwin/copy-dependencies.sh` to
 /// populate it; an empty folder just renders a black canvas).
 func previewAssetsDirectory() -> URL {
     let resourceURL = Bundle.main.resourceURL ?? URL(filePath: ".")

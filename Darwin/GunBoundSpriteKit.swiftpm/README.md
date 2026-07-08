@@ -19,7 +19,7 @@ Before opening it — and before syncing/AirDropping it to an iPad — run the
 vendoring script from a checkout of the full repo:
 
 ```sh
-Playgrounds/copy-dependencies.sh
+Darwin/copy-dependencies.sh
 ```
 
 This copies `Sources/{GunBoundProtocol,GunBoundFile,GunBound,GunBoundClient}`,
@@ -53,7 +53,7 @@ binary assets, not something to commit) — after cloning, re-copy them with:
 
 ```sh
 cp ~/Developer/GunBound-Decomp/orig/{graphics.xfs,sound.xfs,avatar.xfs,characterdata.dat,itemdata.dat,specialdata.dat,stage.dat} \
-   Playgrounds/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
+   Darwin/GunBoundSpriteKit.swiftpm/AppModule/Resources/orig/
 ```
 
 before opening the Playground in Xcode, or the app will fail to find them at

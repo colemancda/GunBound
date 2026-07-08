@@ -6,7 +6,7 @@
 # "../..")` local dependency the desktop package would otherwise use isn't
 # reachable.
 #
-# What it copies INTO Playgrounds/GunBoundSpriteKit.swiftpm/:
+# What it copies INTO Darwin/GunBoundSpriteKit.swiftpm/:
 #   - Sources/GunBoundProtocol  -> GunBoundProtocol/   (local Swift target)
 #   - Sources/GunBoundFile      -> GunBoundFile/
 #   - Sources/GunBound          -> GunBound/
@@ -30,12 +30,12 @@
 # The vendored folders and the assets are gitignored — re-run this script after
 # cloning (and before syncing the .swiftpm to an iPad).
 #
-# Usage: Playgrounds/copy-dependencies.sh
+# Usage: Darwin/copy-dependencies.sh
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PLAYGROUND="$REPO_ROOT/Playgrounds/GunBoundSpriteKit.swiftpm"
+PLAYGROUND="$REPO_ROOT/Darwin/GunBoundSpriteKit.swiftpm"
 ASSETS_SRC="${GUNBOUND_ASSETS:-$HOME/Developer/GunBound-Decomp/orig}"
 
 VENDORED_TARGETS=(GunBoundProtocol GunBoundFile GunBound GunBoundClient)

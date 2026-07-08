@@ -116,7 +116,7 @@ struct LoginView: View {
             return "The app bundle has no resource URL."
         case AssetsError.missingArchives(let searched):
             let paths = searched.map(\.path).joined(separator: "\n")
-            return "graphics.xfs wasn't found in any of:\n\(paths)\n\nRun Playgrounds/copy-dependencies.sh to copy the archives into AppModule/Resources/ (see this Playground's README) and rebuild."
+            return "graphics.xfs wasn't found in any of:\n\(paths)\n\nRun Darwin/copy-dependencies.sh to copy the archives into AppModule/Resources/ (see this Playground's README) and rebuild."
         default:
             return "\(error)"
         }
