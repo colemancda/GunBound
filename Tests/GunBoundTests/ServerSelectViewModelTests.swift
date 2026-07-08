@@ -9,6 +9,7 @@ import Testing
 final class MockViewModelDelegate: ViewModelDelegate {
     let network: NetworkConfig
     var client: NetworkClient<GunBoundSocketIPv4TCP>?
+    let session = ClientSession()
     private(set) var requestedTransitions: [ClientMode] = []
     private(set) var quitRequested = false
 
