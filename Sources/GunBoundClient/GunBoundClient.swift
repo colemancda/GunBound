@@ -85,26 +85,26 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
     let assets = AssetLibrary(directory: assetsDirectory)
     let context = ScreenContext(assets: assets, renderer: renderer, mixer: mixer, network: network)
 
-    let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { mode in
+    let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
         switch mode {
         case .logo1:
-            return LogoScreen(imageName: "logomode.img", musicName: "logo.mp3", next: .logo2)
+            return LogoScreen(viewModel: LogoViewModel(imageName: "logomode.img", musicName: "logo.mp3", next: .logo2, delegate: context))
         case .logo2:
-            return LogoScreen(imageName: "logomode2.img", musicName: "logo2.mp3", next: .title)
+            return LogoScreen(viewModel: LogoViewModel(imageName: "logomode2.img", musicName: "logo2.mp3", next: .title, delegate: context))
         case .title:
-            return TitleScreen()
+            return TitleScreen(viewModel: TitleViewModel(delegate: context))
         case .serverSelect:
-            return ServerSelectScreen()
+            return ServerSelectScreen(viewModel: ServerSelectViewModel(delegate: context))
         case .gameRoomList:
-            return GameRoomListScreen()
+            return GameRoomListScreen(viewModel: GameRoomListViewModel(delegate: context))
         case .readyRoom:
-            return ReadyRoomScreen()
+            return ReadyRoomScreen(viewModel: ReadyRoomViewModel(delegate: context))
         case .avatarShop:
-            return AvatarShopScreen()
+            return AvatarShopScreen(viewModel: AvatarShopViewModel(delegate: context))
         case .loading:
-            return LoadingScreen()
+            return LoadingScreen(viewModel: LoadingViewModel(delegate: context))
         case .inGameSession:
-            return InBattleScreen()
+            return InBattleScreen(viewModel: InBattleViewModel(delegate: context))
         default:
             return nil
         }
