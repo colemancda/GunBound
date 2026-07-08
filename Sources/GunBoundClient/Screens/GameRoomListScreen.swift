@@ -20,6 +20,7 @@ public final class GameRoomListScreen: GameScreen {
     private var cardTexture: ClientTexture?
     private var cardHighlightTexture: ClientTexture?
     private var statusTextures: [GameRoomListViewModel.RoomStatus: ClientTexture] = [:]
+    private var font: LoadedFont?
 
     public init(viewModel: GameRoomListViewModel) {
         self.viewModel = viewModel
@@ -40,6 +41,8 @@ public final class GameRoomListScreen: GameScreen {
             statusTextures[status] = renderer.texture(named: viewModel.backgroundImageName, frame: frame, assets: assets)
         }
 
+        font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
+
         var x: Float = 20
         let y: Float = 540
         buttonTextures = []
@@ -59,6 +62,7 @@ public final class GameRoomListScreen: GameScreen {
         cardTexture = nil
         cardHighlightTexture = nil
         statusTextures = [:]
+        font = nil
     }
 
     public func handleInput(_ event: ScreenInputEvent) {
@@ -79,8 +83,9 @@ public final class GameRoomListScreen: GameScreen {
             if let card = highlighted ? (cardHighlightTexture ?? cardTexture) : cardTexture {
                 renderer.draw(card, in: rect, tint: nil)
             }
+            let room = viewModel.rooms[index]
             // Status icon, right-aligned within the card.
-            let status = viewModel.status(of: viewModel.rooms[index])
+            let status = viewModel.status(of: room)
             if let icon = statusTextures[status] {
                 let (iconWidth, iconHeight) = renderer.size(of: icon)
                 let iconRect = Rect(
@@ -90,6 +95,14 @@ public final class GameRoomListScreen: GameScreen {
                     height: iconHeight
                 )
                 renderer.draw(icon, in: iconRect, tint: nil)
+            }
+
+            // Bitmap-font text: room number (top-left) and players/max count
+            // (bottom-left) — the decomp's `%d` and `%3d/%3d` overlays. Room
+            // *name* needs the general `font.fnt`, not decoded yet.
+            if let font {
+                font.draw("\(index + 1)", x: rect.x + 8, y: rect.y + 6, using: renderer)
+                font.draw("\(room.playerCount)/\(room.capacity.rawValue)", x: rect.x + 8, y: rect.y + rect.height - font.lineHeight - 6, using: renderer)
             }
         }
 
