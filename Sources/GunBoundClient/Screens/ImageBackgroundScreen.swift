@@ -18,6 +18,13 @@ import GunBound
 class ImageBackgroundScreen: GameScreen {
     private let backgroundImageName: String
     private let musicName: String?
+    /// Whether `updateMusicLoop()` should restart the track once it finishes
+    /// playing. `SDLAudioTrack.play()` always plays its audio once (the
+    /// underlying wrapper hardcodes a loop count of 0, and doesn't expose a
+    /// way to request looping), so continuous background music is done here
+    /// by detecting "finished" and calling `play()` again, rather than a
+    /// single native looping playback call.
+    private let loopMusic: Bool
     private(set) var backgroundTexture: SDLTexture?
     private var music: SDLAudio?
     private var track: SDLAudioTrack?
@@ -32,9 +39,10 @@ class ImageBackgroundScreen: GameScreen {
     /// finishes (or if no track ever started).
     var isMusicPlaying: Bool { track?.isPlaying ?? false }
 
-    init(backgroundImageName: String, musicName: String?) {
+    init(backgroundImageName: String, musicName: String?, loopMusic: Bool = false) {
         self.backgroundImageName = backgroundImageName
         self.musicName = musicName
+        self.loopMusic = loopMusic
     }
 
     func onEnter(context: ScreenContext) throws {
@@ -53,7 +61,19 @@ class ImageBackgroundScreen: GameScreen {
 
     func handleEvent(_ event: SDLEvent, context: ScreenContext) {}
 
-    func update(deltaTime: Double, context: ScreenContext) {}
+    func update(deltaTime: Double, context: ScreenContext) {
+        updateMusicLoop()
+    }
+
+    /// Restarts the music track once it finishes, if `loopMusic` was
+    /// requested. Subclasses that override `update(deltaTime:context:)`
+    /// entirely (e.g. `TitleScreen`, which wants "did it finish" as a
+    /// one-shot signal rather than continuous looping) should call this
+    /// themselves if they also want looping — none currently do.
+    func updateMusicLoop() {
+        guard loopMusic, didStartMusic, !isMusicPlaying else { return }
+        try? track?.play()
+    }
 
     /// Clears the window and draws the background — subclasses call this
     /// first, then draw anything else on top. Presenting is the main loop's
