@@ -6,19 +6,39 @@ against SpriteKit/AVFoundation instead of SDL3, and reuses every `GameScreen`,
 `ScreenViewModel`, and the `makeGameScreen`/`GameStateMachine` flow from
 `GunBoundSDL3` completely unchanged.
 
-## Opening it
+## Running it (Mac or iPad)
 
-Open `GunBoundSpriteKit.swiftpm` directly in Xcode (or the Swift Playgrounds
-app on a Mac). It depends on the main `GunBound` package via a local path
-(`../..`), so it only resolves when this `.swiftpm` bundle stays inside a
-checkout of the full repo — it won't resolve standalone.
+This Playground is **self-contained**: the GunBound library targets and a
+macro-free copy of `swift-binary-parsing` are *vendored* into the bundle
+(rather than referenced via a `.package(path: "../..")` local dependency,
+which can't be reached once the `.swiftpm` is copied to an iPad). Only
+`Socket`, `CryptoSwift`, and `swift-argument-parser` are pulled by URL and
+resolved over the network.
 
-`.iOSApplication` (in `Package.swift`) is an Xcode-only manifest extension
-(`AppleProductTypes`) — `swift build`/`swift package resolve` from the
-command line can't evaluate this manifest at all; it has to be opened in
-Xcode. The four Swift source files under `AppModule/` were still typechecked
-independently against an iOS Simulator SDK build of `GunBound`/
-`GunBoundClient` to catch real errors ahead of time.
+Before opening it — and before syncing/AirDropping it to an iPad — run the
+vendoring script from a checkout of the full repo:
+
+```sh
+Playgrounds/copy-dependencies.sh
+```
+
+This copies `Sources/{GunBoundProtocol,GunBoundFile,GunBound,GunBoundClient}`,
+a macro-stripped `BinaryParsing`, and the game assets into the bundle. All of
+those are **gitignored**, so re-run the script after cloning. Then open
+`GunBoundSpriteKit.swiftpm` in Swift Playgrounds (Mac or iPad) or Xcode.
+
+> **Why the macro is stripped:** `swift-binary-parsing`'s `BinaryParsing`
+> library depends on a `BinaryParsingMacros` swift-syntax *compiler plugin*,
+> which Swift Playgrounds can't build (you'd hit
+> `missing target … BinaryParsingMacros`). The only macro it provides
+> (`#magicNumber`) is unused by both our code and BinaryParsing itself, so the
+> script drops the `Macros/` folder and the manifest declares `BinaryParsing`
+> as a plain target — the rest is pure Swift and builds on-device.
+
+`.iOSApplication` (in `Package.swift`) needs `AppleProductTypes`, which only
+Xcode / Swift Playgrounds provides — command-line `swift build` can't evaluate
+this manifest. The vendored library targets were verified to build for the iOS
+Simulator via an equivalent plain-package manifest.
 
 ## Assets
 
