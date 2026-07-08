@@ -138,6 +138,12 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await request(JoinRoomRequest(room: room, password: password), response: JoinRoomResponse.self)
     }
 
+    /// Toggles the player's ready state in the Ready Room (opcode `0x3230` →
+    /// `0x3231`). Not opcode-encrypted, so no session key is needed.
+    public func setReady(_ isReady: Bool) async throws -> UserReadyResponse {
+        try await request(UserReadyRequest(isReady: isReady), response: UserReadyResponse.self)
+    }
+
     /// Sends `requestValue` and decodes the next packet read off the socket
     /// as `Response`. No request/response ID matching or queueing (unlike
     /// `Connection`) — fine for the strictly-sequential login handshake this
