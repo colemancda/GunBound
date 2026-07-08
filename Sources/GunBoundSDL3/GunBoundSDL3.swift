@@ -4,6 +4,7 @@ import CSDL3
 import SDL3Swift
 import SDL3Mixer
 import GunBound
+import GunBoundClient
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -14,10 +15,10 @@ let windowWidth: Int32 = 800
 let windowHeight: Int32 = 600
 
 @main
-struct GunBoundClient: ParsableCommand {
+struct GunBoundSDL3: ParsableCommand {
 
     static let configuration = CommandConfiguration(
-        commandName: "GunBoundClient",
+        commandName: "GunBoundSDL3",
         abstract: "Native SDL3 GunBound client"
     )
 
@@ -66,8 +67,8 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
         frame: (x: .centered, y: .centered, width: Int(windowWidth), height: Int(windowHeight)),
         options: windowOptions
     )
-    let renderer = try SDLRenderer(window: window)
-    try renderer.setLogicalSize(width: windowWidth, height: windowHeight, presentation: .letterbox)
+    let sdlRenderer = try SDLRenderer(window: window)
+    try sdlRenderer.setLogicalSize(width: windowWidth, height: windowHeight, presentation: .letterbox)
 
     // A bare (non-bundled) executable launched under a debugger (e.g. Xcode's
     // "Run") doesn't reliably become the frontmost/key app the way it does
@@ -83,31 +84,13 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
 
     let mixer = try SDLMixer()
     let assets = AssetLibrary(directory: assetsDirectory)
-    let context = ScreenContext(assets: assets, renderer: renderer, mixer: mixer, network: network)
+    let renderer = SDL3Renderer(renderer: sdlRenderer)
+    let context = ClientContext(assets: assets, renderer: renderer, network: network) {
+        SDL3AudioPlayer(mixer: mixer)
+    }
 
     let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
-        switch mode {
-        case .logo1:
-            return LogoScreen(viewModel: LogoViewModel(imageName: "logomode.img", musicName: "logo.mp3", next: .logo2, delegate: context))
-        case .logo2:
-            return LogoScreen(viewModel: LogoViewModel(imageName: "logomode2.img", musicName: "logo2.mp3", next: .title, delegate: context))
-        case .title:
-            return TitleScreen(viewModel: TitleViewModel(delegate: context))
-        case .serverSelect:
-            return ServerSelectScreen(viewModel: ServerSelectViewModel(delegate: context))
-        case .gameRoomList:
-            return GameRoomListScreen(viewModel: GameRoomListViewModel(delegate: context))
-        case .readyRoom:
-            return ReadyRoomScreen(viewModel: ReadyRoomViewModel(delegate: context))
-        case .avatarShop:
-            return AvatarShopScreen(viewModel: AvatarShopViewModel(delegate: context))
-        case .loading:
-            return LoadingScreen(viewModel: LoadingViewModel(delegate: context))
-        case .inGameSession:
-            return InBattleScreen(viewModel: InBattleViewModel(delegate: context))
-        default:
-            return nil
-        }
+        makeGameScreen(for: mode, delegate: context)
     }
 
     var running = true
@@ -120,7 +103,9 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
             case .keyDown(let scancode, _) where scancode.rawValue == SDL_SCANCODE_ESCAPE.rawValue:
                 running = false
             default:
-                stateMachine.handleEvent(event)
+                if let input = translate(event) {
+                    stateMachine.handleInput(input)
+                }
             }
         }
 
