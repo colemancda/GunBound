@@ -48,6 +48,21 @@ public actor NetworkClient {
         await socket.close()
     }
 
+    /// Opens a short-lived connection to a broker/directory server (default
+    /// port `8372`, distinct from a world server's port) and fetches the
+    /// list of available world servers — the real login flow's first step,
+    /// which a single hardcoded `--server`/`--port` skipped entirely.
+    /// `ServerDirectoryRequest`/`Response` aren't opcode-encrypted, so no
+    /// login/session key is needed for this.
+    public static func fetchServerDirectory(address: String, brokerPort: UInt16) async throws -> [ServerDirectoryResponse.Server] {
+        let client = try await connect(
+            NetworkConfig(username: "", password: "", serverAddress: address, serverPort: brokerPort, brokerPort: brokerPort)
+        )
+        defer { Task { await client.close() } }
+        let response = try await client.request(ServerDirectoryRequest(), response: ServerDirectoryResponse.self)
+        return response.directory
+    }
+
     /// Performs the nonce + login handshake and returns the server's
     /// response (success or a specific rejection reason — see
     /// `AuthenticationStatus`).
