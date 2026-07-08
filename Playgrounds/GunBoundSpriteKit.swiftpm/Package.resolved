@@ -10,21 +10,12 @@
       }
     },
     {
-      "identity" : "sdl",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/PureSwift/SDL",
-      "state" : {
-        "revision" : "7d2a624c6881925d845052501817f630b13da623",
-        "version" : "3.1.0"
-      }
-    },
-    {
       "identity" : "socket",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PureSwift/Socket",
       "state" : {
-        "branch" : "main",
-        "revision" : "579c0fc29cf2dc9f227f89403fb44d4726a4af44"
+        "revision" : "cd69948505fc8f6a58d6c610b74c2d40984029e0",
+        "version" : "0.5.2"
       }
     },
     {
