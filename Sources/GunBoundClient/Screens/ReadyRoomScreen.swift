@@ -2,64 +2,63 @@ import CSDL3
 import SDL3Swift
 import GunBound
 
-/// State 9 — Pre-battle Ready Room (`ready_selectmap.img`,
-/// `ready_selectcharacter.img`, `b_ready_startgame.img`). Reached from the
-/// Game Room List's "Create" button. No battle/session logic here — just
-/// the map/character-select chrome plus a cancel button back to the room
-/// list, matching the scope boundary (game session is out of scope).
+/// View for the pre-battle Ready Room (state 9) — cancel/start hit-testing
+/// logic lives in `ReadyRoomViewModel`; this loads
+/// `ready_selectmap.img`/`ready_selectcharacter.img`/
+/// `b_ready_startgame.img`/`b_ready_cancel.img` and pushes the button rects.
 @MainActor
-final class ReadyRoomScreen: ImageBackgroundScreen {
+final class ReadyRoomScreen: GameScreen {
+    private let viewModel: ReadyRoomViewModel
+    private let visuals = ScreenRenderHelper()
     private var characterSelectTexture: SDLTexture?
-    private var startButton: SDLTexture?
-    private var cancelButton: SDLTexture?
-    private var startRect = SDL_FRect(x: 0, y: 0, w: 0, h: 0)
-    private var cancelRect = SDL_FRect(x: 0, y: 0, w: 0, h: 0)
+    private var startTexture: SDLTexture?
+    private var cancelTexture: SDLTexture?
 
-    init() {
-        super.init(backgroundImageName: "ready_selectmap.img", musicName: nil)
+    init(viewModel: ReadyRoomViewModel) {
+        self.viewModel = viewModel
     }
 
-    override func onEnter(context: ScreenContext) throws {
-        try super.onEnter(context: context)
-        characterSelectTexture = loadTexture(named: "ready_selectcharacter.img", context: context)
-        startButton = loadTexture(named: "b_ready_startgame.img", context: context)
-        cancelButton = loadTexture(named: "b_ready_cancel.img", context: context)
+    func onEnter(context: ScreenContext) throws {
+        viewModel.onEnter()
+        visuals.loadBackground(named: viewModel.backgroundImageName, context: context)
+        characterSelectTexture = visuals.loadTexture(named: viewModel.characterSelectImageName, context: context)
 
-        if let startButton, let attributes = try? startButton.attributes() {
-            startRect = SDL_FRect(x: 20, y: Float(600 - attributes.height - 20), w: Float(attributes.width), h: Float(attributes.height))
-        }
-        if let cancelButton, let attributes = try? cancelButton.attributes() {
-            cancelRect = SDL_FRect(x: 20, y: Float(600 - attributes.height - 60), w: Float(attributes.width), h: Float(attributes.height))
-        }
+        startTexture = visuals.loadTexture(named: viewModel.startButtonImageName, context: context)
+        let (startWidth, startHeight) = size(of: startTexture)
+        viewModel.startRect = Rect(x: 20, y: 600 - startHeight - 20, width: startWidth, height: startHeight)
+
+        cancelTexture = visuals.loadTexture(named: viewModel.cancelButtonImageName, context: context)
+        let (cancelWidth, cancelHeight) = size(of: cancelTexture)
+        viewModel.cancelRect = Rect(x: 20, y: 600 - cancelHeight - 60, width: cancelWidth, height: cancelHeight)
     }
 
-    override func onExit() {
+    func onExit() {
+        viewModel.onExit()
+        visuals.unloadBackground()
         characterSelectTexture = nil
-        startButton = nil
-        cancelButton = nil
-        super.onExit()
+        startTexture = nil
+        cancelTexture = nil
     }
 
-    override func handleEvent(_ event: SDLEvent, context: ScreenContext) {
-        guard case .mouseButtonDown(_, let x, let y, _) = event else { return }
-        if contains(cancelRect, x: x, y: y) {
-            context.requestTransition(to: .gameRoomList)
-        } else if contains(startRect, x: x, y: y) {
-            context.requestTransition(to: .loading)
-        }
+    func handleEvent(_ event: SDLEvent, context: ScreenContext) {
+        guard let input = translate(event) else { return }
+        viewModel.handle(input)
     }
 
-    override func render(_ renderer: SDLRenderer) throws {
-        try super.render(renderer)
+    func update(deltaTime: Double, context: ScreenContext) {
+        viewModel.update(deltaTime: deltaTime)
+    }
+
+    func render(_ renderer: SDLRenderer) throws {
+        try visuals.clearAndDrawBackground(renderer)
         if let characterSelectTexture {
-            let attributes = try characterSelectTexture.attributes()
-            try renderer.copy(characterSelectTexture, destination: SDL_FRect(x: 0, y: 0, w: Float(attributes.width), h: Float(attributes.height)))
+            try renderer.copy(characterSelectTexture, destination: nativeRect(of: characterSelectTexture))
         }
-        if let startButton {
-            try renderer.copy(startButton, destination: startRect)
+        if let startTexture {
+            try renderer.copy(startTexture, destination: sdlRect(viewModel.startRect))
         }
-        if let cancelButton {
-            try renderer.copy(cancelButton, destination: cancelRect)
+        if let cancelTexture {
+            try renderer.copy(cancelTexture, destination: sdlRect(viewModel.cancelRect))
         }
     }
 }
