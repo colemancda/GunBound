@@ -1,16 +1,23 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 
 // Self-contained manifest for running on iPad (Swift Playgrounds).
 //
-// The GunBound library targets are VENDORED into this bundle (as sibling
-// folders to AppModule/) rather than referenced via a `.package(path: "../..")`
-// local dependency, which isn't reachable once the .swiftpm is copied to an
-// iPad. Run `Playgrounds/copy-dependencies.sh` to (re)populate those folders
-// and the game assets — they're gitignored. The third-party packages are
-// pulled by URL and resolved over the network by Swift Playgrounds.
+// The GunBound library targets AND swift-binary-parsing are VENDORED into this
+// bundle (as sibling folders to AppModule/) rather than referenced via a
+// `.package(path: "../..")` local dependency, which isn't reachable once the
+// .swiftpm is copied to an iPad. `swift-binary-parsing` is vendored with its
+// `BinaryParsingMacros` swift-syntax compiler-plugin removed, because Swift
+// Playgrounds can't build macro plugins (the `#magicNumber` macro it provides
+// is unused). Run `Playgrounds/copy-dependencies.sh` to (re)populate the
+// vendored folders and the game assets — they're gitignored. The remaining
+// third-party packages are pulled by URL and resolved over the network.
 
 import PackageDescription
 import AppleProductTypes
+
+// GunBound / GunBoundClient need Swift 5 language mode (their concurrency
+// annotations predate strict Swift 6 checking); the rest build under Swift 6.
+let v5: [SwiftSetting] = [.swiftLanguageMode(.v5)]
 
 let package = Package(
     name: "GunBoundSpriteKit",
@@ -53,26 +60,23 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-argument-parser",
             from: "1.2.0"
-        ),
-        .package(
-            url: "https://github.com/apple/swift-binary-parsing",
-            .upToNextMinor(from: "0.0.2")
         )
     ],
     targets: [
-        // Vendored library targets — populated by copy-dependencies.sh.
+        // Vendored dependency sources — populated by copy-dependencies.sh.
+        .target(
+            name: "BinaryParsing",
+            path: "BinaryParsing",
+            swiftSettings: [.enableExperimentalFeature("Lifetimes")]
+        ),
         .target(
             name: "GunBoundProtocol",
-            dependencies: [
-                .product(name: "BinaryParsing", package: "swift-binary-parsing")
-            ],
+            dependencies: ["BinaryParsing"],
             path: "GunBoundProtocol"
         ),
         .target(
             name: "GunBoundFile",
-            dependencies: [
-                .product(name: "BinaryParsing", package: "swift-binary-parsing")
-            ],
+            dependencies: ["BinaryParsing"],
             path: "GunBoundFile"
         ),
         .target(
@@ -83,7 +87,8 @@ let package = Package(
                 .product(name: "CryptoSwift", package: "CryptoSwift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
-            path: "GunBound"
+            path: "GunBound",
+            swiftSettings: v5
         ),
         .target(
             name: "GunBoundClient",
@@ -92,7 +97,8 @@ let package = Package(
                 "GunBoundProtocol",
                 "GunBoundFile"
             ],
-            path: "GunBoundClient"
+            path: "GunBoundClient",
+            swiftSettings: v5
         ),
         .executableTarget(
             name: "AppModule",
@@ -105,7 +111,8 @@ let package = Package(
             path: "AppModule",
             resources: [
                 .copy("Resources")
-            ]
+            ],
+            swiftSettings: v5
         )
     ]
 )
