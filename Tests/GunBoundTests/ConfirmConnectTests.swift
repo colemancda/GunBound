@@ -51,7 +51,10 @@ final class MockGunBoundSocket: GunBoundSocketTCP, @unchecked Sendable {
     }
 }
 
-@Suite
+// Serialized because `MockGunBoundSocket.queuedResponses` is shared static
+// state set right before each `connect()` — parallel execution would let one
+// test's canned responses clobber another's.
+@Suite(.serialized)
 struct ConfirmConnectTests {
 
     /// A zero-status `JoinChannelResponse` is the "connection accepted"
@@ -103,5 +106,43 @@ struct ConfirmConnectTests {
         let response = try await client.joinChannel()
 
         #expect(!response.isSuccess)
+    }
+
+    /// `fetchRoomList()` sends the room-list request (`0x2100`) and decodes
+    /// the server's `0x2103` reply — the lobby's `OnEnter` step.
+    @Test func fetchRoomListDecodesRooms() async throws {
+        let list = RoomListResponse(rooms: [
+            RoomListResponse.Room(id: 1, name: "Room One", map: .random, settings: 0, playerCount: 2, capacity: ._4_4, isPlaying: false, isLocked: false),
+            RoomListResponse.Room(id: 2, name: "Room Two", map: .random, settings: 0, playerCount: 8, capacity: ._4_4, isPlaying: true, isLocked: true),
+        ])
+        MockGunBoundSocket.queuedResponses = [GunBoundEncoder().encode(list, id: 0x0000).data]
+
+        let config = NetworkConfig(username: "player", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let client = try await NetworkClient<MockGunBoundSocket>.connect(config)
+        let rooms = try await client.fetchRoomList()
+
+        #expect(rooms.map(\.name) == ["Room One", "Room Two"])
+        #expect(rooms.map(\.id) == [1, 2])
+    }
+
+    /// `joinRoom(_:)` sends the join request (`0x2110`) and reads back the
+    /// server's `JoinRoomResponse` (`0x2111`); a zero return code is success.
+    @Test func joinRoomDecodesAck() async throws {
+        let ack = JoinRoomResponse(
+            room: 7,
+            name: "Room Seven",
+            map: .random,
+            settings: 0,
+            capacity: ._2_2,
+            players: []
+        )
+        MockGunBoundSocket.queuedResponses = [GunBoundEncoder().encode(ack, id: 0x0000).data]
+
+        let config = NetworkConfig(username: "player", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let client = try await NetworkClient<MockGunBoundSocket>.connect(config)
+        let response = try await client.joinRoom(7)
+
+        #expect(response.isSuccess)
+        #expect(response.room == 7)
     }
 }
