@@ -10,6 +10,10 @@ import GunBoundClient
 @MainActor
 final class SDL2AudioPlayer: ClientAudioPlayer {
     private var music: SDLMusic?
+    /// Chunks must outlive their channel playback; a small FIFO keeps
+    /// recent effects alive (channels are short one-shots, so holding the
+    /// last few is enough without tracking per-channel completion).
+    private var effects: [SDLAudioChunk] = []
 
     init() {}
 
@@ -26,9 +30,26 @@ final class SDL2AudioPlayer: ClientAudioPlayer {
         }
     }
 
+    @discardableResult
+    func playEffect(named name: String, assets: AssetLibrary) -> Bool {
+        do {
+            let path = try assets.soundPath(named: name)
+            let chunk = try SDLAudioChunk(contentsOfFile: path.path)
+            try chunk.play()
+            effects.append(chunk)
+            if effects.count > 16 {
+                effects.removeFirst(effects.count - 16)
+            }
+            return true
+        } catch {
+            return false  // callers fall back through candidate names
+        }
+    }
+
     func stop() {
         try? SDLMusic.halt()
         music = nil
+        effects = []
     }
 
     func update(deltaTime: Double) {}
