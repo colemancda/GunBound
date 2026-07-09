@@ -48,14 +48,27 @@ public final class ScrollBarWidget: Widget {
     ///   - track: the full track rect, arrows included (the decomp's arrows
     ///     are 18×18 children at the track's top and bottom).
     ///   - arrowSize: the height of each arrow hit zone.
-    public init(track: Rect, arrowSize: Float = 18) {
-        upArrow = ButtonWidget(frame: Rect(x: track.x, y: track.y, width: track.width, height: arrowSize))
-        downArrow = ButtonWidget(frame: Rect(x: track.x, y: track.y + track.height - arrowSize, width: track.width, height: arrowSize))
+    public convenience init(track: Rect, arrowSize: Float = 18) {
+        self.init(
+            track: track,
+            upArrow: Rect(x: track.x, y: track.y, width: track.width, height: arrowSize),
+            downArrow: Rect(x: track.x, y: track.y + track.height - arrowSize, width: track.width, height: arrowSize)
+        )
+    }
+
+    /// Explicit arrow hit-zones — for panels whose baked knob art sits
+    /// *outside* the decomp's track rect (the round knobs on the lobby
+    /// chat/channel/buddy panels and the world list all render above and
+    /// below their `CreateScrollListWidget` rect, so zones computed from the
+    /// track ends miss them; positions measured from the extracted art).
+    public init(track: Rect, upArrow: Rect, downArrow: Rect) {
+        self.upArrow = ButtonWidget(frame: upArrow)
+        self.downArrow = ButtonWidget(frame: downArrow)
         super.init(frame: track)
-        add(upArrow)
-        add(downArrow)
-        upArrow.onClick = { [weak self] in self?.step(-1) }
-        downArrow.onClick = { [weak self] in self?.step(1) }
+        add(self.upArrow)
+        add(self.downArrow)
+        self.upArrow.onClick = { [weak self] in self?.step(-1) }
+        self.downArrow.onClick = { [weak self] in self?.step(1) }
     }
 
     public func step(_ delta: Int) {
