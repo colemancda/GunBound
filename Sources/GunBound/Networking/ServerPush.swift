@@ -23,6 +23,10 @@ public enum ServerPush: Equatable, Sendable {
     /// A user joined the channel (`0x200E`) — feeds the channel user list.
     case userJoinedChannel(JoinChannelNotification)
 
+    /// A channel chat line (`0x201F`, decrypted by the read loop) — feeds
+    /// the lobby chat panel.
+    case chatReceived(ChannelChatBroadcast)
+
     /// Any other notification, undecoded.
     case raw(Packet)
 }
@@ -47,6 +51,11 @@ extension ServerPush {
         case .joinChannelNotification:
             if let value = try? decoder.decode(JoinChannelNotification.self, from: packet) {
                 self = .userJoinedChannel(value)
+                return
+            }
+        case .channelChatBroadcast:
+            if let value = try? decoder.decode(ChannelChatBroadcast.self, from: packet) {
+                self = .chatReceived(value)
                 return
             }
         default:

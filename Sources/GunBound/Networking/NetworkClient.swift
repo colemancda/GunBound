@@ -130,8 +130,15 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
 
     /// Routes one inbound packet: a registered waiter for its opcode wins,
     /// else notifications go to `pushes`, else it parks in the mailbox for a
-    /// later `request()`.
-    private func route(_ packet: Packet) {
+    /// later `request()`. Encrypted opcodes (e.g. the chat broadcast
+    /// `0x201F`) are decrypted first, mirroring the server `Connection`'s
+    /// read path — an undecryptable body still routes, undecoded.
+    private func route(_ rawPacket: Packet) {
+        var packet = rawPacket
+        if packet.opcode.isEncrypted, let key = sessionKey,
+           let decrypted = try? packet.decrypt(key: key) {
+            packet = decrypted
+        }
         if var waiters = pending[packet.opcode], !waiters.isEmpty {
             let continuation = waiters.removeFirst()
             pending[packet.opcode] = waiters
@@ -306,9 +313,15 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
 
     /// Sends a packet without waiting for any reply — for fire-and-forget
     /// opcodes (page requests, chat, the join variants whose confirmation
-    /// arrives as a push).
+    /// arrives as a push). Opcodes marked encrypted (e.g. channel chat's
+    /// `0x2010`) are AES-encrypted with the session key, mirroring the
+    /// server `Connection`'s write path.
     public func send<Request: GunBoundPacketEncodable>(_ requestValue: Request) async throws {
-        let packet = encoder.encode(requestValue, id: 0x0000)
+        var packet = encoder.encode(requestValue, id: 0x0000)
+        if Request.opcode.isEncrypted {
+            guard let key = sessionKey else { throw Error.notAuthenticated }
+            packet = try packet.encrypt(key: key)
+        }
         try await socket.send(Data(packet.data))
     }
 
