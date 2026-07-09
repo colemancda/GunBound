@@ -27,6 +27,10 @@ func translate(_ event: SDLEvent) -> ScreenInputEvent? {
             return .key(.left)
         case SDL_SCANCODE_RIGHT.rawValue:
             return .key(.right)
+        case SDL_SCANCODE_UP.rawValue:
+            return .key(.up)
+        case SDL_SCANCODE_DOWN.rawValue:
+            return .key(.down)
         default:
             let code = keycode.rawValue
             if (0x20...0x7e).contains(code), let scalar = UnicodeScalar(UInt32(code)) {
