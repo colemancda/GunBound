@@ -58,9 +58,10 @@ final class SpriteKitRenderer: ClientRenderer {
         drawnNodes.removeAll(keepingCapacity: true)
     }
 
-    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?) {
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) {
         guard let texture = texture as? SpriteKitClientTexture else { return }
         let node = SKSpriteNode(texture: texture.texture)
+        node.blendMode = blend == .additive ? .add : .alpha
         node.anchorPoint = CGPoint(x: 0, y: 1)
         node.size = CGSize(width: CGFloat(rect.width), height: CGFloat(rect.height))
         // Flip from Rect's top-left/y-down convention into SpriteKit's
