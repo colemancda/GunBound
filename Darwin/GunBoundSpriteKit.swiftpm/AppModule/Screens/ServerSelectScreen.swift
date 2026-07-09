@@ -23,6 +23,10 @@ import GunBoundProtocol
     serverSelectScreenPreview(result: .failure(URLError(.cannotFindHost)))
 }
 
+#Preview("Server Select — Buddy Panel") {
+    serverSelectScreenPreview(result: .success(mockServers), showBuddyPanel: true)
+}
+
 let mockServers = [
     ServerDirectoryResponse.Server(
         id: 0,
@@ -204,12 +208,16 @@ struct MockDirectoryFetcher: ServerDirectoryFetching {
 /// because tvOS's #Preview expands to a ViewBuilder closure that
 /// rejects the explicit `return` this setup needs.
 @MainActor
-private func serverSelectScreenPreview(result: Result<[ServerDirectoryResponse.Server], Error>) -> some View {
+private func serverSelectScreenPreview(result: Result<[ServerDirectoryResponse.Server], Error>, showBuddyPanel: Bool = false) -> some View {
     let delegate = ScreenPreviewDelegate()
     let viewModel = ServerSelectViewModel(
         delegate: delegate,
         directoryFetcher: MockDirectoryFetcher(result: result)
     )
+    if showBuddyPanel {
+        viewModel.buddies = ["alsey", "boomer", "trico", "mage"]
+        viewModel.setBuddyPanelVisible(true)
+    }
     return ScreenPreviewView(screen: ServerSelectScreen(viewModel: viewModel))
         .frame(width: 800, height: 600)
 }
