@@ -29,6 +29,16 @@ public final class InBattleScreen: GameScreen {
     /// don't cache; the decoded sheet behind them does).
     private var frameCache: [String: ClientTexture] = [:]
     private var assets: AssetLibrary?
+
+    /// A projectile's loaded art: its frame textures in play order plus
+    /// the `.epa` run driving them.
+    private struct BulletArt {
+        let textures: [ClientTexture]
+        let durations: [Int]
+    }
+    /// Bullet art keyed by `"<mobile>-<weapon>"`; `.some(nil)` records a
+    /// known miss so absent art isn't re-probed every frame.
+    private var bulletArt: [String: BulletArt?] = [:]
     /// A small round dot (`load_back.img` frame 2) reused for the aim arc,
     /// the projectile, and (scaled, additive) the explosion flash.
     private var dotTexture: ClientTexture?
@@ -83,6 +93,7 @@ public final class InBattleScreen: GameScreen {
         carvedCraters = 0
         mobileAnimations = [:]
         frameCache = [:]
+        bulletArt = [:]
         assets = nil
         dotTexture = nil
         font = nil
@@ -243,10 +254,21 @@ public final class InBattleScreen: GameScreen {
             }
         }
 
-        // The projectile.
-        if let dotTexture, let shot = viewModel.projectile {
+        // The projectile: the shooter's weapon bullet art (its `.epa` run
+        // looping in flight), falling back to the glowing dot when the
+        // archive has no art for that mobile/weapon.
+        if let shot = viewModel.projectile {
             let position = viewModel.screenPosition(x: shot.x, y: shot.y)
-            renderer.draw(dotTexture, in: Rect(x: position.x - 5, y: position.y - 5, width: 10, height: 10), tint: (255, 240, 180))
+            if let sprite = bulletSprite(renderer: renderer) {
+                let (width, height) = renderer.size(of: sprite)
+                renderer.draw(
+                    sprite,
+                    in: Rect(x: position.x - width / 2, y: position.y - height / 2, width: width, height: height),
+                    tint: nil
+                )
+            } else if let dotTexture {
+                renderer.draw(dotTexture, in: Rect(x: position.x - 5, y: position.y - 5, width: 10, height: 10), tint: (255, 240, 180))
+            }
         }
 
         // The explosion flash — the additive glow blend, expanding and
@@ -341,6 +363,62 @@ public final class InBattleScreen: GameScreen {
             renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120, height: 8), tint: (30, 30, 30))
             renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120 * ratio, height: 8), tint: (120, 200, 255))
         }
+    }
+
+    // MARK: - Projectile art
+
+    /// The current frame of the in-flight shot's bullet art (`bullet<N>n/p/s`
+    /// per the shooter's mobile and weapon slot), its `.epa` run looping at
+    /// the sheet tick rate. `nil` when the archive has no art to offer.
+    private func bulletSprite(renderer: ClientRenderer) -> ClientTexture? {
+        guard let shot = viewModel.activeShot else { return nil }
+        let key = "\(shot.mobile.rawValue)-\(shot.weapon.rawValue)"
+        let art: BulletArt?
+        if let cached = bulletArt[key] {
+            art = cached
+        } else {
+            art = loadBulletArt(mobile: shot.mobile, weapon: shot.weapon, renderer: renderer)
+            bulletArt[key] = art
+        }
+        guard let art, !art.textures.isEmpty else { return nil }
+        let total = max(1, art.durations.reduce(0, +))
+        var tick = Int(viewModel.clock * 15) % total
+        for (offset, duration) in art.durations.enumerated() {
+            tick -= duration
+            if tick < 0 { return art.textures[min(offset, art.textures.count - 1)] }
+        }
+        return art.textures.last
+    }
+
+    /// Loads a weapon's bullet art, preferring its own variant letter
+    /// (shot 1 = `n`, shot 2 = `p`, SS = `s`) and falling back through the
+    /// others — the archive's per-mobile coverage is uneven.
+    private func loadBulletArt(mobile: Mobile, weapon: InBattleViewModel.Weapon, renderer: ClientRenderer) -> BulletArt? {
+        guard let assets else { return nil }
+        let variants: [String]
+        switch weapon {
+        case .shot1: variants = ["n", "p", "s"]
+        case .shot2: variants = ["p", "n", "s"]
+        case .special: variants = ["s", "p", "n"]
+        }
+        for variant in variants {
+            let base = "bullet\(mobile.sheetNumber)\(variant)"
+            guard let frames = try? assets.image(named: base + ".img"), !frames.isEmpty else { continue }
+            // The paired table's first run drives the flight loop; without
+            // one, play every frame at one tick each.
+            let run = (try? assets.animationTable(named: base + ".epa"))?.animations.first
+            let indices = run?.frames ?? Array(frames.indices)
+            var textures: [ClientTexture] = []
+            var durations: [Int] = []
+            for (offset, index) in indices.enumerated() where frames.indices.contains(index) {
+                guard let texture = renderer.texture(named: base + ".img", frame: index, assets: assets) else { continue }
+                textures.append(texture)
+                durations.append(run?.durations[offset] ?? 1)
+            }
+            guard !textures.isEmpty else { continue }
+            return BulletArt(textures: textures, durations: durations)
+        }
+        return nil
     }
 
     // MARK: - Terrain destruction
