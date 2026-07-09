@@ -45,15 +45,28 @@ public final class GameRoomListScreen: GameScreen {
         font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
         textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
-        var x: Float = 20
-        let y: Float = 540
+        // Lay the twelve bottom-bar buttons out left-to-right, wrapping down
+        // to a second row when they exceed the window width (the decomp's
+        // exact positions aren't recorded; the view model just needs
+        // hit-test rects that match what's drawn).
+        let margin: Float = 12
+        let gap: Float = 6
+        var x = margin
+        var y: Float = 496
+        var rowHeight: Float = 0
         buttonTextures = []
         for (index, button) in viewModel.buttons.enumerated() {
             let texture = renderer.texture(named: button.name, assets: assets)
             buttonTextures.append(texture)
             let (width, height) = renderer.size(of: texture)
+            if x + width > 800 - margin {
+                x = margin
+                y += rowHeight + gap
+                rowHeight = 0
+            }
             viewModel.setRect(Rect(x: x, y: y, width: width, height: height), forButtonAt: index)
-            x += width + 10
+            x += width + gap
+            rowHeight = max(rowHeight, height)
         }
     }
 
@@ -80,13 +93,13 @@ public final class GameRoomListScreen: GameScreen {
         renderer.clear()
         drawFullSize(backgroundTexture, using: renderer)
 
-        for index in 0..<viewModel.visibleRoomCount {
+        let visibleRooms = viewModel.visibleRooms
+        for (index, room) in visibleRooms.enumerated() {
             let rect = viewModel.roomRect(at: index)
             let highlighted = index == viewModel.selectedRoomIndex || index == viewModel.hoveredRoomIndex
             if let card = highlighted ? (cardHighlightTexture ?? cardTexture) : cardTexture {
                 renderer.draw(card, in: rect, tint: nil)
             }
-            let room = viewModel.rooms[index]
             // Status icon, right-aligned within the card.
             let status = viewModel.status(of: room)
             if let icon = statusTextures[status] {

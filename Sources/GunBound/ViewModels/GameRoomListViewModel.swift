@@ -4,7 +4,9 @@ import GunBoundProtocol
 /// screen. On entering, it requests the channel's room list (opcode
 /// `0x2100`), displays up to six rooms in a 3-row × 2-column card grid,
 /// lets the player highlight one and join it (opcode `0x2110` → Ready Room
-/// on success), and drives the five lobby buttons.
+/// on success), and drives the confirmed bottom-bar buttons (exit, create,
+/// join, view-all/waiting filter, page prev/next, find-friend, direct-go,
+/// ranking, buddy, avatar — see `buttons`).
 ///
 /// Grid geometry is taken from the decompiled `RenderRoomLabel`/`FUN_0042a220`
 /// (`docs/screens/03_game_room_list.md`): two columns at x `0x18`/`0x144`,
@@ -16,8 +18,30 @@ import GunBoundProtocol
 /// regardless.
 @MainActor
 public final class GameRoomListViewModel: ScreenViewModel {
+
+    /// The confirmed bottom-bar button actions, keyed to the decompiled
+    /// command dispatcher's `buttonId`s (`FUN_004285c0`,
+    /// `docs/screens/03_game_room_list.md`).
+    public enum ButtonAction: Equatable, Sendable {
+        case exit          // id 0x0 → Server Select (ChangeGameState(2))
+        case buddy         // id 0x1 → (re)build buddy-list panel
+        case ranking       // id 0x2 → no case in this build (genuinely a no-op)
+        case avatar        // id 0x3 → Avatar Store (sends 0x6000)
+        case createRoom    // id 0x4 → open the Create Room dialog
+        case joinSelected  // id 0x5 → join the highlighted room (0x2110)
+        case viewAll       // id 0xa → filter: all rooms (0x2100 mode 1)
+        case waitingOnly   // id 0xb → filter: waiting-only (0x2100 mode 2)
+        case pagePrev      // id 0xc → previous page
+        case pageNext      // id 0xd → next page
+        case findFriend    // id 0xe → jump to a buddy's room
+        case directGo      // id 0xf → open "enter room by number" dialog
+    }
+
     public struct Button: Equatable, Sendable {
+        /// The decompiled dispatcher's `buttonId`.
+        public let id: Int
         public let name: String
+        public let action: ButtonAction
         public var rect: Rect = .zero
     }
 
@@ -29,6 +53,14 @@ public final class GameRoomListViewModel: ScreenViewModel {
         case full
     }
 
+    /// The room-list filter the View All / Waiting buttons toggle. The real
+    /// client re-requests a filtered page from the server (`0x2100` mode
+    /// byte); with our single-page broker we apply it locally instead.
+    public enum RoomFilter: Equatable, Sendable {
+        case all
+        case waitingOnly
+    }
+
     public let backgroundImageName = "gamelist_back.img"
 
     // MARK: Room-card grid geometry (see the type-level doc comment)
@@ -38,19 +70,34 @@ public final class GameRoomListViewModel: ScreenViewModel {
     static let gridTop: Float = 290
     static let rowStride: Float = 60
 
+    /// The confirmed bottom-bar button set (`b_gamelist_*` images, decomp
+    /// `buttonId`s). Exact on-screen positions aren't decomp-confirmed, so
+    /// the view lays them out itself and pushes the rects back via
+    /// `setRect`. `ranking` is included for fidelity though the original has
+    /// no handler for it.
     public private(set) var buttons: [Button] = [
-        Button(name: "gamelist_create.img"),
-        Button(name: "b_gamelist_join.img"),
-        Button(name: "b_gamelist_ranking.img"),
-        Button(name: "b_gamelist_avatar.img"),
-        Button(name: "b_gamelist_buddy.img"),
+        Button(id: 0x0, name: "b_gamelist_exit.img", action: .exit),
+        Button(id: 0x4, name: "b_gamelist_create.img", action: .createRoom),
+        Button(id: 0x5, name: "b_gamelist_join.img", action: .joinSelected),
+        Button(id: 0xf, name: "b_gamelist_directgo.img", action: .directGo),
+        Button(id: 0xa, name: "b_gamelist_viewall.img", action: .viewAll),
+        Button(id: 0xb, name: "b_gamelist_wait.img", action: .waitingOnly),
+        Button(id: 0xc, name: "b_gamelist_prev.img", action: .pagePrev),
+        Button(id: 0xd, name: "b_gamelist_next.img", action: .pageNext),
+        Button(id: 0xe, name: "b_gamelist_friend.img", action: .findFriend),
+        Button(id: 0x2, name: "b_gamelist_ranking.img", action: .ranking),
+        Button(id: 0x1, name: "b_gamelist_buddy.img", action: .buddy),
+        Button(id: 0x3, name: "b_gamelist_avatar.img", action: .avatar),
     ]
 
-    /// Rooms from the most recent `0x2103` room-list response (capped to the
-    /// six on-screen cards). Settable so tests and SwiftUI previews can
-    /// populate it directly — the production path fills it from
-    /// `delegate.client`, which is a concrete socket type that can't be
-    /// mocked at this layer.
+    /// The active room-list filter (View All / Waiting bottom-bar buttons).
+    public private(set) var filter: RoomFilter = .all
+
+    /// Rooms from the most recent `0x2103` room-list response — the full
+    /// fetched list (`visibleRooms` applies the filter and page cap for
+    /// display). Settable so tests and SwiftUI previews can populate it
+    /// directly — the production path fills it from `delegate.client`, which
+    /// is a concrete socket type that can't be mocked at this layer.
     public var rooms: [RoomListResponse.Room] = []
 
     public private(set) var hoveredButtonIndex: Int?
@@ -71,6 +118,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
         hoveredButtonIndex = nil
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
+        filter = .all
         isJoiningRoom = false
         loadRooms()
     }
@@ -93,8 +141,15 @@ public final class GameRoomListViewModel: ScreenViewModel {
 
     // MARK: - Room grid
 
-    /// Number of room cards currently visible (rooms, capped at six).
-    public var visibleRoomCount: Int { min(rooms.count, Self.maxVisibleRooms) }
+    /// The rooms actually shown on the current page: the filter applied,
+    /// then capped to the six on-screen cards.
+    public var visibleRooms: [RoomListResponse.Room] {
+        let filtered = filter == .waitingOnly ? rooms.filter { !$0.isPlaying } : rooms
+        return Array(filtered.prefix(Self.maxVisibleRooms))
+    }
+
+    /// Number of room cards currently visible.
+    public var visibleRoomCount: Int { visibleRooms.count }
 
     /// The on-screen rect of the room card at `index` (0..<`maxVisibleRooms`).
     public func roomRect(at index: Int) -> Rect {
@@ -128,25 +183,42 @@ public final class GameRoomListViewModel: ScreenViewModel {
                 return
             }
             guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
-            handleButton(buttons[index].name)
+            handleButton(buttons[index].action)
 
         case .activate:
             break
         }
     }
 
-    private func handleButton(_ name: String) {
-        print("[GunBound] clicked room-list button: \(name)")
-        switch name {
-        case "gamelist_create.img":
-            delegate.requestTransition(to: .readyRoom)
-        case "b_gamelist_join.img":
-            joinSelectedRoom()
-        case "b_gamelist_avatar.img":
+    private func handleButton(_ action: ButtonAction) {
+        switch action {
+        case .exit:
+            delegate.requestTransition(to: .serverSelect)
+        case .avatar:
             delegate.requestTransition(to: .avatarShop)
-        default:
-            break
+        case .createRoom:
+            // The original opens a Create Room dialog (name/password) and
+            // sends 0x2120; without that dialog we go straight to the Ready
+            // Room as a stand-in for "made a room and entered it".
+            delegate.requestTransition(to: .readyRoom)
+        case .joinSelected:
+            joinSelectedRoom()
+        case .viewAll:
+            setFilter(.all)
+        case .waitingOnly:
+            setFilter(.waitingOnly)
+        case .buddy, .ranking, .pagePrev, .pageNext, .findFriend, .directGo:
+            // buddy panel, page nav, find-friend, and the enter-by-number
+            // dialog aren't wired up (single-page broker, no dialogs);
+            // `ranking` has no handler in the original build either.
+            print("[GunBound] room-list action not implemented: \(action)")
         }
+    }
+
+    private func setFilter(_ newFilter: RoomFilter) {
+        guard filter != newFilter else { return }
+        filter = newFilter
+        selectedRoomIndex = nil  // indices shift when the visible set changes
     }
 
     // MARK: - Networking
@@ -160,8 +232,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
         Task {
             defer { isLoadingRooms = false }
             do {
-                let rooms = try await client.fetchRoomList()
-                self.rooms = Array(rooms.prefix(Self.maxVisibleRooms))
+                self.rooms = try await client.fetchRoomList()
                 print("[GunBound] room list: \(self.rooms.count) room(s)")
             } catch {
                 print("[GunBound] couldn't fetch room list: \(error)")
@@ -172,9 +243,10 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// Joins the highlighted room (opcode `0x2110`); on a successful
     /// `JoinRoomResponse` the client transitions into the room's Ready Room.
     private func joinSelectedRoom() {
-        guard !isJoiningRoom, let index = selectedRoomIndex, rooms.indices.contains(index),
+        let visible = visibleRooms
+        guard !isJoiningRoom, let index = selectedRoomIndex, visible.indices.contains(index),
               let client = delegate.client else { return }
-        let room = rooms[index]
+        let room = visible[index]
         isJoiningRoom = true
         Task {
             defer { isJoiningRoom = false }

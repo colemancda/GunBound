@@ -64,17 +64,64 @@ struct GameRoomListViewModelTests {
         #expect(viewModel.status(of: room(id: 3, players: 8, capacity: ._4_4, playing: false)) == .full)
     }
 
+    /// Clicks the (first) button with the given action after giving it a
+    /// hit-test rect — buttons are identified by their confirmed action, not
+    /// a positional index.
+    private func click(_ action: GameRoomListViewModel.ButtonAction, in viewModel: GameRoomListViewModel) {
+        guard let index = viewModel.buttons.firstIndex(where: { $0.action == action }) else {
+            Issue.record("no button with action \(action)")
+            return
+        }
+        viewModel.setRect(Rect(x: 20, y: 540, width: 100, height: 40), forButtonAt: index)
+        viewModel.handle(.pointerDown(x: 40, y: 560))
+    }
+
+    @Test func buttonSetMatchesTheDecompiledBar() {
+        let (viewModel, _) = makeViewModel()
+        // The confirmed b_gamelist_* bottom bar (dialog sheets like
+        // gamelist_create.img are NOT buttons).
+        #expect(viewModel.buttons.allSatisfy { $0.name.hasPrefix("b_gamelist_") })
+        #expect(Set(viewModel.buttons.map(\.action)) == [
+            .exit, .buddy, .ranking, .avatar, .createRoom, .joinSelected,
+            .viewAll, .waitingOnly, .pagePrev, .pageNext, .findFriend, .directGo,
+        ])
+        // buttonId 0 is Exit → Server Select in the decomp.
+        #expect(viewModel.buttons.first { $0.action == .exit }?.id == 0)
+    }
+
+    @Test func exitButtonReturnsToServerSelect() {
+        let (viewModel, delegate) = makeViewModel()
+        click(.exit, in: viewModel)
+        #expect(delegate.requestedTransitions == [.serverSelect])
+    }
+
     @Test func createButtonTransitionsToReadyRoom() {
         let (viewModel, delegate) = makeViewModel()
-        viewModel.setRect(Rect(x: 20, y: 540, width: 100, height: 40), forButtonAt: 0)  // gamelist_create.img
-        viewModel.handle(.pointerDown(x: 40, y: 560))
+        click(.createRoom, in: viewModel)
         #expect(delegate.requestedTransitions == [.readyRoom])
     }
 
     @Test func avatarButtonTransitionsToAvatarShop() {
         let (viewModel, delegate) = makeViewModel()
-        viewModel.setRect(Rect(x: 20, y: 540, width: 100, height: 40), forButtonAt: 3)  // b_gamelist_avatar.img
-        viewModel.handle(.pointerDown(x: 40, y: 560))
+        click(.avatar, in: viewModel)
         #expect(delegate.requestedTransitions == [.avatarShop])
+    }
+
+    @Test func waitingFilterHidesInProgressRooms() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.rooms = [
+            room(id: 1, playing: false),
+            room(id: 2, playing: true),
+            room(id: 3, playing: false),
+        ]
+        #expect(viewModel.visibleRoomCount == 3)
+
+        click(.waitingOnly, in: viewModel)
+        #expect(viewModel.filter == .waitingOnly)
+        #expect(viewModel.visibleRooms.map(\.id) == [1, 3])
+
+        click(.viewAll, in: viewModel)
+        #expect(viewModel.filter == .all)
+        #expect(viewModel.visibleRoomCount == 3)
     }
 }
