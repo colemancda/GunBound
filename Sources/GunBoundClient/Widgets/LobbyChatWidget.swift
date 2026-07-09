@@ -19,17 +19,21 @@ import GunBound
 @MainActor
 public final class LobbyChatWidget: Widget {
 
-    /// The decomp's fixed panel rect.
+    /// The decomp's fixed lobby panel rect.
     public static let defaultFrame = Rect(x: 23, y: 287, width: 549, height: 259)
 
-    /// History rows visible at once — the decomp scrollbar's page size.
-    public static let visibleRows = 13
+    /// The lobby panel's scrollbar page size (rows visible at once). The
+    /// Ready Room variant passes 9.
+    public static let defaultVisibleRows = 13
+
+    /// History rows visible at once — the panel's scrollbar page size.
+    public let visibleRows: Int
 
     /// Chat lines, oldest first. The view follows the tail as lines arrive
     /// unless the player has scrolled up.
     public var messages: [ChatLine] = [] {
         didSet {
-            let wasAtTail = scrollBar.position >= max(0, oldValue.count - Self.visibleRows)
+            let wasAtTail = scrollBar.position >= max(0, oldValue.count - visibleRows)
             scrollBar.contentCount = messages.count
             if wasAtTail {
                 scrollBar.setPosition(scrollBar.maxPosition)
@@ -56,26 +60,38 @@ public final class LobbyChatWidget: Widget {
     /// Chat-line pitch (`0xe`, per the decompiled chat-row renderers).
     private var linePitch: Float { 14 }
 
+    /// - Parameters:
+    ///   - frame: the panel rect (lobby default (23,287) 549×259; the Ready
+    ///     Room passes its (21,385) 480×160).
+    ///   - inputFrame: the input line, panel-relative (lobby default is the
+    ///     decomp's (26,235) 484×12).
+    ///   - scrollTrack: the scrollbar track, panel-relative (lobby default
+    ///     (526,63) 18×154; the Ready Room's is (455,51) 18×69).
+    ///   - visibleRows: the scrollbar page size (lobby 13, Ready Room 9).
     public init(
         frame: Rect = LobbyChatWidget.defaultFrame,
         font: LoadedFont?,
-        background: ClientTexture? = nil
+        background: ClientTexture? = nil,
+        inputFrame: Rect = Rect(x: 26, y: 235, width: 484, height: 12),
+        scrollTrack: Rect = Rect(x: 526, y: 63, width: 18, height: 154),
+        visibleRows: Int = LobbyChatWidget.defaultVisibleRows
     ) {
         self.font = font
         self.backgroundTexture = background
-        // Decomp: CreateTextEntryWidget(0, 0x1a, 0xeb, 0x1e4, 0xc, 0x50).
+        self.visibleRows = visibleRows
+        // Lobby decomp: CreateTextEntryWidget(0, 0x1a, 0xeb, 0x1e4, 0xc, 0x50).
         inputField = TextFieldWidget(
-            frame: Rect(x: frame.x + 26, y: frame.y + 235, width: 484, height: 12),
+            frame: Rect(x: frame.x + inputFrame.x, y: frame.y + inputFrame.y, width: inputFrame.width, height: inputFrame.height),
             font: font
         )
         inputField.maxLength = 80
         inputField.placeholder = ""
-        // Decomp: CreateScrollListWidget(mgr, 0x20e, 0x3f, 0x12, 0x9a, 0xd).
+        // Lobby decomp: CreateScrollListWidget(mgr, 0x20e, 0x3f, 0x12, 0x9a, 0xd).
         scrollBar = ScrollBarWidget(
-            track: Rect(x: frame.x + 526, y: frame.y + 63, width: 18, height: 154),
+            track: Rect(x: frame.x + scrollTrack.x, y: frame.y + scrollTrack.y, width: scrollTrack.width, height: scrollTrack.height),
             arrowSize: 18
         )
-        scrollBar.pageSize = Self.visibleRows
+        scrollBar.pageSize = visibleRows
 
         super.init(frame: frame)
         add(scrollBar)
@@ -96,7 +112,7 @@ public final class LobbyChatWidget: Widget {
         }
         guard let font else { return }
         let (originX, originY) = listOrigin
-        for (row, line) in messages.dropFirst(scrollBar.position).prefix(Self.visibleRows).enumerated() {
+        for (row, line) in messages.dropFirst(scrollBar.position).prefix(visibleRows).enumerated() {
             let y = originY + Float(row) * linePitch
             let colors = Self.colors(for: line.type)
             var x = originX
