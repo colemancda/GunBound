@@ -32,12 +32,14 @@ public final class ChannelUserListWidget: Widget {
 
     public let scrollBar: ScrollBarWidget
 
-    /// The list band the roster draws into — inset below the title bar, left
-    /// of the scrollbar (eyeballed against the panel art; the decomp records
-    /// the panel/scrollbar rects but not the row origin).
-    private var listOrigin: (x: Float, y: Float) { (frame.x + 14, frame.y + 44) }
-    /// Row pitch: the 154px scroll track over 7 rows.
-    private var linePitch: Float { 22 }
+    /// The list band's origin — decomp-confirmed from `RenderChannelUserRow`
+    /// (`0x5074a0`): rows start at panel-relative y `0x25` (37) on a `0x1e`
+    /// (30px) pitch; the status icon draws at x+9 and the rank icon at
+    /// x+0x27 (39), with the name text after them. We don't draw the icons
+    /// yet, so the name starts in the status-icon column.
+    private var listOrigin: (x: Float, y: Float) { (frame.x + 9, frame.y + 37) }
+    /// Decomp row pitch (`0x1e`).
+    private var linePitch: Float { 30 }
 
     public init(
         frame: Rect = ChannelUserListWidget.defaultFrame,
