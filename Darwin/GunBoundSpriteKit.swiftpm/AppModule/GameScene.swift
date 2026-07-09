@@ -1,5 +1,6 @@
 import Foundation
 import SpriteKit
+import GameController
 import GunBound
 import GunBoundClient
 
@@ -67,12 +68,28 @@ final class GameScene: SKScene {
             return
         }
         let deltaTime = lastUpdateTime.map { currentTime - $0 } ?? 0
+        applyGamepad(stateMachine, deltaTime: deltaTime)
         do {
             try stateMachine.update(deltaTime: deltaTime)
             try stateMachine.render()
         } catch {
             print("[GunBoundSpriteKit] frame error: \(error)")
         }
+    }
+
+    /// Feeds the connected controller's left stick to the virtual cursor —
+    /// the primary pointer on tvOS (no touch/mouse), and a bonus on iOS/macOS
+    /// when a pad is attached. The stick's up-positive Y is negated for the
+    /// cursor's y-down screen space; the A/cross button is the click.
+    private func applyGamepad(_ stateMachine: GameStateMachine, deltaTime: TimeInterval) {
+        guard let pad = GCController.current?.extendedGamepad
+            ?? GCController.controllers().first?.extendedGamepad else { return }
+        stateMachine.applyGamepad(
+            stickX: pad.leftThumbstick.xAxis.value,
+            stickY: -pad.leftThumbstick.yAxis.value,
+            click: pad.buttonA.isPressed,
+            deltaTime: deltaTime
+        )
     }
 
     /// Converts a touch/click location in this scene's own coordinate space
