@@ -8,14 +8,13 @@ import GunBoundProtocol
 /// join, view-all/waiting filter, page prev/next, find-friend, direct-go,
 /// ranking, buddy, avatar — see `buttons`).
 ///
-/// Grid geometry is taken from the decompiled `RenderRoomLabel`/`FUN_0042a220`
-/// (`docs/screens/03_game_room_list.md`): two columns at x `0x18`/`0x144`,
-/// `roomIndex/3` → column, `roomIndex%3` → row at a `0x3c` (60px) stride,
-/// cards `257×58` (frames 1–3 of `gamelist_back.img`: base / highlighted /
-/// joined). The room grid's vertical origin isn't given in the decomp, so
-/// `gridTop` is estimated from where `gamelist_back.img`'s content region
-/// begins; hit-testing and drawing share it, so interaction stays consistent
-/// regardless.
+/// Grid geometry is taken from the decompiled `RenderRoomCard` (`0x42a220`):
+/// two columns at x `0x18`/`0x144`, `roomIndex/3` → column, `roomIndex%3` →
+/// row at a `0x3c` (60px) stride, each card blitted at `rowY + 0x3a` — so the
+/// grid's first row starts at y 58 and the grid occupies the *top* of the
+/// screen. Cards are 257×58 (`gamelist_back.img` frames 1–6 by
+/// column/state/joined). All button rects come verbatim from
+/// `State03_GameRoomList_CreateButtons` (`0x42aba0`).
 @MainActor
 public final class GameRoomListViewModel: ScreenViewModel {
 
@@ -42,7 +41,8 @@ public final class GameRoomListViewModel: ScreenViewModel {
         public let id: Int
         public let name: String
         public let action: ButtonAction
-        public var rect: Rect = .zero
+        /// Confirmed on-screen rect (`State03_GameRoomList_CreateButtons`).
+        public let rect: Rect
     }
 
     /// Waiting / in-progress / full — chooses the per-card status icon
@@ -78,7 +78,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public static let maxVisibleRooms = 6
     public static let cardSize = (width: Float(257), height: Float(58))
     static let columnX: [Float] = [24, 324]   // decomp Xc: 0x18 / 0x144
-    static let gridTop: Float = 290
+    static let gridTop: Float = 58             // decomp: card y = row·0x3c + 0x3a
     static let rowStride: Float = 60           // decomp Yr pitch: 0x3c
 
     // Card-relative icon anchors, from `RenderRoomCard` (`0x42a220`): each
@@ -94,24 +94,27 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// `0xea - 6` for `slot/3 != 0`).
     public static func lockIconX(rightColumn: Bool) -> Float { rightColumn ? Float(0xea - 6) : Float(0xea) }
 
-    /// The confirmed bottom-bar button set (`b_gamelist_*` images, decomp
-    /// `buttonId`s). Exact on-screen positions aren't decomp-confirmed, so
-    /// the view lays them out itself and pushes the rects back via
-    /// `setRect`. `ranking` is included for fidelity though the original has
-    /// no handler for it.
-    public private(set) var buttons: [Button] = [
-        Button(id: 0x0, name: "b_gamelist_exit.img", action: .exit),
-        Button(id: 0x4, name: "b_gamelist_create.img", action: .createRoom),
-        Button(id: 0x5, name: "b_gamelist_join.img", action: .joinSelected),
-        Button(id: 0xf, name: "b_gamelist_directgo.img", action: .directGo),
-        Button(id: 0xa, name: "b_gamelist_viewall.img", action: .viewAll),
-        Button(id: 0xb, name: "b_gamelist_wait.img", action: .waitingOnly),
-        Button(id: 0xc, name: "b_gamelist_prev.img", action: .pagePrev),
-        Button(id: 0xd, name: "b_gamelist_next.img", action: .pageNext),
-        Button(id: 0xe, name: "b_gamelist_friend.img", action: .findFriend),
-        Button(id: 0x2, name: "b_gamelist_ranking.img", action: .ranking),
-        Button(id: 0x1, name: "b_gamelist_buddy.img", action: .buddy),
-        Button(id: 0x3, name: "b_gamelist_avatar.img", action: .avatar),
+    /// The confirmed button set with verbatim rects from the decompiled
+    /// `State03_GameRoomList_CreateButtons` (`0x42aba0`): six 107×45 main
+    /// buttons along the bottom bar (y `0x227` = 551, same size/row as Server
+    /// Select's), and six 33-tall filter/page buttons in the mid bar just
+    /// below the room grid (y `0xf6` = 246). `ranking` is included for
+    /// fidelity though the original has no handler for it.
+    public let buttons: [Button] = [
+        // Bottom bar (y 551, 107×45), left to right.
+        Button(id: 0x0, name: "b_gamelist_exit.img", action: .exit, rect: Rect(x: 40, y: 551, width: 107, height: 45)),
+        Button(id: 0x1, name: "b_gamelist_buddy.img", action: .buddy, rect: Rect(x: 163, y: 551, width: 107, height: 45)),
+        Button(id: 0x2, name: "b_gamelist_ranking.img", action: .ranking, rect: Rect(x: 286, y: 551, width: 107, height: 45)),
+        Button(id: 0x3, name: "b_gamelist_avatar.img", action: .avatar, rect: Rect(x: 409, y: 551, width: 107, height: 45)),
+        Button(id: 0x4, name: "b_gamelist_create.img", action: .createRoom, rect: Rect(x: 532, y: 551, width: 107, height: 45)),
+        Button(id: 0x5, name: "b_gamelist_join.img", action: .joinSelected, rect: Rect(x: 655, y: 551, width: 107, height: 45)),
+        // Mid bar (y 246, height 33), below the grid.
+        Button(id: 0xa, name: "b_gamelist_viewall.img", action: .viewAll, rect: Rect(x: 42, y: 246, width: 81, height: 33)),
+        Button(id: 0xb, name: "b_gamelist_wait.img", action: .waitingOnly, rect: Rect(x: 131, y: 246, width: 81, height: 33)),
+        Button(id: 0xc, name: "b_gamelist_prev.img", action: .pagePrev, rect: Rect(x: 242, y: 246, width: 49, height: 33)),
+        Button(id: 0xd, name: "b_gamelist_next.img", action: .pageNext, rect: Rect(x: 292, y: 246, width: 49, height: 33)),
+        Button(id: 0xe, name: "b_gamelist_friend.img", action: .findFriend, rect: Rect(x: 371, y: 246, width: 81, height: 33)),
+        Button(id: 0xf, name: "b_gamelist_directgo.img", action: .directGo, rect: Rect(x: 460, y: 246, width: 81, height: 33)),
     ]
 
     /// The active room-list filter (View All / Waiting bottom-bar buttons).
@@ -169,14 +172,6 @@ public final class GameRoomListViewModel: ScreenViewModel {
     }
 
     public func update(deltaTime: Double) {}
-
-    /// The view calls this once it knows the loaded texture's size for the
-    /// button at `index` (buttons are laid out left-to-right by the view;
-    /// this view model only stores the resulting hit-testing rect).
-    public func setRect(_ rect: Rect, forButtonAt index: Int) {
-        guard buttons.indices.contains(index) else { return }
-        buttons[index].rect = rect
-    }
 
     // MARK: - Room grid
 
