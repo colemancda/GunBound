@@ -214,7 +214,7 @@ public final class InBattleScreen: GameScreen {
         // cooling over its lifetime.
         if let dotTexture, let explosion = viewModel.explosion {
             let progress = Float(min(1, explosion.age / InBattleViewModel.explosionDuration))
-            let radius = 14 + progress * InBattleViewModel.splashRadius
+            let radius = 14 + progress * explosion.blastRadius
             let position = viewModel.screenPosition(x: explosion.x, y: explosion.y)
             let heat = UInt8(255 - progress * 140)
             renderer.draw(
@@ -230,6 +230,10 @@ public final class InBattleScreen: GameScreen {
         if let turn = viewModel.currentTurnPlayer {
             let marker = viewModel.isMyTurn ? "YOUR TURN" : "Turn: \(turn.name)"
             font.draw(marker, x: 12, y: 24, tint: (255, 255, 160), using: renderer)
+            // The 60-second turn clock, urgent-red in the last ten.
+            let seconds = max(0, Int(viewModel.turnRemaining.rounded(.up)))
+            let urgent = seconds <= 10
+            font.draw("TIME \(seconds)", x: 376, y: 24, tint: urgent ? (255, 90, 70) : (220, 220, 220), using: renderer)
         }
         // Wind readout — direction arrow + strength (the shooter's roll is
         // what the shot flies under).
@@ -250,6 +254,14 @@ public final class InBattleScreen: GameScreen {
 
         if viewModel.isMyTurn, viewModel.phase == .aiming || viewModel.phase == .charging {
             font.draw("Angle \(Int(viewModel.aimAngle))", x: 12, y: 40, using: renderer)
+            // The selected weapon slot (Tab cycles it while aiming).
+            let weaponLabel: String
+            switch viewModel.selectedWeapon {
+            case .shot1: weaponLabel = "SHOT 1"
+            case .shot2: weaponLabel = "SHOT 2"
+            case .special: weaponLabel = "SS"
+            }
+            font.draw(weaponLabel, x: 110, y: 40, tint: (255, 220, 120), using: renderer)
             if viewModel.phase == .charging {
                 font.draw("Power \(Int(viewModel.power * 100))", x: 12, y: 56, tint: (255, 180, 120), using: renderer)
             }
@@ -309,7 +321,9 @@ public final class InBattleScreen: GameScreen {
             switch player.pose {
             case .normal: run = wounded ? "wnormal" : "normal"; looping = true
             case .move: run = wounded ? "wmove" : "move"; looping = true
-            case .fire: run = "fire1"; looping = false
+            case .fire(.shot1): run = "fire1"; looping = false
+            case .fire(.shot2): run = "fire2"; looping = false
+            case .fire(.special): run = "sfire"; looping = false
             case .shock: run = "shock"; looping = false
             case .dead: run = "dead"; looping = false
             }
