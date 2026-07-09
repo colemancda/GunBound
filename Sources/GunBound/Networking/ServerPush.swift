@@ -24,7 +24,13 @@ public enum ServerPush: Equatable, Sendable {
     case userJoinedChannel(JoinChannelNotification)
 
     /// A channel chat line (`0x201F`, decrypted by the read loop) — feeds
-    /// the lobby chat panel.
+    /// the lobby chat panel. The outgoing side (`0x2010`) is decomp-
+    /// confirmed as the original's chat send (`FUN_00507660` writes it into
+    /// the outgoing packet buffer after parsing `/`-commands); `0x201F` as
+    /// the broadcast is our server's convention — the decompiled client's
+    /// `0x201f` handler inserts a per-slot record (slot byte + payload,
+    /// PROTOCOL.md "Per-slot record lookup/insert"), which is *plausibly*
+    /// this same chat-line insert but isn't confirmed.
     case chatReceived(ChannelChatBroadcast)
 
     /// Any other notification, undecoded.

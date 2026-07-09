@@ -47,12 +47,14 @@ public final class LobbyChatWidget: Widget {
     /// Fired when the player submits a non-empty chat line.
     public var onSend: ((String) -> Void)?
 
-    /// The history band the lines draw into — inset below the title strip,
-    /// left of the scrollbar, above the input line (eyeballed against the
-    /// panel art; the decomp records the panel/input/scrollbar rects but not
-    /// the row origin).
+    /// The history band the lines draw into — below the title strip, left of
+    /// the scrollbar, above the input line. The row *origin* isn't decomp-
+    /// recorded for this panel (its own row renderer isn't ported), but the
+    /// 14px pitch matches the decompiled chat-row idiom: the Ready Room chat
+    /// renderer (`RenderReadyRoomChatRow`, `0x50d200`) steps its lines by
+    /// exactly `0xe`.
     private var listOrigin: (x: Float, y: Float) { (frame.x + 14, frame.y + 40) }
-    /// Row pitch: 13 rows over the ~180px band above the input line.
+    /// Chat-line pitch (`0xe`, per the decompiled chat-row renderers).
     private var linePitch: Float { 14 }
 
     public init(
