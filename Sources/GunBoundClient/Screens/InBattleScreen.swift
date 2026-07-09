@@ -4,17 +4,23 @@ import GunBoundProtocol
 import GunBoundFile
 
 /// View for the In-Battle screen (state 11) — the playable slice: the stage
-/// terrain through the camera, mobiles grounded on the `.lnd` surface, and
-/// the fire loop's visuals — an aim-arc of dots, the power gauge, the
-/// projectile, and an **additively-blended** explosion flash (the glow blend
-/// the original's scene composer flips to for effect layers). HUD shows the
-/// turn, angle, and power.
-///
-/// Later slices: the layered scene composer (scenery/background, mobile
-/// animation frames), terrain destruction, wind, and battle chat.
+/// scenery and terrain through the camera (frame 1 = the full painted
+/// backdrop, frame 0 = the terrain silhouette drawn over it — confirmed
+/// visually against the real archive), mobiles animated from their `.epa`
+/// runs and grounded on the `.lnd` surface, and the fire loop's visuals —
+/// an aim-arc of dots, the power gauge, weapon bullet art, and an
+/// **additively-blended** explosion flash (the glow blend the original's
+/// scene composer flips to for effect layers). HUD shows the turn, angle,
+/// weapon, and turn clock; blast craters carve real holes through the
+/// terrain layer into the scenery beneath.
 @MainActor
 public final class InBattleScreen: GameScreen {
     private let viewModel: InBattleViewModel
+    /// The stage's full scenery — the same sheet's frame 1 (confirmed
+    /// visually: frame 0 is the terrain silhouette alone, frame 1 is the
+    /// complete painted backdrop behind it). Drawn first so carved craters
+    /// in the terrain layer reveal it instead of the clear color.
+    private var backgroundTexture: ClientTexture?
     private var terrainTexture: ClientTexture?
     /// The stage frame's pixels, kept so blast holes can be punched into
     /// them and the texture rebuilt (real terrain destruction).
@@ -54,6 +60,7 @@ public final class InBattleScreen: GameScreen {
         let renderer = context.renderer
         let assets = context.assets
 
+        backgroundTexture = renderer.texture(named: viewModel.map.stageImageName, frame: 1, assets: assets)
         terrainFrame = try? assets.imageFrame(named: viewModel.map.stageImageName, at: 0)
         carvedCraters = 0
         if let terrainFrame {
@@ -88,6 +95,7 @@ public final class InBattleScreen: GameScreen {
 
     public func onExit() {
         viewModel.onExit()
+        backgroundTexture = nil
         terrainTexture = nil
         terrainFrame = nil
         carvedCraters = 0
@@ -157,11 +165,16 @@ public final class InBattleScreen: GameScreen {
 
         // The stage world, offset by the camera (world → screen is
         // `world − cam + halfView`; drawing the full map at the transformed
-        // origin is equivalent).
+        // origin is equivalent). The background scenery draws first so the
+        // terrain layer's carved crater holes reveal it underneath.
+        let worldOrigin = viewModel.screenPosition(x: 0, y: 0)
+        if let backgroundTexture {
+            let (width, height) = renderer.size(of: backgroundTexture)
+            renderer.draw(backgroundTexture, in: Rect(x: worldOrigin.x, y: worldOrigin.y, width: width, height: height), tint: nil)
+        }
         if let terrainTexture {
             let (width, height) = renderer.size(of: terrainTexture)
-            let origin = viewModel.screenPosition(x: 0, y: 0)
-            renderer.draw(terrainTexture, in: Rect(x: origin.x, y: origin.y, width: width, height: height), tint: nil)
+            renderer.draw(terrainTexture, in: Rect(x: worldOrigin.x, y: worldOrigin.y, width: width, height: height), tint: nil)
         }
 
         guard let font else { return }
