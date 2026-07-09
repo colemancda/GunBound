@@ -27,6 +27,7 @@ public final class GameRoomListScreen: GameScreen {
     /// Widget tree — currently just the shared buddy panel, hidden until the
     /// BUDDY button toggles `viewModel.isBuddyPanelVisible`.
     private var rootWidget = Widget()
+    private var chatPanel: LobbyChatWidget?
     private var channelPanel: ChannelUserListWidget?
     private var buddyPanel: BuddyPanelWidget?
     private var createRoomDialog: CreateRoomDialogWidget?
@@ -57,6 +58,18 @@ public final class GameRoomListScreen: GameScreen {
         buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
 
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
+
+        // The lobby chat panel — always-visible chrome at the decomp rect,
+        // fed by 0x201F broadcasts; Enter in its input sends 0x2010.
+        let chatPanel = LobbyChatWidget(
+            font: textFont,
+            background: renderer.texture(named: viewModel.chatBackImageName, assets: assets)
+        )
+        chatPanel.onSend = { [weak viewModel = self.viewModel] line in
+            viewModel?.sendChat(line)
+        }
+        rootWidget.add(chatPanel)
+        self.chatPanel = chatPanel
 
         // The CHANNEL user-list panel — always-visible lobby chrome at the
         // decomp rect, fed from the join-channel roster + 0x200E pushes.
@@ -134,6 +147,7 @@ public final class GameRoomListScreen: GameScreen {
         font = nil
         textFont = nil
         rootWidget = Widget()
+        chatPanel = nil
         channelPanel = nil
         buddyPanel = nil
         createRoomDialog = nil
@@ -152,6 +166,9 @@ public final class GameRoomListScreen: GameScreen {
     public func update(deltaTime: Double) {
         viewModel.update(deltaTime: deltaTime)
         // Mirror the view model's live rosters/toggles onto the widgets.
+        if let chatPanel, chatPanel.messages != viewModel.chatMessages {
+            chatPanel.messages = viewModel.chatMessages
+        }
         channelPanel?.users = viewModel.channelUsers
         if let buddyPanel {
             buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
