@@ -93,7 +93,25 @@ public final class LoadedFont {
     /// white, so tinting reproduces the original's flat text colors (e.g.
     /// the world list's pale-cyan `0xb77f` descriptions); `nil` draws the
     /// glyphs' own color.
-    public func draw(_ text: String, x: Float, y: Float, tint: (r: UInt8, g: UInt8, b: UInt8)? = nil, using renderer: ClientRenderer) {
+    ///
+    /// `shadow` (on by default) first stamps the text once in black, offset
+    /// one pixel down-right — the original's double-draw legibility pass,
+    /// which its chat/label renderers do for text over busy artwork.
+    public func draw(
+        _ text: String,
+        x: Float,
+        y: Float,
+        tint: (r: UInt8, g: UInt8, b: UInt8)? = nil,
+        shadow: Bool = true,
+        using renderer: ClientRenderer
+    ) {
+        if shadow {
+            drawPass(text, x: x + 1, y: y + 1, tint: (0, 0, 0), using: renderer)
+        }
+        drawPass(text, x: x, y: y, tint: tint, using: renderer)
+    }
+
+    private func drawPass(_ text: String, x: Float, y: Float, tint: (r: UInt8, g: UInt8, b: UInt8)?, using renderer: ClientRenderer) {
         var cursor = x
         for character in text {
             if let texture = glyphTextures[character], let size = glyphSizes[character] {
