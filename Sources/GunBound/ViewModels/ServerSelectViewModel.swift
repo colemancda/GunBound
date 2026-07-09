@@ -45,17 +45,21 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public let loopMusic = true
 
     /// The three bottom-bar buttons at confirmed positions (see the
-    /// type-level doc comment), plus the WORLD LIST panel's own two buttons
-    /// — `BuildWorldListPanel` (`0x5099d0`) creates a View All / Friends
-    /// pair (msgs `0x44c`/`0x44d`) at the bottom of the panel; their exact
-    /// positions aren't decomp-recorded, so those two rects are measured
-    /// from a screenshot of the original.
+    /// type-level doc comment), plus the WORLD LIST panel's own two buttons.
+    /// `BuildWorldListPanel` (`0x5099d0`) creates View All / Friends via
+    /// `CreateLabelWidget` with panel-relative rects: View All at
+    /// (0x145, 0x1eb, 0x4a, 0x1a) = (325, 491, 74×26), Friends at
+    /// (0x1a3, 0x1eb, 0x4a, 0x1a) = (419, 491, 74×26). The panel is placed
+    /// at (0xb, 0xd) = (11, 13), so the screen-absolute rects add that
+    /// origin (matching the buddy-panel precedent where child coords are
+    /// panel-relative and the widget system adds the parent origin at draw
+    /// and hit-test time).
     public let buttons: [Button] = [
         Button(name: "b_server_exitgame.img", rect: Rect(x: 40, y: 551, width: 107, height: 45)),
         Button(name: "b_server_buddygame.img", rect: Rect(x: 163, y: 551, width: 107, height: 45)),
         Button(name: "b_server_choiceserver.img", rect: Rect(x: 409, y: 551, width: 107, height: 45)),
-        Button(name: "b_server_all.img", rect: Rect(x: 335, y: 512, width: 81, height: 33)),
-        Button(name: "b_server_friend.img", rect: Rect(x: 425, y: 512, width: 80, height: 33)),
+        Button(name: "b_server_all.img", rect: Rect(x: 336, y: 504, width: 81, height: 33)),
+        Button(name: "b_server_friend.img", rect: Rect(x: 430, y: 504, width: 80, height: 33)),
     ]
 
     /// Not decomp-confirmed — see the type-level doc comment. Set by the
