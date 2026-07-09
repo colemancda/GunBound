@@ -62,6 +62,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
     }
 
     public let backgroundImageName = "gamelist_back.img"
+    /// The lobby continues `channel.mp3` from Server Select — the decompiled
+    /// `State03_GameRoomList_OnEnter` makes the same `PlayMusicTrack` call as
+    /// State 2, and that function returns early when the track is unchanged
+    /// (a seamless carry-over; ours restarts the file on screen change since
+    /// each screen owns its own player — a noted divergence).
+    public let musicName: String? = "channel.mp3"
+    public let loopMusic = true
     /// The shared buddy panel's chrome and its Add / Del / close-X buttons.
     public let buddyBackImageName = "buddy_back.img"
     public let buddyAddImageName = "b_buddy_plus.img"

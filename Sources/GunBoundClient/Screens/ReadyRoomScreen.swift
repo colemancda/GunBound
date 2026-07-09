@@ -34,6 +34,11 @@ public final class ReadyRoomScreen: GameScreen {
         let renderer = context.renderer
         let assets = context.assets
         backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
+        if let musicName = viewModel.musicName {
+            let audio = context.makeAudioPlayer()
+            audio.play(named: musicName, assets: assets, loop: viewModel.loopMusic)
+            self.audio = audio
+        }
         font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         let mapCount = (try? assets.image(named: viewModel.mapThumbImageName).count) ?? 0
@@ -93,6 +98,7 @@ public final class ReadyRoomScreen: GameScreen {
     }
 
     public func update(deltaTime: Double) {
+        audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
         if let chatPanel {
             chatPanel.isHidden = viewModel.isPickerVisible

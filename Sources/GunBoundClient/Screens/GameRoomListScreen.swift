@@ -23,6 +23,7 @@ public final class GameRoomListScreen: GameScreen {
     /// number the view model computes.
     private var cardFrames: [Int: ClientTexture] = [:]
     private var font: LoadedFont?
+    private var audio: ClientAudioPlayer?
     private var textFont: LoadedFont?
     /// Widget tree — currently just the shared buddy panel, hidden until the
     /// BUDDY button toggles `viewModel.isBuddyPanelVisible`.
@@ -42,6 +43,11 @@ public final class GameRoomListScreen: GameScreen {
         let renderer = context.renderer
         let assets = context.assets
         backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
+        if let musicName = viewModel.musicName {
+            let audio = context.makeAudioPlayer()
+            audio.play(named: musicName, assets: assets, loop: viewModel.loopMusic)
+            self.audio = audio
+        }
 
         // Card backgrounds (1–6), status icons (7–9), game-mode labels
         // (10–13), and the padlock (15) all live as extra frames of the
@@ -146,6 +152,8 @@ public final class GameRoomListScreen: GameScreen {
         cardFrames = [:]
         font = nil
         textFont = nil
+        audio?.stop()
+        audio = nil
         rootWidget = Widget()
         chatPanel = nil
         channelPanel = nil
@@ -164,6 +172,7 @@ public final class GameRoomListScreen: GameScreen {
     }
 
     public func update(deltaTime: Double) {
+        audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
         // Mirror the view model's live rosters/toggles onto the widgets.
         if let chatPanel, chatPanel.messages != viewModel.chatMessages {

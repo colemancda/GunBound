@@ -40,6 +40,10 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     }
 
     public let backgroundImageName = "ready_back.img"
+    /// The Ready Room continues `channel.mp3` too — `State09_ReadyRoom_OnEnter`
+    /// makes the same `PlayMusicTrack` call as the lobby/Server Select.
+    public let musicName: String? = "channel.mp3"
+    public let loopMusic = true
     /// 22 map thumbnails (136×84), indexed by map.
     public let mapThumbImageName = "ready_selectmap.img"
     /// 17 character portraits (113×146) for the picker/preview.
