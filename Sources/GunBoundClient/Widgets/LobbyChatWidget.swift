@@ -27,7 +27,7 @@ public final class LobbyChatWidget: Widget {
 
     /// Chat lines, oldest first. The view follows the tail as lines arrive
     /// unless the player has scrolled up.
-    public var messages: [String] = [] {
+    public var messages: [ChatLine] = [] {
         didSet {
             let wasAtTail = scrollBar.position >= max(0, oldValue.count - Self.visibleRows)
             scrollBar.contentCount = messages.count
@@ -39,7 +39,6 @@ public final class LobbyChatWidget: Widget {
 
     public var backgroundTexture: ClientTexture?
     private let font: LoadedFont?
-    private let textTint: (r: UInt8, g: UInt8, b: UInt8)
 
     public let inputField: TextFieldWidget
     public let scrollBar: ScrollBarWidget
@@ -60,12 +59,10 @@ public final class LobbyChatWidget: Widget {
     public init(
         frame: Rect = LobbyChatWidget.defaultFrame,
         font: LoadedFont?,
-        background: ClientTexture? = nil,
-        textTint: (r: UInt8, g: UInt8, b: UInt8) = (255, 255, 255)
+        background: ClientTexture? = nil
     ) {
         self.font = font
         self.backgroundTexture = background
-        self.textTint = textTint
         // Decomp: CreateTextEntryWidget(0, 0x1a, 0xeb, 0x1e4, 0xc, 0x50).
         inputField = TextFieldWidget(
             frame: Rect(x: frame.x + 26, y: frame.y + 235, width: 484, height: 12),
@@ -100,8 +97,57 @@ public final class LobbyChatWidget: Widget {
         guard let font else { return }
         let (originX, originY) = listOrigin
         for (row, line) in messages.dropFirst(scrollBar.position).prefix(Self.visibleRows).enumerated() {
-            font.draw(line, x: originX, y: originY + Float(row) * linePitch, tint: textTint, using: renderer)
+            let y = originY + Float(row) * linePitch
+            let colors = Self.colors(for: line.type)
+            var x = originX
+            if !line.sender.isEmpty {
+                let name = "\(line.sender): "
+                font.draw(name, x: x, y: y, tint: colors.name, using: renderer)
+                x += font.width(of: name)
+            }
+            font.draw(line.message, x: x, y: y, tint: colors.message, using: renderer)
         }
+    }
+
+    // MARK: Color-coded chat (decomp table)
+
+    /// The name/message color pair for a message type — the decompiled chat
+    /// renderer's switch (`RenderReadyRoomChatRow`, `0x50d200`, on the type
+    /// byte at `+0x3c4d8`), RGB565 verbatim. Type 0 is normal chat (white on
+    /// white), 2 is the yellow system notice; the other cases' semantics
+    /// aren't traced but the colors are preserved so any future type byte
+    /// renders faithfully. Unknown types fall back to normal.
+    public static func colors(for type: ChatLine.MessageType) -> (name: (r: UInt8, g: UInt8, b: UInt8), message: (r: UInt8, g: UInt8, b: UInt8)) {
+        let pair: (name: UInt16, message: UInt16)
+        switch type.rawValue {
+        case 0: pair = (0xffff, 0xffff)
+        case 1: pair = (0xc618, 0xffff)
+        case 2: pair = (0x0000, 0xffe0)
+        case 3: pair = (0xf800, 0xffff)
+        case 4: pair = (0x00f0, 0xafff)
+        case 5: pair = (0x0000, 0xc7f8)
+        case 6, 8: pair = (0x8000, 0xf800)
+        case 7: pair = (0xfdb4, 0x78e0)
+        case 9: pair = (0x0400, 0xfff2)
+        case 10: pair = (0xfebf, 0xf800)
+        case 0xb: pair = (0x4880, 0xfc20)
+        case 0xc: pair = (0x210a, 0x07e0)
+        case 0xd: pair = (0xf6bf, 0x001f)
+        case 0xe: pair = (0xfecf, 0xc018)
+        case 0xf: pair = (0xffff, 0x0000)
+        case 0x10: pair = (0x0000, 0xffff)
+        default: pair = (0xffff, 0xffff)
+        }
+        return (Self.rgb888(pair.name), Self.rgb888(pair.message))
+    }
+
+    /// Expands an RGB565 color (the original's 16bpp surface format) to the
+    /// 8-bit channels our renderer tints with.
+    static func rgb888(_ value: UInt16) -> (r: UInt8, g: UInt8, b: UInt8) {
+        let r = UInt8((UInt32(value >> 11) & 0x1f) * 255 / 31)
+        let g = UInt8((UInt32(value >> 5) & 0x3f) * 255 / 63)
+        let b = UInt8((UInt32(value) & 0x1f) * 255 / 31)
+        return (r, g, b)
     }
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
