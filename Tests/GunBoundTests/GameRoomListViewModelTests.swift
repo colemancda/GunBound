@@ -15,17 +15,37 @@ struct GameRoomListViewModelTests {
         RoomListResponse.Room(id: id, name: "Room \(id)", map: .random, settings: 0, playerCount: players, capacity: capacity, isPlaying: playing, isLocked: false)
     }
 
-    /// Cards fill column-major: the first three rooms go down the left column
-    /// (x = 24), the next three down the right column (x = 324), each row 60px
-    /// below the last — matching the decompiled `roomIndex/3` → column,
-    /// `roomIndex%3` → row grid math.
+    /// Cards fill column-major at the top of the screen: the first three
+    /// rooms go down the left column (x = 24), the next three down the right
+    /// column (x = 324), rows at y = row·60 + 58 — the decompiled
+    /// `RenderRoomCard` grid math (`roomIndex/3` → column, card y =
+    /// `roomIndex%3 · 0x3c + 0x3a`).
     @Test func roomGridLayout() {
         let (viewModel, _) = makeViewModel()
-        #expect(viewModel.roomRect(at: 0) == Rect(x: 24, y: 290, width: 257, height: 58))
-        #expect(viewModel.roomRect(at: 1) == Rect(x: 24, y: 350, width: 257, height: 58))
-        #expect(viewModel.roomRect(at: 2) == Rect(x: 24, y: 410, width: 257, height: 58))
-        #expect(viewModel.roomRect(at: 3) == Rect(x: 324, y: 290, width: 257, height: 58))
-        #expect(viewModel.roomRect(at: 5) == Rect(x: 324, y: 410, width: 257, height: 58))
+        #expect(viewModel.roomRect(at: 0) == Rect(x: 24, y: 58, width: 257, height: 58))
+        #expect(viewModel.roomRect(at: 1) == Rect(x: 24, y: 118, width: 257, height: 58))
+        #expect(viewModel.roomRect(at: 2) == Rect(x: 24, y: 178, width: 257, height: 58))
+        #expect(viewModel.roomRect(at: 3) == Rect(x: 324, y: 58, width: 257, height: 58))
+        #expect(viewModel.roomRect(at: 5) == Rect(x: 324, y: 178, width: 257, height: 58))
+    }
+
+    /// Button rects come verbatim from `State03_GameRoomList_CreateButtons`:
+    /// six 107×45 buttons on the bottom bar (y 551) and six 33-tall
+    /// filter/page buttons on the mid bar (y 246).
+    @Test func buttonRectsMatchTheDecomp() {
+        let (viewModel, _) = makeViewModel()
+        func rect(_ action: GameRoomListViewModel.ButtonAction) -> Rect? {
+            viewModel.buttons.first { $0.action == action }?.rect
+        }
+        #expect(rect(.exit) == Rect(x: 40, y: 551, width: 107, height: 45))
+        #expect(rect(.joinSelected) == Rect(x: 655, y: 551, width: 107, height: 45))
+        #expect(rect(.viewAll) == Rect(x: 42, y: 246, width: 81, height: 33))
+        #expect(rect(.pageNext) == Rect(x: 292, y: 246, width: 49, height: 33))
+        #expect(rect(.directGo) == Rect(x: 460, y: 246, width: 81, height: 33))
+        // No button overlaps a room card (grid spans y 58–236).
+        for button in viewModel.buttons {
+            #expect(button.rect.y >= 236, "\(button.action)")
+        }
     }
 
     @Test func visibleRoomCountCapsAtSix() {
@@ -107,16 +127,17 @@ struct GameRoomListViewModelTests {
         #expect(viewModel.modeFrame(of: room(settings: 3 << 18)) == 13)
     }
 
-    /// Clicks the (first) button with the given action after giving it a
-    /// hit-test rect — buttons are identified by their confirmed action, not
-    /// a positional index.
+    /// Clicks the center of the button with the given action — buttons are
+    /// identified by their confirmed action and hit at their decomp rects.
     private func click(_ action: GameRoomListViewModel.ButtonAction, in viewModel: GameRoomListViewModel) {
-        guard let index = viewModel.buttons.firstIndex(where: { $0.action == action }) else {
+        guard let button = viewModel.buttons.first(where: { $0.action == action }) else {
             Issue.record("no button with action \(action)")
             return
         }
-        viewModel.setRect(Rect(x: 20, y: 540, width: 100, height: 40), forButtonAt: index)
-        viewModel.handle(.pointerDown(x: 40, y: 560))
+        viewModel.handle(.pointerDown(
+            x: button.rect.x + button.rect.width / 2,
+            y: button.rect.y + button.rect.height / 2
+        ))
     }
 
     @Test func buttonSetMatchesTheDecompiledBar() {
