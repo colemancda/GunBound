@@ -159,7 +159,7 @@ struct InBattleViewModelTests {
         // Slot 1 ("guest") fires at 45°, 80 power, to the right.
         viewModel.apply(.tunnelReceived(TunnelForward(
             sourceSlot: 1,
-            payload: [0x01, 45, 80, 1, 127]  // zero wind
+            payload: [0x01, 45, 80, 1, 127, 1]  // zero wind, shot 1
         )))
         #expect(viewModel.phase == .projectileInFlight)
         #expect(viewModel.projectile != nil)
@@ -205,7 +205,7 @@ struct InBattleViewModelTests {
         // projectile must drift left of the shooter before landing.
         viewModel.apply(.tunnelReceived(TunnelForward(
             sourceSlot: 1,
-            payload: [0x01, 80, 60, 1, UInt8(127 - 120)]
+            payload: [0x01, 80, 60, 1, UInt8(127 - 120), 1]
         )))
         var frames = 0
         while viewModel.phase == .projectileInFlight, frames < 4000 {
@@ -250,7 +250,7 @@ struct InBattleViewModelTests {
         // A feeble lob from "guest" lands near their own mobile.
         viewModel.apply(.tunnelReceived(TunnelForward(
             sourceSlot: 1,
-            payload: [0x01, 10, 5, 1, 127]
+            payload: [0x01, 10, 5, 1, 127, 1]
         )))
         var frames = 0
         while viewModel.phase == .projectileInFlight || viewModel.phase == .impact, frames < 3000 {
@@ -258,7 +258,7 @@ struct InBattleViewModelTests {
             frames += 1
         }
         let hit = InBattleViewModel.maxHP - viewModel.players[1].hp
-        #expect(InBattleViewModel.damageTiers.map(\.damage).contains(hit))
+        #expect(InBattleViewModel.profile(for: .shot1).damageTiers.map(\.damage).contains(hit))
         #expect(viewModel.players[1].isAlive)
         // The hit is credited to the shooter in the ledger.
         #expect(viewModel.damageLedger.first?.attackerSlot == 1)
@@ -282,7 +282,7 @@ struct InBattleViewModelTests {
         // The fire relay replaces the preview with the real shot.
         viewModel.apply(.tunnelReceived(TunnelForward(
             sourceSlot: 1,
-            payload: [0x01, 45, 80, 1, 127]
+            payload: [0x01, 45, 80, 1, 127, 1]
         )))
         #expect(viewModel.remoteAim == nil)
         #expect(viewModel.phase == .projectileInFlight)
@@ -382,7 +382,7 @@ struct InBattleViewModelTests {
         viewModel.handle(.activate)
         viewModel.update(deltaTime: 0.3)
         viewModel.handle(.activate)
-        #expect(viewModel.players[1].pose == .fire)
+        #expect(viewModel.players[1].pose == .fire(.shot1))
 
         // Damage: `.shock` on a survivable hit, `.dead` at zero — final.
         viewModel.applyDamage(300, toSlot: 0, cause: .shot)
@@ -432,6 +432,61 @@ struct InBattleViewModelTests {
         viewModel.apply(.clientPrint(ClientPrintNotification(message: "server says hi")))
         #expect(viewModel.chatLines.last?.type == .notice)
         #expect(viewModel.chatLines.last?.sender.isEmpty == true)
+    }
+
+    /// Tab cycles the weapon slot, and the fired weapon rides the relay:
+    /// an SS shot blasts a bigger hole and poses `sfire`.
+    @Test func weaponsCycleAndScaleTheBlast() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Tab: shot1 → shot2 → SS → shot1.
+        #expect(viewModel.selectedWeapon == .shot1)
+        viewModel.handle(.key(.tab))
+        #expect(viewModel.selectedWeapon == .shot2)
+        viewModel.handle(.key(.tab))
+        #expect(viewModel.selectedWeapon == .special)
+        viewModel.handle(.key(.tab))
+        #expect(viewModel.selectedWeapon == .shot1)
+
+        // A relayed SS shot (weapon byte 3) resolves with the SS blast.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x01, 10, 5, 1, 127, 3]
+        )))
+        #expect(viewModel.players[1].pose == .fire(.special))
+        var frames = 0
+        while viewModel.phase == .projectileInFlight || viewModel.phase == .impact, frames < 3000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        let profile = InBattleViewModel.profile(for: .special)
+        #expect(viewModel.craters.last?.radius == profile.craterRadius)
+        let hit = InBattleViewModel.maxHP - viewModel.players[1].hp
+        #expect(profile.damageTiers.map(\.damage).contains(hit))
+    }
+
+    /// The 60-second turn clock: running out forfeits the turn (the 0xc305
+    /// timeout), posts the notice, and resets for the next player.
+    @Test func turnTimerExpiryForfeitsTheTurn() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+        #expect(viewModel.currentTurnPlayer?.name == "guest")
+        #expect(viewModel.turnRemaining == InBattleViewModel.turnDuration)
+
+        // Half the window passes, then a charge starts — the clock keeps
+        // running through charging and expires without firing.
+        viewModel.update(deltaTime: 30)
+        viewModel.handle(.activate)
+        #expect(viewModel.phase == .charging)
+        viewModel.update(deltaTime: 31)
+        #expect(viewModel.projectile == nil)  // no shot on expiry
+        #expect(viewModel.currentTurnPlayer?.name == "admin")
+        #expect(viewModel.phase == .aiming)
+        #expect(viewModel.turnRemaining == InBattleViewModel.turnDuration)
+        #expect(viewModel.chatLines.last?.message == "Time over!")
     }
 
     /// Without battle data the screen still enters safely (offline path).
