@@ -15,6 +15,13 @@ public protocol ClientAudioPlayer: AnyObject {
     /// of relying on a single native looping call.
     func play(named name: String, assets: AssetLibrary, loop: Bool)
 
+    /// Plays a named `.xes` sound effect once, overlapping the music and
+    /// any other effects. Returns whether it started — the archive's
+    /// per-mobile effect coverage is spotty, so callers walk a fallback
+    /// chain of candidate names until one plays.
+    @discardableResult
+    func playEffect(named name: String, assets: AssetLibrary) -> Bool
+
     /// Stops playback and releases any loaded audio.
     func stop()
 
