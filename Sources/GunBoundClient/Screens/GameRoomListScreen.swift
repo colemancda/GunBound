@@ -51,29 +51,9 @@ public final class GameRoomListScreen: GameScreen {
         font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
         textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
-        // Lay the twelve bottom-bar buttons out left-to-right, wrapping down
-        // to a second row when they exceed the window width (the decomp's
-        // exact positions aren't recorded; the view model just needs
-        // hit-test rects that match what's drawn).
-        let margin: Float = 12
-        let gap: Float = 6
-        var x = margin
-        var y: Float = 496
-        var rowHeight: Float = 0
-        buttonTextures = []
-        for (index, button) in viewModel.buttons.enumerated() {
-            let texture = renderer.texture(named: button.name, assets: assets)
-            buttonTextures.append(texture)
-            let (width, height) = renderer.size(of: texture)
-            if x + width > 800 - margin {
-                x = margin
-                y += rowHeight + gap
-                rowHeight = 0
-            }
-            viewModel.setRect(Rect(x: x, y: y, width: width, height: height), forButtonAt: index)
-            x += width + gap
-            rowHeight = max(rowHeight, height)
-        }
+        // Button rects are decomp-confirmed constants on the view model
+        // (`State03_GameRoomList_CreateButtons`); just load the artwork.
+        buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
 
         // The shared buddy panel — built once, hidden until BUDDY toggles it.
         let buddyBack = renderer.texture(named: viewModel.buddyBackImageName, assets: assets)
