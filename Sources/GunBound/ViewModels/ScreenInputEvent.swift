@@ -41,5 +41,8 @@ public enum ScreenInputEvent: Equatable, Sendable {
         /// mobile, ▲/▼ move the barrel).
         case up
         case down
+        /// Tab — cycles the weapon slot in battle (the original's weapon
+        /// switch; the three slots play `b_play_weapon1/2/3` cues).
+        case tab
     }
 }

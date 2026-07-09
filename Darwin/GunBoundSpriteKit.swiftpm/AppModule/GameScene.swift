@@ -230,6 +230,8 @@ final class GameScene: SKScene {
             stateMachine?.handleInput(.key(.up))
         case 125:     // Down arrow
             stateMachine?.handleInput(.key(.down))
+        case 48:      // Tab
+            stateMachine?.handleInput(.key(.tab))
         default:
             if let characters = event.characters, !characters.isEmpty,
                characters.unicodeScalars.allSatisfy({ !$0.properties.isDefaultIgnorableCodePoint && $0.value >= 0x20 }) {
