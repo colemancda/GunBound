@@ -87,6 +87,26 @@ public typealias GunBoundSocketEventStream = AsyncStream<GunBoundSocketEvent>
 
 // MARK: - Implementation
 
+/// One-shot latch guarding the underlying socket against double-close.
+/// PureSwift/Socket's manager tracks sockets by raw file descriptor, so a
+/// second close on the same wrapper can tear down an unrelated connection
+/// that recycled the descriptor number in the meantime.
+internal final class CloseOnceFlag: @unchecked Sendable {
+
+    private let lock = NSLock()
+
+    private var isClosed = false
+
+    /// Returns true exactly once — the caller that wins performs the close.
+    func tryClose() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if isClosed { return false }
+        isClosed = true
+        return true
+    }
+}
+
 public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable {
 
     // MARK: - Properties
@@ -95,6 +115,8 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
 
     @usableFromInline
     internal let socket: Socket
+
+    private let closeFlag = CloseOnceFlag()
 
     public var event: GunBoundSocketEventStream {
         let stream = self.socket.event
@@ -109,6 +131,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
     // MARK: - Initialization
 
     deinit {
+        guard closeFlag.tryClose() else { return }
         nonisolated(unsafe) let socket = self.socket
         Task(priority: .high) {
             await socket.close()
@@ -195,6 +218,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
     }
 
     public func close() async {
+        guard closeFlag.tryClose() else { return }
         await socket.close()
     }
 }
@@ -207,6 +231,8 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
 
     @usableFromInline
     internal let socket: Socket
+
+    private let closeFlag = CloseOnceFlag()
 
     public var event: GunBoundSocketEventStream {
         let stream = self.socket.event
@@ -221,6 +247,7 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
     // MARK: - Initialization
 
     deinit {
+        guard closeFlag.tryClose() else { return }
         nonisolated(unsafe) let socket = self.socket
         Task(priority: .high) {
             await socket.close()
