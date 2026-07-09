@@ -132,10 +132,24 @@ final class GameScene: SKScene {
     }
 
     override func keyDown(with event: NSEvent) {
-        // Any key press maps to `.activate` (Enter-to-connect, dismiss a
-        // dialog, advance the Title screen) — the same reduction the SDL
-        // backends make.
-        stateMachine?.handleInput(.activate)
+        // Return/Enter is the confirm/submit key; backspace and arrows are
+        // editing keys for text fields; other printable input becomes text
+        // (proper characters via NSEvent, unlike the SDL keycode fallback).
+        switch event.keyCode {
+        case 36, 76:  // Return, keypad Enter
+            stateMachine?.handleInput(.activate)
+        case 51:      // Delete/Backspace
+            stateMachine?.handleInput(.key(.backspace))
+        case 123:     // Left arrow
+            stateMachine?.handleInput(.key(.left))
+        case 124:     // Right arrow
+            stateMachine?.handleInput(.key(.right))
+        default:
+            if let characters = event.characters, !characters.isEmpty,
+               characters.unicodeScalars.allSatisfy({ !$0.properties.isDefaultIgnorableCodePoint && $0.value >= 0x20 }) {
+                stateMachine?.handleInput(.text(characters))
+            }
+        }
     }
     #endif
 }
