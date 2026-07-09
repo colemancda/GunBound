@@ -234,6 +234,45 @@ struct ServerSelectViewModelTests {
         #expect(fallback.port == 8370)
     }
 
+    /// Scrolling slides a 12-slot window over the fetched list one grid
+    /// line (two servers) at a time, and row clicks select the *absolute*
+    /// entry under the slot.
+    @Test func scrollWindowsTheVisibleServersAndMapsSelection() async throws {
+        let template = try #require(try Self.decodedServerDirectory().first)
+        let servers = (0..<16).map { index in
+            ServerDirectoryResponse.Server(
+                id: UInt16(index), name: "Server \(index)", descriptionText: "", address: template.address,
+                port: UInt16(9000 + index), utilization: 0, capacity: 100, isEnabled: true
+            )
+        }
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        // 16 servers = 8 grid lines; 6 lines visible → 2 scrollable lines.
+        #expect(viewModel.lineCount == 8)
+        #expect(viewModel.maxScrollOffset == 2)
+        #expect(viewModel.visibleServers.first?.id == 0)
+        #expect(viewModel.visibleServers.count == 12)
+
+        viewModel.setScrollOffset(1)
+        #expect(viewModel.visibleServers.first?.id == 2)
+
+        // Clicking the top-left slot now selects entry 2, not entry 0.
+        let slot0 = viewModel.rowRect(at: 0)
+        viewModel.handle(.pointerDown(x: slot0.x + 5, y: slot0.y + 5))
+        #expect(viewModel.selectedIndex == 2)
+
+        // Clamped at both ends.
+        viewModel.setScrollOffset(99)
+        #expect(viewModel.scrollOffset == 2)
+        #expect(viewModel.visibleServers.first?.id == 4)
+        viewModel.setScrollOffset(-1)
+        #expect(viewModel.scrollOffset == 0)
+    }
+
     /// Population gauge levels: currentPlayers·100/maxCapacity in five 20%
     /// buckets.
     @Test func populationGaugeLevels() {
