@@ -96,15 +96,41 @@ public final class ServerSelectViewModel: ScreenViewModel {
     static let rowPitch = (x: Float(0xf7), y: Float(0x49))
 
     /// How many rows fit on screen: 6 per column × 2 columns (a 7th row
-    /// would start past the panel's bottom edge). A 16-entry page holds
-    /// more than fits — the remainder needs the scroll widget, which isn't
-    /// implemented yet.
+    /// would start past the panel's bottom edge). Entries past 12 scroll
+    /// into view via `scrollOffset`.
     public static let maxVisibleRows = 12
 
-    /// The servers actually drawn/hit-tested — the fetched list capped to
-    /// the 12 on-screen row slots.
+    /// The scroll position in row-*lines* (pairs of servers, one grid line),
+    /// driven by the panel's scrollbar. `0` shows entries 0–11; each step
+    /// slides the window down one line (two servers).
+    public private(set) var scrollOffset = 0
+
+    /// Total grid lines the fetched list occupies.
+    public var lineCount: Int {
+        (availableServers.count + Self.rowColumns - 1) / Self.rowColumns
+    }
+
+    /// The furthest `scrollOffset` can go (lines beyond the visible six).
+    public var maxScrollOffset: Int {
+        max(0, lineCount - Self.maxVisibleRows / Self.rowColumns)
+    }
+
+    public func setScrollOffset(_ offset: Int) {
+        scrollOffset = min(max(0, offset), maxScrollOffset)
+    }
+
+    /// The servers actually drawn/hit-tested — the scroll window over the
+    /// fetched list, capped to the 12 on-screen row slots.
     public var visibleServers: ArraySlice<ServerDirectoryResponse.Server> {
-        availableServers.prefix(Self.maxVisibleRows)
+        availableServers
+            .dropFirst(scrollOffset * Self.rowColumns)
+            .prefix(Self.maxVisibleRows)
+    }
+
+    /// Maps an on-screen row slot (0..<12) back to its index in
+    /// `availableServers`, accounting for the scroll window.
+    public func absoluteIndex(forVisibleSlot slot: Int) -> Int {
+        scrollOffset * Self.rowColumns + slot
     }
 
     /// The highlighted row (the state object's `+0x08`, init −1): set by
@@ -154,6 +180,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public func onEnter() {
         hoveredIndex = nil
         selectedIndex = nil  // the real client resets +0x08 to -1 on enter
+        scrollOffset = 0
         // Populate the WORLD LIST up front, like the real client.
         reload()
     }
@@ -194,9 +221,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
                 }
                 return
             }
-            if let row = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }),
-               availableServers[row].isEnabled {
-                selectedIndex = row
+            if let slot = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) {
+                let index = absoluteIndex(forVisibleSlot: slot)
+                if availableServers.indices.contains(index), availableServers[index].isEnabled {
+                    selectedIndex = index
+                }
             }
 
         case .activate:
