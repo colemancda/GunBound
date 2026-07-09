@@ -12,8 +12,11 @@ import GunBound
 /// baked into a panel sheet), position changes fire both the decomp-faithful
 /// `Command(id: 0x2000 + position)` up the tree and the Swift-idiomatic
 /// `onScroll` closure. An optional `thumbTexture` draws a proportional thumb
-/// on the track. Thumb *dragging* isn't implemented yet — it needs a
-/// pointer-up event the input model doesn't carry today.
+/// on the track. Pressing anywhere in the track (the arrow bands are already
+/// claimed by the child buttons) starts a **drag**: position tracks the
+/// pointer's vertical movement scaled to the track's travel, released by a
+/// `pointerUp` anywhere — a real thumb-texture size isn't needed since the
+/// drag is relative, not a hit-test against the drawn thumb.
 @MainActor
 public final class ScrollBarWidget: Widget {
 
@@ -43,6 +46,10 @@ public final class ScrollBarWidget: Widget {
     public var thumbTexture: ClientTexture?
 
     public var maxPosition: Int { max(0, contentCount - pageSize) }
+
+    /// The pointer's y and the position it started dragging from; `nil`
+    /// when no drag is in progress.
+    private var drag: (startY: Float, startPosition: Int)?
 
     /// - Parameters:
     ///   - track: the full track rect, arrows included (the decomp's arrows
@@ -81,6 +88,32 @@ public final class ScrollBarWidget: Widget {
         position = clamped
         onScroll?(position)
         send(Command(id: Self.commandBase + position, value: position))
+    }
+
+    public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
+        switch event {
+        case .pointerDown(let x, let y):
+            // The arrow bands are children and already claimed pointerDowns
+            // over themselves before dispatch reaches here, so any hit
+            // inside our own frame is the track/thumb area.
+            guard maxPosition > 0, frame.contains(x: x, y: y) else { return false }
+            drag = (startY: y, startPosition: position)
+            return true
+        case .pointerMoved(_, let y):
+            guard let drag else { return false }
+            let arrowHeight = upArrow.frame.height
+            let travel = frame.height - 2 * arrowHeight
+            guard travel > 0 else { return true }
+            let delta = Int(((y - drag.startY) / travel * Float(maxPosition)).rounded())
+            setPosition(drag.startPosition + delta)
+            return true
+        case .pointerUp:
+            guard drag != nil else { return false }
+            drag = nil
+            return true
+        case .activate, .text, .key, .scroll:
+            return false
+        }
     }
 
     public override func drawSelf(_ renderer: ClientRenderer) {
