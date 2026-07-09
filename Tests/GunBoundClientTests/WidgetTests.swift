@@ -191,6 +191,37 @@ struct WidgetTests {
         #expect(dialog.dispatch(.pointerDown(x: 500, y: 500)))
     }
 
+    @Test func buddyPanelCloseHidesAndFiresCallback() {
+        let panel = BuddyPanelWidget(font: nil)
+        var closed = 0
+        panel.onClose = { closed += 1 }
+
+        _ = panel.dispatch(.pointerDown(x: panel.closeButton.frame.x + 1, y: panel.closeButton.frame.y + 1))
+        #expect(closed == 1)
+        #expect(panel.isHidden)
+    }
+
+    @Test func buddyPanelSwallowsClicksInsideButNotOutside() {
+        let panel = BuddyPanelWidget(
+            frame: Rect(x: 100, y: 100, width: 200, height: 200),
+            font: nil
+        )
+        // A click on the panel body (not a button) is swallowed so the screen
+        // behind stays inert...
+        #expect(panel.dispatch(.pointerDown(x: 150, y: 150)))
+        // ...but a click outside the panel passes through.
+        #expect(!panel.dispatch(.pointerDown(x: 400, y: 400)))
+    }
+
+    @Test func buddyPanelRosterDrivesTheScrollbar() {
+        let panel = BuddyPanelWidget(font: nil)
+        #expect(panel.scrollBar.contentCount == 0)
+        panel.buddies = (0..<20).map { "buddy\($0)" }
+        #expect(panel.scrollBar.contentCount == 20)
+        // 20 buddies, 11 visible → 9 scroll steps.
+        #expect(panel.scrollBar.maxPosition == 20 - BuddyPanelWidget.visibleRows)
+    }
+
     @Test func hiddenDialogLetsInputThroughToSiblings() {
         // A hidden dialog must not shadow the widgets behind it.
         let root = ProbeWidget(name: "root")

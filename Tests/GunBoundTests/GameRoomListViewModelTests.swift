@@ -107,6 +107,25 @@ struct GameRoomListViewModelTests {
         #expect(delegate.requestedTransitions == [.avatarShop])
     }
 
+    @Test func buddyButtonTogglesThePanel() {
+        let (viewModel, delegate) = makeViewModel()
+        #expect(!viewModel.isBuddyPanelVisible)
+
+        click(.buddy, in: viewModel)
+        #expect(viewModel.isBuddyPanelVisible)
+        // Toggling opens/closes; it doesn't navigate anywhere.
+        #expect(delegate.requestedTransitions.isEmpty)
+
+        click(.buddy, in: viewModel)
+        #expect(!viewModel.isBuddyPanelVisible)
+
+        // The panel's own close-X path clears it too.
+        click(.buddy, in: viewModel)
+        #expect(viewModel.isBuddyPanelVisible)
+        viewModel.dismissBuddyPanel()
+        #expect(!viewModel.isBuddyPanelVisible)
+    }
+
     @Test func waitingFilterHidesInProgressRooms() {
         let (viewModel, _) = makeViewModel()
         viewModel.rooms = [
