@@ -29,12 +29,23 @@ public protocol ClientRenderer: AnyObject {
 
     /// Draws `texture` stretched into `rect` (window/logical coordinates),
     /// optionally tinted (used for hover-state highlighting) — `nil` means
-    /// draw at the texture's own natural color.
-    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?)
+    /// draw at the texture's own natural color — composited with `blend`.
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode)
 
     /// Presents the frame — called once per frame by the state machine
     /// after the current screen has drawn, not per-screen.
     func present()
+}
+
+/// The compositing modes the original renders with — its in-battle scene
+/// composer (`State11_InBattle_Render`, `0x4c3020`) caches exactly two
+/// D3D blend configurations and flips between them per layer:
+/// mode 1 = **normal alpha** (`SRCBLEND=SRCALPHA, DESTBLEND=INVSRCALPHA`),
+/// mode 2 = **additive glow** (`SRCBLEND=SRCALPHA, DESTBLEND=ONE`) — used by
+/// the Jewel second pass, `SpecialTexture2`, and other glow effects.
+public enum ClientBlendMode: Sendable {
+    case alpha
+    case additive
 }
 
 public extension ClientRenderer {
@@ -42,6 +53,12 @@ public extension ClientRenderer {
     /// for full-window backgrounds and single-frame button chrome.
     func texture(named name: String, assets: AssetLibrary) -> ClientTexture? {
         texture(named: name, frame: 0, assets: assets)
+    }
+
+    /// Alpha-blended draw — the default for all UI chrome; effects layers
+    /// pass `.additive` explicitly.
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?) {
+        draw(texture, in: rect, tint: tint, blend: .alpha)
     }
 }
 
