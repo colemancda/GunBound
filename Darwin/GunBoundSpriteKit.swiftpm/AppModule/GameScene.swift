@@ -105,5 +105,12 @@ final class GameScene: SKScene {
     override func mouseMoved(with event: NSEvent) {
         stateMachine?.handleInput(motionEvent(for: event.location(in: self)))
     }
+
+    override func keyDown(with event: NSEvent) {
+        // Any key press maps to `.activate` (Enter-to-connect, dismiss a
+        // dialog, advance the Title screen) — the same reduction the SDL
+        // backends make.
+        stateMachine?.handleInput(.activate)
+    }
     #endif
 }
