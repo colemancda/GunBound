@@ -28,6 +28,8 @@ public final class GameRoomListScreen: GameScreen {
     /// BUDDY button toggles `viewModel.isBuddyPanelVisible`.
     private var rootWidget = Widget()
     private var buddyPanel: BuddyPanelWidget?
+    private var createRoomDialog: CreateRoomDialogWidget?
+    private var enterNumberDialog: EnterRoomNumberDialogWidget?
 
     public init(viewModel: GameRoomListViewModel) {
         self.viewModel = viewModel
@@ -92,6 +94,45 @@ public final class GameRoomListScreen: GameScreen {
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
         rootWidget.add(buddyPanel)
         self.buddyPanel = buddyPanel
+
+        // Modal room dialogs — added after the panel so they sit topmost when
+        // shown; both centered like the shared error dialog.
+        func centered(_ imageName: String) -> (ClientTexture?, Rect) {
+            let texture = renderer.texture(named: imageName, assets: assets)
+            let (w, h) = renderer.size(of: texture)
+            let frame = w > 0
+                ? Rect(x: (800 - w) / 2, y: (600 - h) / 2, width: w, height: h)
+                : Rect(x: 250, y: 200, width: 300, height: 200)
+            return (texture, frame)
+        }
+        let okTexture = renderer.texture(named: viewModel.dialogOKImageName, assets: assets)
+        let cancelTexture = renderer.texture(named: viewModel.dialogCancelImageName, assets: assets)
+
+        let (createBack, createFrame) = centered(viewModel.createBackImageName)
+        let createRoomDialog = CreateRoomDialogWidget(
+            frame: createFrame, font: textFont, background: createBack,
+            okTexture: okTexture, cancelTexture: cancelTexture
+        )
+        createRoomDialog.isHidden = true
+        createRoomDialog.onSubmit = { [weak viewModel = self.viewModel] name, password, capacity in
+            viewModel?.createRoom(name: name, password: password, capacity: capacity)
+        }
+        createRoomDialog.onCancel = { [weak viewModel = self.viewModel] in viewModel?.dismissDialogs() }
+        rootWidget.add(createRoomDialog)
+        self.createRoomDialog = createRoomDialog
+
+        let (directBack, directFrame) = centered(viewModel.directGoBackImageName)
+        let enterNumberDialog = EnterRoomNumberDialogWidget(
+            frame: directFrame, font: textFont, background: directBack,
+            okTexture: okTexture, cancelTexture: cancelTexture
+        )
+        enterNumberDialog.isHidden = true
+        enterNumberDialog.onSubmit = { [weak viewModel = self.viewModel] number in
+            viewModel?.joinRoomByNumber(number)
+        }
+        enterNumberDialog.onCancel = { [weak viewModel = self.viewModel] in viewModel?.dismissDialogs() }
+        rootWidget.add(enterNumberDialog)
+        self.enterNumberDialog = enterNumberDialog
     }
 
     public func onExit() {
@@ -103,6 +144,8 @@ public final class GameRoomListScreen: GameScreen {
         textFont = nil
         rootWidget = Widget()
         buddyPanel = nil
+        createRoomDialog = nil
+        enterNumberDialog = nil
     }
 
     public func handleInput(_ event: ScreenInputEvent) {
@@ -120,6 +163,15 @@ public final class GameRoomListScreen: GameScreen {
         if let buddyPanel {
             buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
             buddyPanel.buddies = viewModel.buddies
+        }
+        // Mirror the modal dialogs, resetting their fields as they open.
+        if let dialog = createRoomDialog {
+            if viewModel.isCreateRoomDialogVisible, dialog.isHidden { dialog.reset() }
+            dialog.isHidden = !viewModel.isCreateRoomDialogVisible
+        }
+        if let dialog = enterNumberDialog {
+            if viewModel.isEnterNumberDialogVisible, dialog.isHidden { dialog.reset() }
+            dialog.isHidden = !viewModel.isEnterNumberDialogVisible
         }
         rootWidget.update(deltaTime: deltaTime)
     }
