@@ -363,6 +363,36 @@ struct InBattleViewModelTests {
         #expect(viewModel.camera.x == 1240)
     }
 
+    /// Poses drive the sheet animation: walking holds `.move` (and expires
+    /// back to `.normal`), firing marks the shooter, damage marks the
+    /// target, and death is final.
+    @Test func posesTrackTheBattleEvents() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+        #expect(viewModel.players[1].pose == .normal)
+
+        // A walk step: `.move`, then back to `.normal` once it lingers out.
+        viewModel.handle(.key(.right))
+        #expect(viewModel.players[1].pose == .move)
+        viewModel.update(deltaTime: InBattleViewModel.movePoseLinger + 0.1)
+        #expect(viewModel.players[1].pose == .normal)
+
+        // Firing: the shooter poses `.fire` while the shot flies.
+        viewModel.handle(.activate)
+        viewModel.update(deltaTime: 0.3)
+        viewModel.handle(.activate)
+        #expect(viewModel.players[1].pose == .fire)
+
+        // Damage: `.shock` on a survivable hit, `.dead` at zero — final.
+        viewModel.applyDamage(300, toSlot: 0, cause: .shot)
+        #expect(viewModel.players[0].pose == .shock)
+        viewModel.applyDamage(700, toSlot: 0, cause: .shot)
+        #expect(viewModel.players[0].pose == .dead)
+        viewModel.update(deltaTime: 60)
+        #expect(viewModel.players[0].pose == .dead)
+    }
+
     /// Without battle data the screen still enters safely (offline path).
     @Test func offlineEntryIsSafe() {
         let (viewModel, _) = makeViewModel(battle: false)
