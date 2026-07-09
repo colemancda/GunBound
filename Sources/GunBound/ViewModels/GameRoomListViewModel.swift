@@ -159,11 +159,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// Settable so tests/previews can populate it directly.
     public var channelUsers: [String] = []
 
-    /// Channel chat lines shown in the chat panel, oldest first, formatted
-    /// `name: message` — fed by `0x201F` broadcasts (which echo the player's
-    /// own sends back, so local sends don't append directly). Capped to the
-    /// most recent `maxChatLines`. Settable for tests/previews.
-    public var chatMessages: [String] = []
+    /// Channel chat lines shown in the chat panel, oldest first — player
+    /// lines fed by `0x201F` broadcasts (which echo the player's own sends
+    /// back, so local sends don't append directly) and system lines by
+    /// `0x5101` notices, each carrying the decomp's message-type byte for
+    /// color-coded rendering. Capped to the most recent `maxChatLines`.
+    /// Settable for tests/previews.
+    public var chatMessages: [ChatLine] = []
 
     /// The decomp's chat-log panel embeds a ~4 KB history buffer; a line cap
     /// approximates that bound.
@@ -237,12 +239,22 @@ public final class GameRoomListViewModel: ScreenViewModel {
         case .userJoinedChannel(let notification):
             channelUsers.append(String(describing: notification.username))
         case .chatReceived(let broadcast):
-            chatMessages.append("\(broadcast.username): \(broadcast.message)")
-            if chatMessages.count > Self.maxChatLines {
-                chatMessages.removeFirst(chatMessages.count - Self.maxChatLines)
-            }
+            appendChat(ChatLine(
+                sender: String(describing: broadcast.username),
+                message: broadcast.message,
+                type: .normal
+            ))
+        case .clientPrint(let notice):
+            appendChat(ChatLine(message: notice.message, type: .notice))
         case .raw:
             break
+        }
+    }
+
+    private func appendChat(_ line: ChatLine) {
+        chatMessages.append(line)
+        if chatMessages.count > Self.maxChatLines {
+            chatMessages.removeFirst(chatMessages.count - Self.maxChatLines)
         }
     }
 
