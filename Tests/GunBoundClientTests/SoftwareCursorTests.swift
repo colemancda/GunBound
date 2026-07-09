@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import GunBound
 @testable import GunBoundClient
+import GunBoundFile
 
 @Suite @MainActor
 struct SoftwareCursorTests {
@@ -12,6 +13,7 @@ struct SoftwareCursorTests {
     private final class RecordingRenderer: ClientRenderer {
         var draws: [Rect] = []
         func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? { Tex() }
+        func texture(from frame: ImgFile.Frame) -> ClientTexture? { Tex() }
         func size(of texture: ClientTexture?) -> (width: Float, height: Float) { texture == nil ? (0, 0) : (22, 22) }
         func clear() {}
         func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) { draws.append(rect) }
