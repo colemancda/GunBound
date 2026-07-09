@@ -89,6 +89,22 @@ public final class InBattleScreen: GameScreen {
             renderer.draw(terrainTexture, in: Rect(x: origin.x, y: origin.y, width: width, height: height), tint: nil)
         }
 
+        // Blast craters: the collision holes drawn as dark discs over the
+        // terrain art (the sky behind the stage draws black, so a black disc
+        // reads as a hole — an honest interim until the renderer can carve
+        // the stage texture itself).
+        if let dotTexture {
+            for crater in viewModel.craters {
+                let position = viewModel.screenPosition(x: crater.x, y: crater.y)
+                renderer.draw(
+                    dotTexture,
+                    in: Rect(x: position.x - crater.radius, y: position.y - crater.radius,
+                             width: crater.radius * 2, height: crater.radius * 2),
+                    tint: (1, 1, 1)
+                )
+            }
+        }
+
         guard let font else { return }
 
         // Mobiles at their spawns: idle sprite centered on the spawn point,
@@ -169,6 +185,13 @@ public final class InBattleScreen: GameScreen {
             let marker = viewModel.isMyTurn ? "YOUR TURN" : "Turn: \(turn.name)"
             font.draw(marker, x: 12, y: 24, tint: (255, 255, 160), using: renderer)
         }
+        // Wind readout — direction arrow + strength (the shooter's roll is
+        // what the shot flies under).
+        let windStrength = Int((abs(viewModel.wind) / 12).rounded())
+        let windArrow = viewModel.wind >= 0 ? ">" : "<"
+        let windBar = String(repeating: windArrow, count: max(1, min(5, windStrength)))
+        font.draw("WIND \(windBar) \(windStrength)", x: 360, y: 8, tint: (160, 220, 255), using: renderer)
+
         if viewModel.isMyTurn, viewModel.phase == .aiming || viewModel.phase == .charging {
             font.draw("Angle \(Int(viewModel.aimAngle))", x: 12, y: 40, using: renderer)
             if viewModel.phase == .charging {
