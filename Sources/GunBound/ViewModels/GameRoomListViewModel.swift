@@ -62,6 +62,11 @@ public final class GameRoomListViewModel: ScreenViewModel {
     }
 
     public let backgroundImageName = "gamelist_back.img"
+    /// The shared buddy panel's chrome and its Add / Del / close-X buttons.
+    public let buddyBackImageName = "buddy_back.img"
+    public let buddyAddImageName = "b_buddy_plus.img"
+    public let buddyDelImageName = "b_buddy_del.img"
+    public let buddyCloseImageName = "b_buddy_exit.img"
 
     // MARK: Room-card grid geometry (see the type-level doc comment)
     public static let maxVisibleRooms = 6
@@ -107,6 +112,16 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public private(set) var selectedRoomIndex: Int?
     public private(set) var isLoadingRooms = false
     public private(set) var isJoiningRoom = false
+
+    /// Whether the shared buddy-list panel is open — the BUDDY button
+    /// (`b_gamelist_buddy`, id 1) toggles it, matching the decomp's
+    /// `BuildBuddyPanel` (a singleton that's shown/hidden, not rebuilt).
+    public private(set) var isBuddyPanelVisible = false
+
+    /// The player's buddies. No `0x1010`-family buddy-list packet is wired up
+    /// yet, so this stays empty (the panel opens showing an empty list) until
+    /// that protocol path exists — settable so tests/previews can populate it.
+    public var buddies: [String] = []
 
     private let delegate: ViewModelDelegate
 
@@ -207,12 +222,27 @@ public final class GameRoomListViewModel: ScreenViewModel {
             setFilter(.all)
         case .waitingOnly:
             setFilter(.waitingOnly)
-        case .buddy, .ranking, .pagePrev, .pageNext, .findFriend, .directGo:
-            // buddy panel, page nav, find-friend, and the enter-by-number
-            // dialog aren't wired up (single-page broker, no dialogs);
-            // `ranking` has no handler in the original build either.
+        case .buddy:
+            // Toggle the shared buddy-list panel (BuildBuddyPanel is shown or
+            // hidden, not rebuilt each click).
+            setBuddyPanelVisible(!isBuddyPanelVisible)
+        case .ranking, .pagePrev, .pageNext, .findFriend, .directGo:
+            // Page nav, find-friend, and the enter-by-number dialog aren't
+            // wired up (single-page broker, no dialogs); `ranking` has no
+            // handler in the original build either.
             print("[GunBound] room-list action not implemented: \(action)")
         }
+    }
+
+    /// Closes the buddy panel (its close-X button).
+    public func dismissBuddyPanel() {
+        setBuddyPanelVisible(false)
+    }
+
+    /// Shows or hides the buddy panel — the toggle path, also used by
+    /// previews/tests to open it directly.
+    public func setBuddyPanelVisible(_ visible: Bool) {
+        isBuddyPanelVisible = visible
     }
 
     private func setFilter(_ newFilter: RoomFilter) {
