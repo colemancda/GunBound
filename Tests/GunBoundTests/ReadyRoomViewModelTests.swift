@@ -132,7 +132,7 @@ struct ReadyRoomViewModelTests {
     /// A game-started push stores the battle data and moves to Loading.
     @Test func gameStartedPushAdvancesToLoading() {
         let (viewModel, delegate) = makeViewModel()
-        let start = StartGameNotification(map: .metropolis, players: [], events: 0, commandData: 0)
+        let start = StartGameNotification(settings: 0, map: .metropolis, players: [], events: 0, commandData: [])
         viewModel.apply(.gameStarted(start))
         #expect(delegate.session.battle == start)
         #expect(delegate.requestedTransitions == [.loading])
