@@ -126,6 +126,9 @@ public final class TextFieldWidget: Widget {
         case .key(.left), .key(.right):
             // Accepted but not yet acted on (end-caret only for now).
             return isFocused
+        case .key(.up), .key(.down):
+            // No vertical caret movement in a single-line field.
+            return false
         case .activate:
             guard isFocused else { return false }
             onSubmit?()
