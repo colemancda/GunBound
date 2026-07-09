@@ -253,8 +253,8 @@ public final class GameRoomListViewModel: ScreenViewModel {
             ))
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
-        case .gameStarted:
-            break  // only meaningful inside a room (Ready Room handles it)
+        case .gameStarted, .userQuit, .hostMigrated, .tunnelReceived, .playerDied, .gameEnded:
+            break  // only meaningful inside a room (Ready Room / In-Battle handle these)
         case .raw:
             break
         }
