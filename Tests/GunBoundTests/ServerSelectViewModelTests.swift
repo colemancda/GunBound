@@ -208,6 +208,22 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.selectedIndex == 1)
     }
 
+    /// Enter (`.activate`) with nothing selected auto-selects the first
+    /// online server and connects, mirroring the decomp keydown handler.
+    @Test func enterKeyAutoSelectsFirstOnlineServer() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(viewModel.selectedIndex == nil)
+        // The first server ("JG Test Broker") is enabled, so Enter picks it.
+        viewModel.handle(.activate)
+        #expect(viewModel.selectedIndex == 0)
+    }
+
     /// The SERVER button connects to the clicked row; a full selection (or
     /// none) falls back to the first joinable server — the Enter-key
     /// auto-select.

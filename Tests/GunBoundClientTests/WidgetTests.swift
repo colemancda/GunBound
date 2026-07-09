@@ -158,4 +158,50 @@ struct WidgetTests {
         scrollBar.contentCount = 6  // everything fits now
         #expect(scrollBar.position == 0)
     }
+
+    @Test func dialogConfirmHidesAndFiresCallback() {
+        let dialog = DialogWidget(message: "Boom", font: nil)
+        var confirmed = 0
+        dialog.onConfirm = { confirmed += 1 }
+
+        // Clicking OK confirms.
+        _ = dialog.dispatch(.pointerDown(x: dialog.okButton.frame.x + 1, y: dialog.okButton.frame.y + 1))
+        #expect(confirmed == 1)
+        #expect(dialog.isHidden)
+    }
+
+    @Test func dialogEnterConfirms() {
+        let dialog = DialogWidget(message: "Boom", font: nil)
+        var confirmed = 0
+        dialog.onConfirm = { confirmed += 1 }
+
+        #expect(dialog.dispatch(.activate))  // Enter
+        #expect(confirmed == 1)
+        #expect(dialog.isHidden)
+    }
+
+    @Test func dialogIsModalSwallowingClicksOutsideOK() {
+        let dialog = DialogWidget(
+            frame: Rect(x: 100, y: 100, width: 200, height: 100),
+            font: nil,
+            confirmFrame: Rect(x: 150, y: 170, width: 40, height: 20)
+        )
+        // A click anywhere (even outside the panel) is swallowed while modal,
+        // so the screen behind never sees it.
+        #expect(dialog.dispatch(.pointerDown(x: 500, y: 500)))
+    }
+
+    @Test func hiddenDialogLetsInputThroughToSiblings() {
+        // A hidden dialog must not shadow the widgets behind it.
+        let root = ProbeWidget(name: "root")
+        let behind = ProbeWidget(name: "behind")
+        behind.consumesInput = true
+        let dialog = DialogWidget(message: "x", font: nil)
+        dialog.isHidden = true
+        root.add(behind)
+        root.add(dialog)  // topmost, but hidden
+
+        #expect(root.dispatch(.pointerDown(x: 0, y: 0)))
+        #expect(behind.handledEvents == 1)
+    }
 }
