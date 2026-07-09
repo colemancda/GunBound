@@ -30,6 +30,17 @@ public protocol BattleTerrain: Sendable {
 @MainActor
 public final class InBattleViewModel: ScreenViewModel {
 
+    /// A mobile's animation pose — the semantic state the view maps onto
+    /// the sheet's `.epa` frame runs (`normal`, `move`, `fire1`, `shock`,
+    /// `dead`, and the `w`-prefixed wounded variants at half HP).
+    public enum MobilePose: Equatable, Sendable {
+        case normal
+        case move
+        case fire
+        case shock
+        case dead
+    }
+
     /// One combatant, from the start notification.
     public struct BattlePlayer: Equatable, Sendable {
         public let slot: UInt8
@@ -47,6 +58,11 @@ public final class InBattleViewModel: ScreenViewModel {
         /// those records are decoded.
         public var hp = InBattleViewModel.maxHP
         public var isAlive = true
+        /// The current animation pose and the battle-clock time it began
+        /// (walking refreshes it every step; transient poses expire back
+        /// to `.normal`).
+        public var pose: MobilePose = .normal
+        public var poseStarted: Double = 0
 
         public init(slot: UInt8, name: String, team: Team, mobile: Mobile, x: Float, y: Float, turnOrder: Int) {
             self.slot = slot
@@ -194,6 +210,14 @@ public final class InBattleViewModel: ScreenViewModel {
     public private(set) var remoteAim: (angle: Float, power: Float, direction: Float)?
     /// Movement budget left this turn (px of walking).
     public private(set) var moveBudget: Float = InBattleViewModel.moveBudgetPerTurn
+    /// The battle clock (seconds since entry) — the timebase for poses and
+    /// the view's animation frame selection.
+    public private(set) var clock: Double = 0
+    /// How long the transient poses run before reverting to `.normal`
+    /// (a walk step refreshes `.move`; the sheet runs are 10–25 frames).
+    public static let movePoseLinger: Double = 0.3
+    public static let firePoseDuration: Double = 0.9
+    public static let shockPoseDuration: Double = 0.9
 
     /// Camera center, in stage-world coordinates, clamped to the world.
     public private(set) var camera: (x: Float, y: Float) = (400, 298)
@@ -233,6 +257,7 @@ public final class InBattleViewModel: ScreenViewModel {
         remoteAim = nil
         shotAttacker = nil
         moveBudget = Self.moveBudgetPerTurn
+        clock = 0
         wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
@@ -386,6 +411,7 @@ public final class InBattleViewModel: ScreenViewModel {
             if let index = players.firstIndex(where: { $0.slot == dead.slot }) {
                 players[index].hp = 0
                 players[index].isAlive = false
+                setPose(.dead, at: index)
             }
         case .userQuit(let quit):
             players.removeAll { UInt16($0.slot) == quit.slot }
@@ -425,6 +451,7 @@ public final class InBattleViewModel: ScreenViewModel {
             else { return }
             players[index].x = Float(UInt16(forward.payload[1]) | UInt16(forward.payload[2]) << 8)
             players[index].y = Float(UInt16(forward.payload[3]) | UInt16(forward.payload[4]) << 8)
+            setPose(.move, at: index)
             // Follow the walker (it's the acting player).
             camera = (players[index].x, players[index].y)
             clampCamera()
@@ -540,6 +567,7 @@ public final class InBattleViewModel: ScreenViewModel {
         players[index].x = newX
         players[index].y = newY
         moveBudget -= Self.walkStep
+        setPose(.move, at: index)
         camera = (newX, newY)
         clampCamera()
         relayMove(players[index])
@@ -591,12 +619,17 @@ public final class InBattleViewModel: ScreenViewModel {
         )
         shotAttacker = shooter.slot
         remoteAim = nil
+        if let index = players.firstIndex(where: { $0.slot == shooter.slot }) {
+            setPose(.fire, at: index)
+        }
         phase = .projectileInFlight
     }
 
     // MARK: - Simulation
 
     public func update(deltaTime: Double) {
+        clock += deltaTime
+        expirePoses()
         switch phase {
         case .charging:
             power = min(1, power + Float(deltaTime / Self.chargeDuration))
@@ -687,6 +720,34 @@ public final class InBattleViewModel: ScreenViewModel {
         ))
         if players[index].hp == 0 {
             players[index].isAlive = false
+            setPose(.dead, at: index)
+        } else {
+            setPose(.shock, at: index)
+        }
+    }
+
+    /// Marks a pose change on the battle clock (dead is final).
+    private func setPose(_ pose: MobilePose, at index: Int) {
+        guard players[index].pose != .dead else { return }
+        players[index].pose = pose
+        players[index].poseStarted = clock
+    }
+
+    /// Transient poses revert to `.normal` once their run has played.
+    private func expirePoses() {
+        for index in players.indices {
+            let player = players[index]
+            let age = clock - player.poseStarted
+            let expired: Bool
+            switch player.pose {
+            case .move: expired = age > Self.movePoseLinger
+            case .fire: expired = age > Self.firePoseDuration
+            case .shock: expired = age > Self.shockPoseDuration
+            case .normal, .dead: expired = false
+            }
+            if expired {
+                setPose(.normal, at: index)
+            }
         }
     }
 
