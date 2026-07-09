@@ -30,13 +30,55 @@ public protocol BattleTerrain: Sendable {
 @MainActor
 public final class InBattleViewModel: ScreenViewModel {
 
+    /// The three weapon slots (the original's shot 1 / shot 2 / SS —
+    /// selection plays `b_play_weapon1/2/3`, and a fresh room resets the
+    /// slot fields to the `0xff` "no weapon" sentinel).
+    public enum Weapon: UInt8, CaseIterable, Equatable, Sendable {
+        case shot1 = 1
+        case shot2 = 2
+        case special = 3
+
+        /// The next slot in Tab-cycle order.
+        public var next: Weapon {
+            switch self {
+            case .shot1: return .shot2
+            case .shot2: return .special
+            case .special: return .shot1
+            }
+        }
+    }
+
+    /// A weapon's blast: the decomp's per-weapon inner/mid/outer
+    /// (內/中/外) damage rings plus the hole it carves. Uniform across
+    /// mobiles until the per-weapon `characterdata.dat` groups are
+    /// decoded; shot 2 and the SS trade a bigger, harder blast for the
+    /// original's delay cost (no delay system yet).
+    public struct WeaponProfile: Sendable {
+        public let damageTiers: [(radius: Float, damage: Int)]
+        public let craterRadius: Float
+        /// The outermost ring — the splash/visual radius.
+        public var blastRadius: Float { damageTiers.last?.radius ?? 0 }
+    }
+
+    public static func profile(for weapon: Weapon) -> WeaponProfile {
+        switch weapon {
+        case .shot1:
+            return WeaponProfile(damageTiers: [(18, 320), (36, 220), (55, 120)], craterRadius: 44)
+        case .shot2:
+            return WeaponProfile(damageTiers: [(20, 420), (40, 300), (60, 170)], craterRadius: 52)
+        case .special:
+            return WeaponProfile(damageTiers: [(24, 550), (46, 400), (70, 240)], craterRadius: 62)
+        }
+    }
+
     /// A mobile's animation pose — the semantic state the view maps onto
-    /// the sheet's `.epa` frame runs (`normal`, `move`, `fire1`, `shock`,
-    /// `dead`, and the `w`-prefixed wounded variants at half HP).
+    /// the sheet's `.epa` frame runs (`normal`, `move`, the per-weapon
+    /// `fire1`/`fire2`/`sfire`, `shock`, `dead`, and the `w`-prefixed
+    /// wounded variants at half HP).
     public enum MobilePose: Equatable, Sendable {
         case normal
         case move
-        case fire
+        case fire(Weapon)
         case shock
         case dead
     }
@@ -115,11 +157,14 @@ public final class InBattleViewModel: ScreenViewModel {
     public struct Explosion: Equatable, Sendable {
         public let x: Float
         public let y: Float
+        /// The firing weapon's outer blast ring (drives the visual size).
+        public let blastRadius: Float
         public var age: Double = 0
 
-        public init(x: Float, y: Float) {
+        public init(x: Float, y: Float, blastRadius: Float) {
             self.x = x
             self.y = y
+            self.blastRadius = blastRadius
         }
     }
 
@@ -152,8 +197,7 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Muzzle speed at full power (px/s) and gravity (px/s², y-down world).
     public static let maxShotSpeed: Float = 900
     public static let gravity: Float = 450
-    /// Splash-damage radius (px) and the explosion's display time.
-    public static let splashRadius: Float = 55
+    /// The explosion's display time.
     public static let explosionDuration: Double = 0.7
     /// Every mobile's HP pool. `characterdata.dat` stores per-mobile
     /// Max HP/Shield values (the editor dialog's 최대체력/최대쉴드 fields);
@@ -161,17 +205,9 @@ public final class InBattleViewModel: ScreenViewModel {
     /// (`nonisolated`: it seeds `BattlePlayer.hp`'s default outside the
     /// main actor.)
     public nonisolated static let maxHP = 1000
-    /// The blast's damage rings — the decomp's per-weapon inner/mid/outer
-    /// (內/中/外) three-tier model, each radius with its own power. The
-    /// outer ring is the splash radius; uniform values stand in until the
-    /// per-weapon tables are decoded.
-    public static let damageTiers: [(radius: Float, damage: Int)] = [
-        (radius: 18, damage: 320),
-        (radius: 36, damage: 220),
-        (radius: splashRadius, damage: 120),
-    ]
-    /// The blast crater's radius (slightly inside the damage radius).
-    public static let craterRadius: Float = 44
+    /// The turn time limit — the classic 60 seconds (the Loading handler
+    /// writes the battle's timer field checked against 60,000 ms).
+    public static let turnDuration: Double = 60
     /// Wind range (horizontal acceleration, px/s²) — re-rolled every turn,
     /// carried in the fire payload so remote sims match the shooter's.
     public static let windRange: ClosedRange<Float> = -120...120
@@ -203,6 +239,12 @@ public final class InBattleViewModel: ScreenViewModel {
     private var shotWind: Float = 0
     /// The slot that fired the in-flight shot — credited in the ledger.
     private var shotAttacker: UInt8?
+    /// The weapon the in-flight shot was fired with (sets the blast).
+    private var shotWeapon: Weapon = .shot1
+    /// The local player's selected weapon slot (Tab cycles it).
+    public private(set) var selectedWeapon: Weapon = .shot1
+    /// Seconds left on the acting player's turn; expiry forfeits it.
+    public private(set) var turnRemaining: Double = InBattleViewModel.turnDuration
     /// Every hit so far, in order (the `0x8404` hit log).
     public private(set) var damageLedger: [DamageEvent] = []
     /// The acting remote player's live aim (angle/power/direction), relayed
@@ -268,6 +310,8 @@ public final class InBattleViewModel: ScreenViewModel {
         clock = 0
         chatLines = []
         chatDraft = nil
+        selectedWeapon = .shot1
+        turnRemaining = Self.turnDuration
         wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
@@ -340,6 +384,7 @@ public final class InBattleViewModel: ScreenViewModel {
         power = 0
         remoteAim = nil
         moveBudget = Self.moveBudgetPerTurn
+        turnRemaining = Self.turnDuration
         wind = Float.random(in: Self.windRange)
         // Snap the camera back to the new acting player.
         if let current = currentTurnPlayer {
@@ -399,9 +444,10 @@ public final class InBattleViewModel: ScreenViewModel {
     }
 
     /// The tunnel payload tag for a relayed shot:
-    /// `[0x01, angle, power, direction, wind]` (angle in degrees, power
-    /// `0…100`, direction `0` = left / `1` = right, wind biased by 127 —
-    /// the shooter's roll, so every client simulates the same flight).
+    /// `[0x01, angle, power, direction, wind, weapon]` (angle in degrees,
+    /// power `0…100`, direction `0` = left / `1` = right, wind biased by
+    /// 127 — the shooter's roll — and the weapon slot, so every client
+    /// simulates the same flight and blast).
     static let fireTag: UInt8 = 0x01
     /// The tunnel payload tag for a live aim update:
     /// `[0x02, angle, power, direction]` — the decomp's `0x8402`/`0x8406`
@@ -450,11 +496,12 @@ public final class InBattleViewModel: ScreenViewModel {
         else { return }
         switch tag {
         case Self.fireTag:
-            guard forward.payload.count >= 5 else { return }
+            guard forward.payload.count >= 6 else { return }
             let angle = Float(forward.payload[1])
             let power = Float(forward.payload[2]) / 100
             let direction: Float = forward.payload[3] == 0 ? -1 : 1
             shotWind = Float(Int(forward.payload[4]) - 127)
+            shotWeapon = Weapon(rawValue: forward.payload[5]) ?? .shot1
             launch(from: shooter, angle: angle, power: power, direction: direction)
         case Self.aimTag:
             guard forward.payload.count >= 4 else { return }
@@ -502,6 +549,11 @@ public final class InBattleViewModel: ScreenViewModel {
         case .key(.right):
             guard isMyTurn, phase == .aiming else { return }
             walk(1)
+
+        // Tab cycles the weapon slot before the charge starts.
+        case .key(.tab):
+            guard isMyTurn, phase == .aiming else { return }
+            selectedWeapon = selectedWeapon.next
 
         // Typing opens the chat composer (or appends to it); while it's
         // open, Enter sends the line instead of charging/firing.
@@ -596,6 +648,7 @@ public final class InBattleViewModel: ScreenViewModel {
                 UInt8(min(100, max(0, (strength * 100).rounded()))),
                 direction > 0 ? 1 : 0,
                 UInt8(min(255, max(0, (wind + 127).rounded()))),
+                selectedWeapon.rawValue,
             ]
             let targets = players.filter { $0.slot != shooter.slot }.map(\.slot)
             Task {
@@ -605,6 +658,7 @@ public final class InBattleViewModel: ScreenViewModel {
             }
         }
         shotWind = wind
+        shotWeapon = selectedWeapon
         launch(from: shooter, angle: angle, power: strength, direction: direction)
     }
 
@@ -693,7 +747,7 @@ public final class InBattleViewModel: ScreenViewModel {
         shotAttacker = shooter.slot
         remoteAim = nil
         if let index = players.firstIndex(where: { $0.slot == shooter.slot }) {
-            setPose(.fire, at: index)
+            setPose(.fire(shotWeapon), at: index)
         }
         phase = .projectileInFlight
     }
@@ -705,6 +759,8 @@ public final class InBattleViewModel: ScreenViewModel {
         expirePoses()
         switch phase {
         case .charging:
+            tickTurnTimer(deltaTime)
+            guard phase == .charging else { break }  // the clock ran out
             power = min(1, power + Float(deltaTime / Self.chargeDuration))
             if power >= 1 {
                 fire()  // a full gauge fires, like the original
@@ -717,8 +773,20 @@ public final class InBattleViewModel: ScreenViewModel {
                 resolveImpact(at: explosion)
             }
         case .aiming, .waiting:
+            tickTurnTimer(deltaTime)
             edgeScroll(deltaTime)
         }
+    }
+
+    /// Counts the acting player's window down; hitting zero forfeits the
+    /// turn (the `0xc305` timeout: reset the turn phase and post the
+    /// "turn's up" message). The clock pauses while a shot resolves.
+    private func tickTurnTimer(_ deltaTime: Double) {
+        guard currentTurnPlayer != nil else { return }
+        turnRemaining -= deltaTime
+        guard turnRemaining <= 0 else { return }
+        appendChat(ChatLine(message: "Time over!", type: .notice))
+        advanceTurn()  // also resets the timer
     }
 
     private func stepProjectile(_ deltaTime: Double) {
@@ -736,7 +804,7 @@ public final class InBattleViewModel: ScreenViewModel {
             if solid || offMap {
                 projectile = nil
                 if solid {
-                    explosion = Explosion(x: shot.x, y: shot.y)
+                    explosion = Explosion(x: shot.x, y: shot.y, blastRadius: Self.profile(for: shotWeapon).blastRadius)
                     phase = .impact
                 } else {
                     // Splashed off the map — no crater, straight to next turn.
@@ -752,8 +820,9 @@ public final class InBattleViewModel: ScreenViewModel {
     }
 
     private func resolveImpact(at explosion: Explosion) {
+        let profile = Self.profile(for: shotWeapon)
         // Carve the blast hole out of the terrain.
-        craters.append(Crater(x: explosion.x, y: explosion.y, radius: Self.craterRadius))
+        craters.append(Crater(x: explosion.x, y: explosion.y, radius: profile.craterRadius))
         // Splash damage by blast ring: the innermost tier whose radius
         // covers the target sets the hit's power (local resolution — see
         // the type-level divergence note).
@@ -761,7 +830,7 @@ public final class InBattleViewModel: ScreenViewModel {
             let dx = players[index].x - explosion.x
             let dy = players[index].y - explosion.y
             let distance = (dx * dx + dy * dy).squareRoot()
-            guard let tier = Self.damageTiers.first(where: { distance <= $0.radius }) else { continue }
+            guard let tier = profile.damageTiers.first(where: { distance <= $0.radius }) else { continue }
             applyDamage(tier.damage, toSlot: players[index].slot, cause: .shot)
         }
         // Survivors above the new hole drop to the remaining ground; a
