@@ -263,6 +263,31 @@ public final class InBattleViewModel: ScreenViewModel {
     /// character opens it seeded with that character; Enter sends.
     public private(set) var chatDraft: String?
     public static let maxChatDraftLength = 60
+
+    /// A sound cue for the view to play — the model names the moment, the
+    /// view maps it onto `sound.xfs` entries (`<N><weapon>fire.xes`,
+    /// `<N><weapon>blast.xes`, `<N>move.xes`, `turn.xes`, `turnwa.xes`).
+    public enum BattleSound: Equatable, Sendable {
+        case fire(Mobile, Weapon)
+        case blast(Mobile, Weapon)
+        case walk(Mobile)
+        /// Our turn began.
+        case turnStart
+        /// Ten seconds left on the turn clock.
+        case turnWarning
+    }
+
+    /// Cues emitted since the last drain (the view empties this per frame).
+    public private(set) var soundQueue: [BattleSound] = []
+    /// Walk steps repeat at key-repeat rate; cues are throttled to this gap.
+    public static let walkCueInterval: Double = 0.25
+    private var lastWalkCue: Double = -1
+
+    /// Hands the pending cues to the view and clears the queue.
+    public func drainSounds() -> [BattleSound] {
+        defer { soundQueue = [] }
+        return soundQueue
+    }
     /// How long the transient poses run before reverting to `.normal`
     /// (a walk step refreshes `.move`; the sheet runs are 10–25 frames).
     public static let movePoseLinger: Double = 0.3
@@ -312,6 +337,8 @@ public final class InBattleViewModel: ScreenViewModel {
         chatDraft = nil
         selectedWeapon = .shot1
         turnRemaining = Self.turnDuration
+        soundQueue = []
+        lastWalkCue = -1
         wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
@@ -385,6 +412,9 @@ public final class InBattleViewModel: ScreenViewModel {
         remoteAim = nil
         moveBudget = Self.moveBudgetPerTurn
         turnRemaining = Self.turnDuration
+        if isMyTurn {
+            soundQueue.append(.turnStart)
+        }
         wind = Float.random(in: Self.windRange)
         // Snap the camera back to the new acting player.
         if let current = currentTurnPlayer {
@@ -517,6 +547,7 @@ public final class InBattleViewModel: ScreenViewModel {
             players[index].x = Float(UInt16(forward.payload[1]) | UInt16(forward.payload[2]) << 8)
             players[index].y = Float(UInt16(forward.payload[3]) | UInt16(forward.payload[4]) << 8)
             setPose(.move, at: index)
+            emitWalkCue(for: players[index])
             // Follow the walker (it's the acting player).
             camera = (players[index].x, players[index].y)
             clampCamera()
@@ -695,6 +726,7 @@ public final class InBattleViewModel: ScreenViewModel {
         players[index].y = newY
         moveBudget -= Self.walkStep
         setPose(.move, at: index)
+        emitWalkCue(for: players[index])
         camera = (newX, newY)
         clampCamera()
         relayMove(players[index])
@@ -714,6 +746,14 @@ public final class InBattleViewModel: ScreenViewModel {
         }
         // No footing within the climb window — fall to the ground below.
         return groundLevel(atX: x, below: y + Self.maxClimb)
+    }
+
+    /// Emits the per-mobile walk cue (the `0xc304` action's
+    /// direction-specific movement sound), throttled to key-repeat pace.
+    private func emitWalkCue(for player: BattlePlayer) {
+        guard clock - lastWalkCue >= Self.walkCueInterval else { return }
+        lastWalkCue = clock
+        soundQueue.append(.walk(player.mobile))
     }
 
     /// Broadcasts the walker's post-step position (the `0xc304` movement
@@ -749,6 +789,7 @@ public final class InBattleViewModel: ScreenViewModel {
         if let index = players.firstIndex(where: { $0.slot == shooter.slot }) {
             setPose(.fire(shotWeapon), at: index)
         }
+        soundQueue.append(.fire(shooter.mobile, shotWeapon))
         phase = .projectileInFlight
     }
 
@@ -783,7 +824,12 @@ public final class InBattleViewModel: ScreenViewModel {
     /// "turn's up" message). The clock pauses while a shot resolves.
     private func tickTurnTimer(_ deltaTime: Double) {
         guard currentTurnPlayer != nil else { return }
+        let before = turnRemaining
         turnRemaining -= deltaTime
+        // The ten-second warning cue, once per turn as the clock crosses it.
+        if before > 10, turnRemaining <= 10, turnRemaining > 0 {
+            soundQueue.append(.turnWarning)
+        }
         guard turnRemaining <= 0 else { return }
         appendChat(ChatLine(message: "Time over!", type: .notice))
         advanceTurn()  // also resets the timer
@@ -821,6 +867,9 @@ public final class InBattleViewModel: ScreenViewModel {
 
     private func resolveImpact(at explosion: Explosion) {
         let profile = Self.profile(for: shotWeapon)
+        // The blast cue is the firing mobile's (`<N><weapon>blast.xes`).
+        let attackerMobile = players.first { $0.slot == shotAttacker }?.mobile ?? .armor
+        soundQueue.append(.blast(attackerMobile, shotWeapon))
         // Carve the blast hole out of the terrain.
         craters.append(Crater(x: explosion.x, y: explosion.y, radius: profile.craterRadius))
         // Splash damage by blast ring: the innermost tier whose radius
