@@ -54,16 +54,22 @@ struct LoginView: View {
     }
 
     private var loginScreen: some View {
-        ZStack {
-            background
-            form
-                .padding()
-                .scrollContentBackground(.hidden)
-                .frame(maxWidth: 440, maxHeight: 320)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .padding()
+        Group {
+            if viewModel.backgroundImage == nil {
+                ProgressView()
+            } else {
+                ZStack {
+                    background
+                    form
+                        .padding()
+                        .scrollContentBackground(.hidden)
+                        .frame(maxWidth: 440, maxHeight: 320)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .padding()
+                }
+                .task { await viewModel.load() }
+            }
         }
-        .task { await viewModel.load() }
     }
 
     /// The title art once the view model has decoded it; plain black while

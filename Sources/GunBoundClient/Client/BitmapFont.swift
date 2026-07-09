@@ -88,11 +88,16 @@ public final class LoadedFont {
 
     /// Draws `text` left-to-right starting at `(x, y)` (top-left). Characters
     /// with no glyph advance by `spaceWidth` without drawing.
-    public func draw(_ text: String, x: Float, y: Float, using renderer: ClientRenderer) {
+    ///
+    /// `tint` modulates the glyph color — `font.fnt` glyphs are stamped
+    /// white, so tinting reproduces the original's flat text colors (e.g.
+    /// the world list's pale-cyan `0xb77f` descriptions); `nil` draws the
+    /// glyphs' own color.
+    public func draw(_ text: String, x: Float, y: Float, tint: (r: UInt8, g: UInt8, b: UInt8)? = nil, using renderer: ClientRenderer) {
         var cursor = x
         for character in text {
             if let texture = glyphTextures[character], let size = glyphSizes[character] {
-                renderer.draw(texture, in: Rect(x: cursor, y: y, width: size.width, height: size.height), tint: nil)
+                renderer.draw(texture, in: Rect(x: cursor, y: y, width: size.width, height: size.height), tint: tint)
                 cursor += size.width + font.tracking
             } else {
                 cursor += font.spaceWidth
