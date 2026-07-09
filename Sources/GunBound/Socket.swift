@@ -109,12 +109,10 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
     // MARK: - Initialization
 
     deinit {
-        // TODO: Fix crash
-        /*
+        nonisolated(unsafe) let socket = self.socket
         Task(priority: .high) {
             await socket.close()
         }
-         */
     }
 
     internal init(
@@ -139,11 +137,22 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
     ) async throws -> Self {
         let fileDescriptor = try SocketDescriptor.tcp(localAddress)  // [.closeOnExec, .nonBlocking])
         let socket = await Socket(fileDescriptor: fileDescriptor)
-        try await socket.connect(to: IPv4SocketAddress(destinationAddress))
-        return await Self(
-            fileDescriptor: fileDescriptor,
-            address: localAddress
-        )
+        do {
+            try await socket.connect(to: IPv4SocketAddress(destinationAddress))
+        } catch Errno.socketIsConnected {
+            // PureSwift/Socket's non-blocking connect() retries the raw
+            // connect(2) syscall itself while it returns EINPROGRESS
+            // (`retry(sleep:_:)` in its Util.swift), rather than polling for
+            // writability — so if the connection actually completes in the
+            // background between two of those retries, the *next*
+            // connect(2) call correctly reports EISCONN ("already
+            // connected"), which is the standard success indication for a
+            // non-blocking socket, not a real failure. Without this catch,
+            // every outbound TCP connection here was intermittently (timing-
+            // dependent) failing with "Socket is already connected" even
+            // though the connection had, in fact, succeeded.
+        }
+        return Self(socket: socket, address: localAddress)
     }
 
     public static func server(
@@ -151,7 +160,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
         backlog: Int = 100
     ) async throws -> Self {
         let fileDescriptor = try SocketDescriptor.tcp(address)  // [.closeOnExec, .nonBlocking])
-        try fileDescriptor.closeIfThrows {
+        try await fileDescriptor.closeIfThrows {
             try fileDescriptor.listen(backlog: backlog)
             try fileDescriptor.setNonblocking()
         }
@@ -220,7 +229,7 @@ public final class GunBoundSocketIPv4UDP: GunBoundSocketUDP, @unchecked Sendable
 
     public init(address: GunBoundAddress) async throws {
         let fileDescriptor = try SocketDescriptor.udp(address)
-        try fileDescriptor.closeIfThrows {
+        try await fileDescriptor.closeIfThrows {
             try fileDescriptor.setNonblocking()
         }
         self.address = address

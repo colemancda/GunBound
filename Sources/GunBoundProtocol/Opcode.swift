@@ -75,10 +75,16 @@ public enum Opcode: UInt16, Sendable {
 
     // MARK: - Room List
 
-    /// Room List Request - get list of all rooms (sorted)
+    /// Room List Request - get list of all rooms (sorted).
+    /// Decomp-confirmed as the Game Room List (State 3) command dispatcher's
+    /// outgoing room-list request, carrying a channel/tab mode byte and page
+    /// (`docs/screens/03_game_room_list.md`).
     case roomListRequest = 0x2100  // SVC_ROOM_SORTED_LIST
 
-    /// Room Specific List Request - get list of specific rooms
+    /// Room Specific List Request - get list of specific rooms.
+    /// Decomp-confirmed as the lobby's outgoing channel-selector/navigation
+    /// opcode (the in-lobby channel switch an earlier incoming-only scan
+    /// missed).
     case roomSpecificList = 0x2101  // SVC_ROOM_SPECIFIC_LIST
 
     /// Room List Response
@@ -92,7 +98,9 @@ public enum Opcode: UInt16, Sendable {
 
     // MARK: - Room Management
 
-    /// Join Room Request - request to join a game room
+    /// Join Room Request - request to join a game room.
+    /// Decomp-confirmed as the lobby dispatcher's "enter room by number"
+    /// outgoing opcode (`docs/screens/03_game_room_list.md`).
     case joinRoomRequest = 0x2110  // SVC_ROOM_JOIN
 
     /// Join Room Response
@@ -315,7 +323,10 @@ public enum Opcode: UInt16, Sendable {
 
     // MARK: - Shop/Avatar
 
-    /// Get Avatar Request - get player's avatar list
+    /// Get Avatar Request - get player's avatar list. This is the wire opcode
+    /// the Avatar Store's "request inventory" action (the decomp's internal
+    /// `0x600f`) actually sends on entering the store — `0x600f` is the local
+    /// action label, `0x6000` the empty-payload packet it emits.
     case getAvatarRequest = 0x6000  // SVC_PROP_GET
 
     /// Get Avatar Response - return player's avatar list
@@ -330,7 +341,12 @@ public enum Opcode: UInt16, Sendable {
     /// Set Avatar Request - equip/change avatar
     case setAvatarRequest = 0x6004  // SVC_PROP_SET
 
-    /// Set Avatar Response
+    /// Set Avatar Response.
+    /// Note: the decomp's Avatar Store table (`docs/screens/07_avatar_store.md`)
+    /// reads `0x6005` as the store's price-list/init population instead —
+    /// our server uses it as the set-avatar response, so the number is shared
+    /// between two meanings depending on the flow (kept as-is for our own
+    /// server/client pairing).
     case setAvatarResponse = 0x6005
 
     /// Buy Gold Request - purchase avatar with gold

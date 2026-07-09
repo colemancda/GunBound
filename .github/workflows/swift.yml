@@ -4,8 +4,9 @@ jobs:
 
   macos:
     name: macOS
-    runs-on: macos-15
+    runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         config: ["debug", "release"]
     steps:
@@ -17,6 +18,11 @@ jobs:
         xcode-version: latest-stable
     - name: Swift Version
       run: swift --version
+    # The GunBoundSDL2/GunBoundSDL3 clients link Homebrew SDL (the
+    # PureSwift/SDL shims include from /opt/homebrew), which the GitHub
+    # runner doesn't ship.
+    - name: Install SDL
+      run: brew install sdl2 sdl2_mixer sdl3 sdl3_mixer
     - name: Build
       run: swift build -c ${{ matrix.config }}
     - name: Test

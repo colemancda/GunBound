@@ -1,0 +1,829 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		6E0D60882FFEFD9D00BF6558 /* graphics.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60822FFEFD9D00BF6558 /* graphics.xfs */; };
+		6E0D60892FFEFD9D00BF6558 /* itemdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60832FFEFD9D00BF6558 /* itemdata.dat */; };
+		6E0D608A2FFEFD9D00BF6558 /* characterdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60812FFEFD9D00BF6558 /* characterdata.dat */; };
+		6E0D608B2FFEFD9D00BF6558 /* sound.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60842FFEFD9D00BF6558 /* sound.xfs */; };
+		6E0D608C2FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
+		6E0D608D2FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
+		6E0D608E2FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
+		6E0D608F2FFEFD9D00BF6558 /* graphics.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60822FFEFD9D00BF6558 /* graphics.xfs */; };
+		6E0D60902FFEFD9D00BF6558 /* itemdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60832FFEFD9D00BF6558 /* itemdata.dat */; };
+		6E0D60912FFEFD9D00BF6558 /* characterdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60812FFEFD9D00BF6558 /* characterdata.dat */; };
+		6E0D60922FFEFD9D00BF6558 /* sound.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60842FFEFD9D00BF6558 /* sound.xfs */; };
+		6E0D60932FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
+		6E0D60942FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
+		6E0D60952FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
+		6E0D60962FFEFD9D00BF6558 /* graphics.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60822FFEFD9D00BF6558 /* graphics.xfs */; };
+		6E0D60972FFEFD9D00BF6558 /* itemdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60832FFEFD9D00BF6558 /* itemdata.dat */; };
+		6E0D60982FFEFD9D00BF6558 /* characterdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60812FFEFD9D00BF6558 /* characterdata.dat */; };
+		6E0D60992FFEFD9D00BF6558 /* sound.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60842FFEFD9D00BF6558 /* sound.xfs */; };
+		6E0D609A2FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
+		6E0D609B2FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
+		6E0D609C2FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
+		D00000000000000000000201 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
+		D00000000000000000000202 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
+		D00000000000000000000203 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
+		D00000000000000000000205 /* AppDelegate_macOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000105 /* AppDelegate_macOS.swift */; };
+		D00000000000000000000206 /* GunBound in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A02 /* GunBound */; };
+		D00000000000000000000207 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A03 /* GunBoundProtocol */; };
+		D00000000000000000000208 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A04 /* GunBoundFile */; };
+		D00000000000000000000209 /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A05 /* GunBoundClient */; };
+		D00000000000000000000211 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
+		D00000000000000000000212 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
+		D00000000000000000000213 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
+		D00000000000000000000214 /* ServerSelectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000114 /* ServerSelectScreen.swift */; };
+		D00000000000000000000215 /* GameRoomListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000115 /* GameRoomListScreen.swift */; };
+		D00000000000000000000216 /* ReadyRoomScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000116 /* ReadyRoomScreen.swift */; };
+		D00000000000000000000217 /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
+		D00000000000000000000218 /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
+		D00000000000000000000219 /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
+		D0000000000000000000021A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000120 /* LoginView.swift */; };
+		D0000000000000000000021B /* GameSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000121 /* GameSceneView.swift */; };
+		D00000000000000000000301 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
+		D00000000000000000000302 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
+		D00000000000000000000303 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
+		D00000000000000000000305 /* AppDelegate_tvOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000106 /* AppDelegate_tvOS.swift */; };
+		D00000000000000000000307 /* GunBound in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A06 /* GunBound */; };
+		D00000000000000000000308 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A07 /* GunBoundProtocol */; };
+		D00000000000000000000309 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A08 /* GunBoundFile */; };
+		D0000000000000000000030A /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A09 /* GunBoundClient */; };
+		D00000000000000000000311 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
+		D00000000000000000000312 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
+		D00000000000000000000313 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
+		D00000000000000000000314 /* ServerSelectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000114 /* ServerSelectScreen.swift */; };
+		D00000000000000000000315 /* GameRoomListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000115 /* GameRoomListScreen.swift */; };
+		D00000000000000000000316 /* ReadyRoomScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000116 /* ReadyRoomScreen.swift */; };
+		D00000000000000000000317 /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
+		D00000000000000000000318 /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
+		D00000000000000000000319 /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
+		D0000000000000000000031A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000120 /* LoginView.swift */; };
+		D0000000000000000000031B /* GameSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000121 /* GameSceneView.swift */; };
+		D00000000000000000000C10 /* GunBound in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0A /* GunBound */; };
+		D00000000000000000000C11 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0B /* GunBoundProtocol */; };
+		D00000000000000000000C12 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0C /* GunBoundFile */; };
+		D00000000000000000000C13 /* GunBoundClient in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0D /* GunBoundClient */; };
+		D0000000000000000000C01 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
+		D0000000000000000000C02 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
+		D0000000000000000000C03 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
+		D0000000000000000000C04 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000120 /* LoginView.swift */; };
+		D0000000000000000000C05 /* GameSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000121 /* GameSceneView.swift */; };
+		D0000000000000000000C06 /* GunBoundSpriteKitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000122 /* GunBoundSpriteKitApp.swift */; };
+		D0000000000000000000C07 /* ScreenPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000111 /* ScreenPreview.swift */; };
+		D0000000000000000000C08 /* LogoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000112 /* LogoScreen.swift */; };
+		D0000000000000000000C09 /* TitleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000113 /* TitleScreen.swift */; };
+		D0000000000000000000C0A /* ServerSelectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000114 /* ServerSelectScreen.swift */; };
+		D0000000000000000000C0B /* GameRoomListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000115 /* GameRoomListScreen.swift */; };
+		D0000000000000000000C0C /* ReadyRoomScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000116 /* ReadyRoomScreen.swift */; };
+		D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
+		D0000000000000000000C0E /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
+		D0000000000000000000C0F /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
+		D00000000000000000000230 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D00000000000000000000330 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D0000000000000000000C30 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D0000000000000000000023A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
+		D0000000000000000000033A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
+		D0000000000000000000C23A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
+		D000000000000000000002391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
+		D000000000000000000003391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
+		D0000000000000000000C2391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
+		D000000000000000000002321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D000000000000000000003321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D0000000000000000000C2321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D000000000000000000002331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D000000000000000000003331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D0000000000000000000C2331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D000000000000000000002341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D000000000000000000003341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D0000000000000000000C2341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D000000000000000000002351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D000000000000000000003351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D0000000000000000000C2351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D000000000000000000002361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D000000000000000000003361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D0000000000000000000C2361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D000000000000000000002371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D000000000000000000003371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D0000000000000000000C2371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D000000000000000000002381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D000000000000000000003381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D0000000000000000000C2381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		6E0D60802FFEFD9D00BF6558 /* avatar.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = avatar.xfs; sourceTree = "<group>"; };
+		6E0D60812FFEFD9D00BF6558 /* characterdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = characterdata.dat; sourceTree = "<group>"; };
+		6E0D60822FFEFD9D00BF6558 /* graphics.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = graphics.xfs; sourceTree = "<group>"; };
+		6E0D60832FFEFD9D00BF6558 /* itemdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = itemdata.dat; sourceTree = "<group>"; };
+		6E0D60842FFEFD9D00BF6558 /* sound.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = sound.xfs; sourceTree = "<group>"; };
+		6E0D60852FFEFD9D00BF6558 /* specialdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = specialdata.dat; sourceTree = "<group>"; };
+		6E0D60862FFEFD9D00BF6558 /* stage.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = stage.dat; sourceTree = "<group>"; };
+		D00000000000000000000101 /* SpriteKitRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitRenderer.swift; sourceTree = "<group>"; };
+		D00000000000000000000102 /* SpriteKitAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitAudioPlayer.swift; sourceTree = "<group>"; };
+		D00000000000000000000103 /* GameScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		D00000000000000000000105 /* AppDelegate_macOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate_macOS.swift; sourceTree = "<group>"; };
+		D00000000000000000000106 /* AppDelegate_tvOS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate_tvOS.swift; sourceTree = "<group>"; };
+		D00000000000000000000108 /* GunBound-macOS-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GunBound-macOS-Info.plist"; sourceTree = "<group>"; };
+		D0000000000000000000010A /* GunBound-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0000000000000000000010B /* GunBound-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0000000000000000000010C /* GunBound-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GunBound-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D00000000000000000000111 /* ScreenPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenPreview.swift; sourceTree = "<group>"; };
+		D00000000000000000000112 /* LogoScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LogoScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000113 /* TitleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TitleScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000114 /* ServerSelectScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServerSelectScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000115 /* GameRoomListScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameRoomListScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000116 /* ReadyRoomScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReadyRoomScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000117 /* AvatarShopScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AvatarShopScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000118 /* LoadingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000130 /* WidgetPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetPreview.swift; sourceTree = "<group>"; };
+		D0000000000000000000013A /* LobbyChatWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LobbyChatWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000139 /* ChannelUserListWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChannelUserListWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000132 /* ButtonWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ButtonWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000133 /* ScrollBarWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScrollBarWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000134 /* TextFieldWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextFieldWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000135 /* DialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DialogWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000136 /* BuddyPanelWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuddyPanelWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000137 /* CreateRoomDialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreateRoomDialogWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EnterRoomNumberDialogWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000120 /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		D00000000000000000000121 /* GameSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameSceneView.swift; sourceTree = "<group>"; };
+		D00000000000000000000122 /* GunBoundSpriteKitApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GunBoundSpriteKitApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D00000000000000000000702 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000206 /* GunBound in Frameworks */,
+				D00000000000000000000207 /* GunBoundProtocol in Frameworks */,
+				D00000000000000000000208 /* GunBoundFile in Frameworks */,
+				D00000000000000000000209 /* GunBoundClient in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000704 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000307 /* GunBound in Frameworks */,
+				D00000000000000000000308 /* GunBoundProtocol in Frameworks */,
+				D00000000000000000000309 /* GunBoundFile in Frameworks */,
+				D0000000000000000000030A /* GunBoundClient in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000C61 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000C10 /* GunBound in Frameworks */,
+				D00000000000000000000C11 /* GunBoundProtocol in Frameworks */,
+				D00000000000000000000C12 /* GunBoundFile in Frameworks */,
+				D00000000000000000000C13 /* GunBoundClient in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		6E0D60872FFEFD9D00BF6558 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6E0D60802FFEFD9D00BF6558 /* avatar.xfs */,
+				6E0D60812FFEFD9D00BF6558 /* characterdata.dat */,
+				6E0D60822FFEFD9D00BF6558 /* graphics.xfs */,
+				6E0D60832FFEFD9D00BF6558 /* itemdata.dat */,
+				6E0D60842FFEFD9D00BF6558 /* sound.xfs */,
+				6E0D60852FFEFD9D00BF6558 /* specialdata.dat */,
+				6E0D60862FFEFD9D00BF6558 /* stage.dat */,
+			);
+			name = Resources;
+			path = GunBoundSpriteKit.swiftpm/AppModule/Resources;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000401 = {
+			isa = PBXGroup;
+			children = (
+				6E0D60872FFEFD9D00BF6558 /* Resources */,
+				D00000000000000000000402 /* Products */,
+				D00000000000000000000403 /* Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule) */,
+				D00000000000000000000404 /* Darwin (Darwin/Sources/GunBoundDarwin) */,
+				D00000000000000000000108 /* GunBound-macOS-Info.plist */,
+			);
+			sourceTree = "<group>";
+		};
+		D00000000000000000000402 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D0000000000000000000010A /* GunBound-macOS.app */,
+				D0000000000000000000010B /* GunBound-tvOS.app */,
+				D0000000000000000000010C /* GunBound-iOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000403 /* Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule) */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000101 /* SpriteKitRenderer.swift */,
+				D00000000000000000000102 /* SpriteKitAudioPlayer.swift */,
+				D00000000000000000000103 /* GameScene.swift */,
+				D00000000000000000000120 /* LoginView.swift */,
+				D00000000000000000000121 /* GameSceneView.swift */,
+				D00000000000000000000122 /* GunBoundSpriteKitApp.swift */,
+				D00000000000000000000405 /* Screens */,
+				D00000000000000000000406 /* Widgets */,
+			);
+			name = "Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule)";
+			path = GunBoundSpriteKit.swiftpm/AppModule;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000404 /* Darwin (Darwin/Sources/GunBoundDarwin) */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000105 /* AppDelegate_macOS.swift */,
+				D00000000000000000000106 /* AppDelegate_tvOS.swift */,
+			);
+			name = "Darwin (Darwin/Sources/GunBoundDarwin)";
+			path = Sources/GunBoundDarwin;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000405 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000111 /* ScreenPreview.swift */,
+				D00000000000000000000112 /* LogoScreen.swift */,
+				D00000000000000000000113 /* TitleScreen.swift */,
+				D00000000000000000000114 /* ServerSelectScreen.swift */,
+				D00000000000000000000115 /* GameRoomListScreen.swift */,
+				D00000000000000000000116 /* ReadyRoomScreen.swift */,
+				D00000000000000000000117 /* AvatarShopScreen.swift */,
+				D00000000000000000000118 /* LoadingScreen.swift */,
+				D00000000000000000000119 /* InBattleScreen.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000406 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000130 /* WidgetPreview.swift */,
+				D0000000000000000000013A /* LobbyChatWidget.swift */,
+				D00000000000000000000139 /* ChannelUserListWidget.swift */,
+				D00000000000000000000132 /* ButtonWidget.swift */,
+				D00000000000000000000133 /* ScrollBarWidget.swift */,
+				D00000000000000000000134 /* TextFieldWidget.swift */,
+				D00000000000000000000135 /* DialogWidget.swift */,
+				D00000000000000000000136 /* BuddyPanelWidget.swift */,
+				D00000000000000000000137 /* CreateRoomDialogWidget.swift */,
+				D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D00000000000000000000501 /* GunBound-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D00000000000000000000902 /* Build configuration list for PBXNativeTarget "GunBound-macOS" */;
+			buildPhases = (
+				D00000000000000000000701 /* Sources */,
+				D00000000000000000000702 /* Frameworks */,
+				D00000000000000000000706 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "GunBound-macOS";
+			packageProductDependencies = (
+				D00000000000000000000A02 /* GunBound */,
+				D00000000000000000000A03 /* GunBoundProtocol */,
+				D00000000000000000000A04 /* GunBoundFile */,
+				D00000000000000000000A05 /* GunBoundClient */,
+			);
+			productName = "GunBound-macOS";
+			productReference = D0000000000000000000010A /* GunBound-macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D00000000000000000000502 /* GunBound-tvOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D00000000000000000000903 /* Build configuration list for PBXNativeTarget "GunBound-tvOS" */;
+			buildPhases = (
+				D00000000000000000000703 /* Sources */,
+				D00000000000000000000704 /* Frameworks */,
+				D00000000000000000000705 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "GunBound-tvOS";
+			packageProductDependencies = (
+				D00000000000000000000A06 /* GunBound */,
+				D00000000000000000000A07 /* GunBoundProtocol */,
+				D00000000000000000000A08 /* GunBoundFile */,
+				D00000000000000000000A09 /* GunBoundClient */,
+			);
+			productName = "GunBound-tvOS";
+			productReference = D0000000000000000000010B /* GunBound-tvOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D00000000000000000000C50 /* GunBound-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D00000000000000000000C80 /* Build configuration list for PBXNativeTarget "GunBound-iOS" */;
+			buildPhases = (
+				D00000000000000000000C60 /* Sources */,
+				D00000000000000000000C61 /* Frameworks */,
+				D00000000000000000000C62 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "GunBound-iOS";
+			packageProductDependencies = (
+				D00000000000000000000A0A /* GunBound */,
+				D00000000000000000000A0B /* GunBoundProtocol */,
+				D00000000000000000000A0C /* GunBoundFile */,
+				D00000000000000000000A0D /* GunBoundClient */,
+			);
+			productName = "GunBound-iOS";
+			productReference = D0000000000000000000010C /* GunBound-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D00000000000000000000601 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = D00000000000000000000901 /* Build configuration list for PBXProject "GunBound" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D00000000000000000000401;
+			packageReferences = (
+				D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */,
+			);
+			productRefGroup = D00000000000000000000402 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D00000000000000000000501 /* GunBound-macOS */,
+				D00000000000000000000502 /* GunBound-tvOS */,
+				D00000000000000000000C50 /* GunBound-iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D00000000000000000000705 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E0D60882FFEFD9D00BF6558 /* graphics.xfs in Resources */,
+				6E0D60892FFEFD9D00BF6558 /* itemdata.dat in Resources */,
+				6E0D608A2FFEFD9D00BF6558 /* characterdata.dat in Resources */,
+				6E0D608B2FFEFD9D00BF6558 /* sound.xfs in Resources */,
+				6E0D608C2FFEFD9D00BF6558 /* specialdata.dat in Resources */,
+				6E0D608D2FFEFD9D00BF6558 /* stage.dat in Resources */,
+				6E0D608E2FFEFD9D00BF6558 /* avatar.xfs in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000706 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E0D60962FFEFD9D00BF6558 /* graphics.xfs in Resources */,
+				6E0D60972FFEFD9D00BF6558 /* itemdata.dat in Resources */,
+				6E0D60982FFEFD9D00BF6558 /* characterdata.dat in Resources */,
+				6E0D60992FFEFD9D00BF6558 /* sound.xfs in Resources */,
+				6E0D609A2FFEFD9D00BF6558 /* specialdata.dat in Resources */,
+				6E0D609B2FFEFD9D00BF6558 /* stage.dat in Resources */,
+				6E0D609C2FFEFD9D00BF6558 /* avatar.xfs in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000C62 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E0D608F2FFEFD9D00BF6558 /* graphics.xfs in Resources */,
+				6E0D60902FFEFD9D00BF6558 /* itemdata.dat in Resources */,
+				6E0D60912FFEFD9D00BF6558 /* characterdata.dat in Resources */,
+				6E0D60922FFEFD9D00BF6558 /* sound.xfs in Resources */,
+				6E0D60932FFEFD9D00BF6558 /* specialdata.dat in Resources */,
+				6E0D60942FFEFD9D00BF6558 /* stage.dat in Resources */,
+				6E0D60952FFEFD9D00BF6558 /* avatar.xfs in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D00000000000000000000701 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000201 /* SpriteKitRenderer.swift in Sources */,
+				D00000000000000000000202 /* SpriteKitAudioPlayer.swift in Sources */,
+				D00000000000000000000203 /* GameScene.swift in Sources */,
+				D00000000000000000000205 /* AppDelegate_macOS.swift in Sources */,
+				D0000000000000000000021A /* LoginView.swift in Sources */,
+				D0000000000000000000021B /* GameSceneView.swift in Sources */,
+				D00000000000000000000211 /* ScreenPreview.swift in Sources */,
+				D00000000000000000000212 /* LogoScreen.swift in Sources */,
+				D00000000000000000000213 /* TitleScreen.swift in Sources */,
+				D00000000000000000000214 /* ServerSelectScreen.swift in Sources */,
+				D00000000000000000000215 /* GameRoomListScreen.swift in Sources */,
+				D00000000000000000000216 /* ReadyRoomScreen.swift in Sources */,
+				D00000000000000000000217 /* AvatarShopScreen.swift in Sources */,
+				D00000000000000000000218 /* LoadingScreen.swift in Sources */,
+				D00000000000000000000219 /* InBattleScreen.swift in Sources */,
+				D00000000000000000000230 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000023A1 /* LobbyChatWidget.swift in Sources */,
+				D000000000000000000002391 /* ChannelUserListWidget.swift in Sources */,
+				D000000000000000000002321 /* ButtonWidget.swift in Sources */,
+				D000000000000000000002331 /* ScrollBarWidget.swift in Sources */,
+				D000000000000000000002341 /* TextFieldWidget.swift in Sources */,
+				D000000000000000000002351 /* DialogWidget.swift in Sources */,
+				D000000000000000000002361 /* BuddyPanelWidget.swift in Sources */,
+				D000000000000000000002371 /* CreateRoomDialogWidget.swift in Sources */,
+				D000000000000000000002381 /* EnterRoomNumberDialogWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000703 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000301 /* SpriteKitRenderer.swift in Sources */,
+				D00000000000000000000302 /* SpriteKitAudioPlayer.swift in Sources */,
+				D00000000000000000000303 /* GameScene.swift in Sources */,
+				D00000000000000000000305 /* AppDelegate_tvOS.swift in Sources */,
+				D0000000000000000000031A /* LoginView.swift in Sources */,
+				D0000000000000000000031B /* GameSceneView.swift in Sources */,
+				D00000000000000000000311 /* ScreenPreview.swift in Sources */,
+				D00000000000000000000312 /* LogoScreen.swift in Sources */,
+				D00000000000000000000313 /* TitleScreen.swift in Sources */,
+				D00000000000000000000314 /* ServerSelectScreen.swift in Sources */,
+				D00000000000000000000315 /* GameRoomListScreen.swift in Sources */,
+				D00000000000000000000316 /* ReadyRoomScreen.swift in Sources */,
+				D00000000000000000000317 /* AvatarShopScreen.swift in Sources */,
+				D00000000000000000000318 /* LoadingScreen.swift in Sources */,
+				D00000000000000000000319 /* InBattleScreen.swift in Sources */,
+				D00000000000000000000330 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000033A1 /* LobbyChatWidget.swift in Sources */,
+				D000000000000000000003391 /* ChannelUserListWidget.swift in Sources */,
+				D000000000000000000003321 /* ButtonWidget.swift in Sources */,
+				D000000000000000000003331 /* ScrollBarWidget.swift in Sources */,
+				D000000000000000000003341 /* TextFieldWidget.swift in Sources */,
+				D000000000000000000003351 /* DialogWidget.swift in Sources */,
+				D000000000000000000003361 /* BuddyPanelWidget.swift in Sources */,
+				D000000000000000000003371 /* CreateRoomDialogWidget.swift in Sources */,
+				D000000000000000000003381 /* EnterRoomNumberDialogWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000C60 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0000000000000000000C01 /* SpriteKitRenderer.swift in Sources */,
+				D0000000000000000000C02 /* SpriteKitAudioPlayer.swift in Sources */,
+				D0000000000000000000C03 /* GameScene.swift in Sources */,
+				D0000000000000000000C04 /* LoginView.swift in Sources */,
+				D0000000000000000000C05 /* GameSceneView.swift in Sources */,
+				D0000000000000000000C06 /* GunBoundSpriteKitApp.swift in Sources */,
+				D0000000000000000000C07 /* ScreenPreview.swift in Sources */,
+				D0000000000000000000C08 /* LogoScreen.swift in Sources */,
+				D0000000000000000000C09 /* TitleScreen.swift in Sources */,
+				D0000000000000000000C0A /* ServerSelectScreen.swift in Sources */,
+				D0000000000000000000C0B /* GameRoomListScreen.swift in Sources */,
+				D0000000000000000000C0C /* ReadyRoomScreen.swift in Sources */,
+				D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */,
+				D0000000000000000000C0E /* LoadingScreen.swift in Sources */,
+				D0000000000000000000C0F /* InBattleScreen.swift in Sources */,
+				D0000000000000000000C30 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000C23A1 /* LobbyChatWidget.swift in Sources */,
+				D0000000000000000000C2391 /* ChannelUserListWidget.swift in Sources */,
+				D0000000000000000000C2321 /* ButtonWidget.swift in Sources */,
+				D0000000000000000000C2331 /* ScrollBarWidget.swift in Sources */,
+				D0000000000000000000C2341 /* TextFieldWidget.swift in Sources */,
+				D0000000000000000000C2351 /* DialogWidget.swift in Sources */,
+				D0000000000000000000C2361 /* BuddyPanelWidget.swift in Sources */,
+				D0000000000000000000C2371 /* CreateRoomDialogWidget.swift in Sources */,
+				D0000000000000000000C2381 /* EnterRoomNumberDialogWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D00000000000000000000801 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D00000000000000000000802 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D00000000000000000000803 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/GunBound-macOS-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.macos;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D00000000000000000000804 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/GunBound-macOS-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.macos;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D00000000000000000000805 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.tvos;
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
+		};
+		D00000000000000000000806 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.tvos;
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D00000000000000000000C71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.ios;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D00000000000000000000C72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GunBound;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.pureswift.GunBound.ios;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D00000000000000000000901 /* Build configuration list for PBXProject "GunBound" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000801 /* Debug */,
+				D00000000000000000000802 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D00000000000000000000902 /* Build configuration list for PBXNativeTarget "GunBound-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000803 /* Debug */,
+				D00000000000000000000804 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D00000000000000000000903 /* Build configuration list for PBXNativeTarget "GunBound-tvOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000805 /* Debug */,
+				D00000000000000000000806 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D00000000000000000000C80 /* Build configuration list for PBXNativeTarget "GunBound-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00000000000000000000C71 /* Debug */,
+				D00000000000000000000C72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D00000000000000000000A02 /* GunBound */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBound;
+		};
+		D00000000000000000000A03 /* GunBoundProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundProtocol;
+		};
+		D00000000000000000000A04 /* GunBoundFile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundFile;
+		};
+		D00000000000000000000A05 /* GunBoundClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundClient;
+		};
+		D00000000000000000000A06 /* GunBound */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBound;
+		};
+		D00000000000000000000A07 /* GunBoundProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundProtocol;
+		};
+		D00000000000000000000A08 /* GunBoundFile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundFile;
+		};
+		D00000000000000000000A09 /* GunBoundClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundClient;
+		};
+		D00000000000000000000A0A /* GunBound */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBound;
+		};
+		D00000000000000000000A0B /* GunBoundProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundProtocol;
+		};
+		D00000000000000000000A0C /* GunBoundFile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundFile;
+		};
+		D00000000000000000000A0D /* GunBoundClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000A01 /* XCLocalSwiftPackageReference ".." */;
+			productName = GunBoundClient;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D00000000000000000000601 /* Project object */;
+}

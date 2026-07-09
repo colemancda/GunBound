@@ -476,8 +476,15 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         username: Username,
         address: GunBoundAddress
     ) throws -> (Room, Room.PlayerSession) {
-        guard let room = self.state.rooms[id] else {
+        guard var room = self.state.rooms[id] else {
             throw GunBoundError.unknownRoom(id)
+        }
+        // Idempotent: joining a room you're already in — e.g. the creator
+        // joining right after create (create already inserts the host) —
+        // returns the existing session instead of appending a duplicate
+        // (which would break the start-game team-balance guard).
+        if let existing = room.players.first(where: { $0.username == username }) {
+            return (room, existing)
         }
         guard let playerID = room.nextID else {
             throw GunBoundError.roomFull
@@ -492,8 +499,10 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
             status: .waiting,
             isAdmin: false
         )
-        // cache value
-        self.state.rooms[id]?.players.append(player)
+        // cache value — and return the roster *including* the joiner, so
+        // their JoinRoomResponse shows themselves in the room.
+        room.players.append(player)
+        self.state.rooms[id] = room
         return (room, player)
     }
 
@@ -1134,6 +1143,17 @@ internal extension GunBoundServer {
             )
             // cache current room
             self.state.room = room.id
+            // notify everyone in the channel (creator included) that the
+            // room list changed (0x3105) — live lobbies refresh on this push
+            let notification = RoomUpdateNotification()
+            Task {
+                for (_, connection) in await self.server.storage.connections {
+                    guard await connection.state.channel == channel else {
+                        continue
+                    }
+                    await connection.send(notification)
+                }
+            }
             // return new room ID and motd
             return CreateRoomResponse(
                 room: room.id,

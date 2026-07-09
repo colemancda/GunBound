@@ -15,6 +15,9 @@ public struct UserReadyResponse: GunBoundPacket, GunBoundPacketEncodable, GunBou
     /// Return code (0x0000 = success)
     internal let rtc: UInt16
 
+    /// Whether the ready-state change was accepted.
+    public var isSuccess: Bool { rtc == 0x0000 }
+
     public init() {
         self.rtc = 0x0000
     }

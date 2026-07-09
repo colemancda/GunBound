@@ -27,12 +27,32 @@ let embeddedSwiftSettings: [SwiftSetting] =
 let package = Package(
     name: "GunBound",
     platforms: [
-        .macOS(embedded ? "14.0" : "13.0")
+        .macOS(embedded ? "14.0" : "13.0"),
+        // Lets the GunBoundSpriteKit app playground (Playgrounds/) and the
+        // Darwin Xcode project (Darwin/, macOS + tvOS app targets) depend on
+        // GunBound/GunBoundProtocol/GunBoundFile/GunBoundClient as a local
+        // package — none of those targets use anything iOS/tvOS can't build;
+        // only GunBoundServer/GunBoundSDL3 (ArgumentParser CLI, SDL3) are
+        // meaningless there and simply aren't part of those build requests.
+        .iOS("17.0"),
+        .tvOS("17.0")
     ],
     products: [
         .executable(
             name: "GunBoundServer",
             targets: ["GunBoundServer"]
+        ),
+        .executable(
+            name: "GunBoundSDL3",
+            targets: ["GunBoundSDL3"]
+        ),
+        .executable(
+            name: "GunBoundSDL2",
+            targets: ["GunBoundSDL2"]
+        ),
+        .executable(
+            name: "GunBoundExtract",
+            targets: ["GunBoundExtract"]
         ),
         .library(
             name: "GunBound",
@@ -45,13 +65,17 @@ let package = Package(
         .library(
             name: "GunBoundFile",
             targets: ["GunBoundFile"]
+        ),
+        .library(
+            name: "GunBoundClient",
+            targets: ["GunBoundClient"]
         )
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(
             url: "https://github.com/PureSwift/Socket",
-            branch: "main"
+            from: "0.5.2"
         ),
         .package(
             url: "https://github.com/krzyzanowskim/CryptoSwift.git",
@@ -64,6 +88,10 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-binary-parsing",
             .upToNextMinor(from: "0.0.2")
+        ),
+        .package(
+            url: "https://github.com/PureSwift/SDL",
+            .upToNextMajor(from: "3.1.0")
         )
     ],
     targets: [
@@ -112,9 +140,66 @@ let package = Package(
             ],
             swiftSettings: swiftSettings
         ),
+        .target(
+            name: "GunBoundClient",
+            dependencies: [
+                "GunBound",
+                "GunBoundProtocol",
+                "GunBoundFile"
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "GunBoundSDL3",
+            dependencies: [
+                "GunBound",
+                "GunBoundProtocol",
+                "GunBoundFile",
+                "GunBoundClient",
+                .product(name: "SDL3Swift", package: "SDL"),
+                .product(name: "SDL3Mixer", package: "SDL"),
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "GunBoundSDL2",
+            dependencies: [
+                "GunBound",
+                "GunBoundProtocol",
+                "GunBoundFile",
+                "GunBoundClient",
+                .product(name: "SDL2Swift", package: "SDL"),
+                .product(name: "SDL2Mixer", package: "SDL"),
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .executableTarget(
+            name: "GunBoundExtract",
+            dependencies: [
+                "GunBoundFile",
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser"
+                )
+            ],
+            swiftSettings: swiftSettings
+        ),
         .testTarget(
             name: "GunBoundTests",
             dependencies: ["GunBound", "GunBoundProtocol"],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
+            name: "GunBoundClientTests",
+            dependencies: ["GunBoundClient", "GunBound"],
             swiftSettings: swiftSettings
         ),
         .testTarget(

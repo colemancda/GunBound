@@ -20,6 +20,10 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoun
     /// Return code (0x0000 = success, non-zero = error)
     internal let rtc: UInt16
 
+    /// Whether the room join succeeded (a zero return code) — the client
+    /// only enters the room (→ Ready Room, state 9) on success.
+    public var isSuccess: Bool { rtc == 0x0000 }
+
     /// Unknown value (typically 0x0100)
     internal let value0: UInt16
 

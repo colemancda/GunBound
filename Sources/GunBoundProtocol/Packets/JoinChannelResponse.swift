@@ -20,6 +20,15 @@ public struct JoinChannelResponse: GunBoundPacket, GunBoundPacketEncodable, GunB
     /// Status code (0x0000 = success, non-zero = error)
     internal let status: UInt16
 
+    /// Whether the join/connect was confirmed successful.
+    ///
+    /// This is the field State 2's server-select confirm-connect path keys
+    /// off in the decompiled client (`if (*payload == 0)` in opcode
+    /// `0x2001`'s handler): a zero status is the "connection accepted"
+    /// acknowledgement that lets the client proceed into the channel's Game
+    /// Room List (`ChangeGameState(3)`).
+    public var isSuccess: Bool { status == 0x0000 }
+
     /// The ID of the channel that was joined
     public let channel: ChannelID
 
