@@ -119,10 +119,10 @@ struct InBattleViewModelTests {
         #expect(viewModel.phase == .aiming)
         #expect(viewModel.currentTurnPlayer?.name == "guest")
 
-        // Aim: ◀ raises, ▶ lowers, clamped.
-        viewModel.handle(.key(.left))
+        // Aim: ▲ raises, ▼ lowers, clamped.
+        viewModel.handle(.key(.up))
         #expect(viewModel.aimAngle == 47)
-        for _ in 0..<40 { viewModel.handle(.key(.right)) }
+        for _ in 0..<40 { viewModel.handle(.key(.down)) }
         #expect(viewModel.aimAngle == InBattleViewModel.aimRange.lowerBound)
 
         // Charge, then fire on the second press.
@@ -286,6 +286,81 @@ struct InBattleViewModelTests {
         )))
         #expect(viewModel.remoteAim == nil)
         #expect(viewModel.phase == .projectileInFlight)
+    }
+
+    /// ◀/▶ walk the acting mobile along the surface, draining the per-turn
+    /// movement budget; an exhausted budget stops it.
+    @Test func walkingFollowsTheSurfaceAndSpendsTheBudget() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Offline it's "guest"'s turn (x 1200, grounded at 1000).
+        #expect(viewModel.moveBudget == InBattleViewModel.moveBudgetPerTurn)
+        viewModel.handle(.key(.right))
+        #expect(viewModel.players[1].x == 1200 + InBattleViewModel.walkStep)
+        #expect(viewModel.players[1].y == 1000)
+        #expect(viewModel.moveBudget == InBattleViewModel.moveBudgetPerTurn - InBattleViewModel.walkStep)
+
+        // Exhaust the budget: the mobile stops at spawn + budget.
+        for _ in 0..<100 { viewModel.handle(.key(.right)) }
+        #expect(viewModel.players[1].x == 1200 + InBattleViewModel.moveBudgetPerTurn)
+        viewModel.handle(.key(.right))
+        #expect(viewModel.players[1].x == 1200 + InBattleViewModel.moveBudgetPerTurn)
+    }
+
+    /// A rise steeper than the climb limit is a wall; a gentle step climbs.
+    @Test func climbLimitBlocksSteepWalls() {
+        struct SteppedWorld: BattleTerrain {
+            let cliffX: Float
+            let lowFloor: Float
+            let highFloor: Float
+            func isSolid(x: Int, y: Int) -> Bool {
+                Float(y) >= (Float(x) < cliffX ? lowFloor : highFloor)
+            }
+            func surfaceLevel(atX x: Int, near y: Int) -> Int? {
+                Int(Float(x) < cliffX ? lowFloor : highFloor)
+            }
+        }
+        // A 20px cliff just right of "guest" (1200): more than one step
+        // can climb — walking right is blocked.
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(SteppedWorld(cliffX: 1202, lowFloor: 1000, highFloor: 980))
+        viewModel.handle(.key(.right))
+        #expect(viewModel.players[1].x == 1200)
+
+        // A 4px step is within the climb limit — the mobile walks up it.
+        let (gentle, _) = makeViewModel()
+        gentle.setWorldSize(width: 1800, height: 1800)
+        gentle.setTerrain(SteppedWorld(cliffX: 1202, lowFloor: 1000, highFloor: 996))
+        gentle.handle(.key(.right))
+        #expect(gentle.players[1].x == 1200 + InBattleViewModel.walkStep)
+        #expect(gentle.players[1].y == 996)
+
+        // Walking off a ledge drops to the ground below (walking left,
+        // off the high side, falls back to the low floor).
+        gentle.handle(.key(.left))
+        gentle.handle(.key(.left))
+        #expect(gentle.players[1].y == 1000)
+    }
+
+    /// A relayed move (the movement action's analogue) places the remote
+    /// mobile at the absolute position in the payload.
+    @Test func moveRelayPlacesTheRemoteMobile() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Slot 1 walked to (1240, 1000): u16 LE 1240 = 0xd8 0x04.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x03, 0xd8, 0x04, 0xe8, 0x03]
+        )))
+        #expect(viewModel.players[1].x == 1240)
+        #expect(viewModel.players[1].y == 1000)
+        // The camera follows the walker.
+        #expect(viewModel.camera.x == 1240)
     }
 
     /// Without battle data the screen still enters safely (offline path).
