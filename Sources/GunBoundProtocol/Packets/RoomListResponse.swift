@@ -112,6 +112,12 @@ public extension RoomListResponse {
             self.isPlaying = isPlaying
             self.isLocked = isLocked
         }
+
+        /// The settings dword as a typed bitmask (game mode + the decomp's
+        /// option groups).
+        public var roomSettings: RoomSettings {
+            RoomSettings(rawValue: settings)
+        }
     }
 }
 
