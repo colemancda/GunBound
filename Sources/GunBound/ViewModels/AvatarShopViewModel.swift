@@ -103,7 +103,7 @@ public final class AvatarShopViewModel: ScreenViewModel {
                 selectedItemIndex = itemIndex
             }
 
-        case .activate, .text, .key:
+        case .activate, .text, .key, .scroll:
             break
         }
     }

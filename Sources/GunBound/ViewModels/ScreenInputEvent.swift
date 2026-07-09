@@ -25,6 +25,13 @@ public enum ScreenInputEvent: Equatable, Sendable {
     /// here — it stays `.activate` (submit/advance).
     case key(Key)
 
+    /// A mouse-wheel/trackpad scroll at the pointer position, in whole line
+    /// steps — **positive steps scroll down** (toward later content). The
+    /// backend accumulates fractional trackpad deltas into steps. (The
+    /// original client had no wheel handling; this is a native-client
+    /// convenience routed to whatever scroll region is under the pointer.)
+    case scroll(x: Float, y: Float, steps: Int)
+
     public enum Key: Equatable, Sendable {
         case backspace
         case left
