@@ -18,6 +18,10 @@ public final class GameStateMachine {
     /// here to mirror the original preloading `cursor.img` on state changes.
     public let cursor = SoftwareCursor()
 
+    /// Drives `cursor` from a gamepad's left stick; a backend polls its pad
+    /// each frame and calls `applyGamepad(...)`.
+    public let gamepadCursor = GamepadCursor()
+
     public init(context: ClientContext, initialMode: ClientMode, makeScreen: @escaping (ClientMode) -> GameScreen?) throws {
         self.context = context
         self.makeScreen = makeScreen
@@ -40,6 +44,23 @@ public final class GameStateMachine {
             break
         }
         current.handleInput(event)
+    }
+
+    /// Feeds one frame of gamepad state to the virtual cursor: the left-stick
+    /// vector (each axis `-1...1`, y downward) moves the pointer and the click
+    /// button synthesizes a press. Reveals the software cursor the first time
+    /// the stick is used, then routes the synthesized events like real input.
+    public func applyGamepad(stickX: Float, stickY: Float, click: Bool, deltaTime: Double) {
+        let events = gamepadCursor.update(
+            stickX: stickX, stickY: stickY, click: click,
+            deltaTime: deltaTime, position: &cursor.position
+        )
+        if !events.isEmpty {
+            cursor.isVisible = true
+        }
+        for event in events {
+            current.handleInput(event)
+        }
     }
 
     public func update(deltaTime: Double) throws {
