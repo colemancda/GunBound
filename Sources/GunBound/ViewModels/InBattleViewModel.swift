@@ -86,6 +86,20 @@ public final class InBattleViewModel: ScreenViewModel {
         }
     }
 
+    /// A hole blasted out of the terrain — collision is the `.lnd` mask
+    /// minus these (the visual crater discs draw from the same list).
+    public struct Crater: Equatable, Sendable {
+        public let x: Float
+        public let y: Float
+        public let radius: Float
+
+        public init(x: Float, y: Float, radius: Float) {
+            self.x = x
+            self.y = y
+            self.radius = radius
+        }
+    }
+
     // MARK: Tuning
 
     /// Half the 800×600 view — the original biases world→screen by
@@ -104,6 +118,11 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Splash-damage radius (px) and the explosion's display time.
     public static let splashRadius: Float = 55
     public static let explosionDuration: Double = 0.7
+    /// The blast crater's radius (slightly inside the damage radius).
+    public static let craterRadius: Float = 44
+    /// Wind range (horizontal acceleration, px/s²) — re-rolled every turn,
+    /// carried in the fire payload so remote sims match the shooter's.
+    public static let windRange: ClosedRange<Float> = -120...120
 
     // MARK: State
 
@@ -116,6 +135,12 @@ public final class InBattleViewModel: ScreenViewModel {
     public private(set) var projectile: Projectile?
     public private(set) var explosion: Explosion?
     public private(set) var terrain: (any BattleTerrain)?
+    /// Blast holes carved so far (collision + visuals).
+    public private(set) var craters: [Crater] = []
+    /// This turn's wind (px/s² horizontal). Positive blows right.
+    public private(set) var wind: Float = 0
+    /// The wind the in-flight shot was fired under (the shooter's roll).
+    private var shotWind: Float = 0
 
     /// Camera center, in stage-world coordinates, clamped to the world.
     public private(set) var camera: (x: Float, y: Float) = (400, 298)
@@ -150,6 +175,8 @@ public final class InBattleViewModel: ScreenViewModel {
         power = 0
         projectile = nil
         explosion = nil
+        craters = []
+        wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
         camera = (own?.x ?? Self.halfView.x, own?.y ?? Self.halfView.y)
@@ -208,6 +235,7 @@ public final class InBattleViewModel: ScreenViewModel {
         turnCursor = living.first { $0 > turnCursor } ?? living[0]
         phase = isMyTurn ? .aiming : .waiting
         power = 0
+        wind = Float.random(in: Self.windRange)
         // Snap the camera back to the new acting player.
         if let current = currentTurnPlayer {
             camera = (current.x, current.y)
@@ -219,6 +247,28 @@ public final class InBattleViewModel: ScreenViewModel {
     /// original's `world − cam + (400, 0x12a)`).
     public func screenPosition(x: Float, y: Float) -> (x: Float, y: Float) {
         (x - camera.x + Self.halfView.x, y - camera.y + Self.halfView.y)
+    }
+
+    /// Solid terrain = the `.lnd` mask minus every carved crater.
+    public func isSolidGround(x: Float, y: Float) -> Bool {
+        guard terrain?.isSolid(x: Int(x), y: Int(y)) == true else { return false }
+        for crater in craters {
+            let dx = x - crater.x
+            let dy = y - crater.y
+            if dx * dx + dy * dy <= crater.radius * crater.radius { return false }
+        }
+        return true
+    }
+
+    /// The first solid cell at column `x` scanning down from `y`, craters
+    /// included; `nil` when the column is blown through to the void.
+    private func groundLevel(atX x: Float, below y: Float) -> Float? {
+        var scan = max(0, y)
+        while scan < worldSize.height {
+            if isSolidGround(x: x, y: scan) { return scan }
+            scan += 1
+        }
+        return nil
     }
 
     /// The horizontal facing of the acting player's shot: toward the living
@@ -244,8 +294,9 @@ public final class InBattleViewModel: ScreenViewModel {
     }
 
     /// The tunnel payload tag for a relayed shot:
-    /// `[0x01, angle, power, direction]` (angle in degrees, power `0…100`,
-    /// direction `0` = left, `1` = right).
+    /// `[0x01, angle, power, direction, wind]` (angle in degrees, power
+    /// `0…100`, direction `0` = left / `1` = right, wind biased by 127 —
+    /// the shooter's roll, so every client simulates the same flight).
     static let fireTag: UInt8 = 0x01
 
     /// Applies one server push — split out so tests can drive it directly.
@@ -269,12 +320,13 @@ public final class InBattleViewModel: ScreenViewModel {
     }
 
     private func applyTunnel(_ forward: TunnelForward) {
-        guard forward.payload.count >= 4, forward.payload[0] == Self.fireTag,
+        guard forward.payload.count >= 5, forward.payload[0] == Self.fireTag,
               let shooter = players.first(where: { $0.slot == forward.sourceSlot })
         else { return }
         let angle = Float(forward.payload[1])
         let power = Float(forward.payload[2]) / 100
         let direction: Float = forward.payload[3] == 0 ? -1 : 1
+        shotWind = Float(Int(forward.payload[4]) - 127)
         launch(from: shooter, angle: angle, power: power, direction: direction)
     }
 
@@ -329,6 +381,7 @@ public final class InBattleViewModel: ScreenViewModel {
                 UInt8(min(255, max(0, angle.rounded()))),
                 UInt8(min(100, max(0, (strength * 100).rounded()))),
                 direction > 0 ? 1 : 0,
+                UInt8(min(255, max(0, (wind + 127).rounded()))),
             ]
             let targets = players.filter { $0.slot != shooter.slot }.map(\.slot)
             Task {
@@ -337,6 +390,7 @@ public final class InBattleViewModel: ScreenViewModel {
                 }
             }
         }
+        shotWind = wind
         launch(from: shooter, angle: angle, power: strength, direction: direction)
     }
 
@@ -379,10 +433,11 @@ public final class InBattleViewModel: ScreenViewModel {
         let substeps = 4
         let dt = Float(deltaTime) / Float(substeps)
         for _ in 0..<substeps {
+            shot.vx += shotWind * dt
             shot.vy += Self.gravity * dt
             shot.x += shot.vx * dt
             shot.y += shot.vy * dt
-            let solid = terrain?.isSolid(x: Int(shot.x), y: Int(shot.y)) ?? false
+            let solid = isSolidGround(x: shot.x, y: shot.y)
             let offMap = shot.y > worldSize.height + 200 || shot.x < -400 || shot.x > worldSize.width + 400
             if solid || offMap {
                 projectile = nil
@@ -403,12 +458,25 @@ public final class InBattleViewModel: ScreenViewModel {
     }
 
     private func resolveImpact(at explosion: Explosion) {
+        // Carve the blast hole out of the terrain.
+        craters.append(Crater(x: explosion.x, y: explosion.y, radius: Self.craterRadius))
         // Splash damage: anyone inside the radius falls (local resolution —
         // see the type-level divergence note).
         for index in players.indices where players[index].isAlive {
             let dx = players[index].x - explosion.x
             let dy = players[index].y - explosion.y
             if (dx * dx + dy * dy).squareRoot() <= Self.splashRadius {
+                players[index].isAlive = false
+            }
+        }
+        // Survivors above the new hole drop to the remaining ground; a
+        // column blown through to the void is a fall-out death.
+        for index in players.indices where players[index].isAlive {
+            let player = players[index]
+            guard !isSolidGround(x: player.x, y: player.y + 1) else { continue }
+            if let ground = groundLevel(atX: player.x, below: player.y) {
+                players[index].y = ground
+            } else {
                 players[index].isAlive = false
             }
         }
