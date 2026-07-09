@@ -76,7 +76,7 @@ struct BitmapFontTests {
 
     @Test func drawStampsEachGlyphLeftToRight() {
         let (font, renderer) = makeLoadedFont()
-        font.draw("42", x: 10, y: 20, using: renderer)
+        font.draw("42", x: 10, y: 20, shadow: false, using: renderer)
 
         #expect(renderer.drawCalls.count == 2)
         // First glyph '4' → frame 4 at the origin.
@@ -89,13 +89,24 @@ struct BitmapFontTests {
 
     @Test func drawSkipsUnmappedCharactersButStillAdvances() {
         let (font, renderer) = makeLoadedFont()
-        font.draw("4 2", x: 0, y: 0, using: renderer)
+        font.draw("4 2", x: 0, y: 0, shadow: false, using: renderer)
 
         // Only the two digits draw; the space draws nothing.
         #expect(renderer.drawCalls.map(\.frame) == [4, 2])
         // '2' sits after '4' (width + tracking) plus the space advance.
         let expectedX = (5 + BitmapFont.numberFont.tracking) + BitmapFont.numberFont.spaceWidth
         #expect(renderer.drawCalls[1].rect.x == expectedX)
+    }
+
+    /// The default shadow pass stamps the text once in black at (+1, +1)
+    /// before the main pass — the original's double-draw legibility idiom.
+    @Test func drawShadowDoubleDrawsOffsetInBlack() {
+        let (font, renderer) = makeLoadedFont()
+        font.draw("4", x: 10, y: 20, using: renderer)
+
+        #expect(renderer.drawCalls.count == 2)
+        #expect(renderer.drawCalls[0].rect == Rect(x: 11, y: 21, width: 5, height: 9))
+        #expect(renderer.drawCalls[1].rect == Rect(x: 10, y: 20, width: 5, height: 9))
     }
 
     @Test func lineHeightIsTallestGlyph() {
