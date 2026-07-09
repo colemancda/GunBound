@@ -30,7 +30,7 @@ public final class LogoViewModel: ScreenViewModel {
         switch event {
         case .pointerDown, .activate:
             delegate.requestTransition(to: next)
-        case .pointerMoved:
+        case .pointerMoved, .text, .key:
             break
         }
     }

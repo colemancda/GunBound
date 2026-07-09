@@ -256,9 +256,12 @@ public final class ServerSelectViewModel: ScreenViewModel {
             if selectedIndex != nil {
                 connect()
             }
+
+        case .text, .key:
+            break
         }
     }
-    
+
     /// Refreshes the world list, tracking progress through `state` —
     /// `.loading` while the broker round-trip runs, then `.loaded` or
     /// `.error`. No-op while a refresh is already in flight.

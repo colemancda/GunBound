@@ -28,7 +28,7 @@ public final class InBattleViewModel: ScreenViewModel {
         switch event {
         case .pointerDown, .activate:
             delegate.requestTransition(to: .gameRoomList)
-        case .pointerMoved:
+        case .pointerMoved, .text, .key:
             break
         }
     }

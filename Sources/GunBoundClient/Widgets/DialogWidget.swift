@@ -99,7 +99,7 @@ public final class DialogWidget: Widget {
             // Modal: swallow clicks anywhere so the screen behind stays inert
             // (the OK button already had its chance as a child).
             return true
-        case .pointerMoved:
+        case .pointerMoved, .text, .key:
             return false
         }
     }

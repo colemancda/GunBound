@@ -127,7 +127,7 @@ public final class BuddyPanelWidget: Widget {
         switch event {
         case .pointerDown(let x, let y):
             return frame.contains(x: x, y: y)
-        case .pointerMoved, .activate:
+        case .pointerMoved, .activate, .text, .key:
             return false
         }
     }

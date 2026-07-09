@@ -29,7 +29,7 @@ public final class TitleViewModel: ScreenViewModel {
         switch event {
         case .pointerDown, .activate:
             delegate.requestTransition(to: .serverSelect)
-        case .pointerMoved:
+        case .pointerMoved, .text, .key:
             break
         }
     }

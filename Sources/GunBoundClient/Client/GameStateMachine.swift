@@ -40,7 +40,7 @@ public final class GameStateMachine {
         switch event {
         case let .pointerMoved(x, y), let .pointerDown(x, y):
             cursor.position = (x, y)
-        case .activate:
+        case .activate, .text, .key:
             break
         }
         current.handleInput(event)
