@@ -50,6 +50,9 @@ private func gameRoomListScreenPreview(showBuddyPanel: Bool = false) -> some Vie
     delegate.session.currentRoom = JoinRoomResponse(
         room: 5, name: "no cheats", map: .nirvana, settings: 0, capacity: ._3_3, players: []
     )
+    // The CHANNEL panel's roster (normally seeded from the join-channel
+    // response and grown by 0x200E pushes).
+    viewModel.channelUsers = ["alsey", "boomer", "trico", "mage", "armor", "grub", "aduka", "kalsiddon"]
     return ScreenPreviewView(screen: GameRoomListScreen(viewModel: viewModel))
         .frame(width: 800, height: 600)
 }
