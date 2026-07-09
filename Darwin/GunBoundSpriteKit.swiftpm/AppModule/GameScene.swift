@@ -48,16 +48,50 @@ final class GameScene: SKScene {
             }
             // macOS has an OS cursor to replace with the game's own
             // `cursor.img` pointer; iOS/tvOS are touch-driven, so leave the
-            // software cursor off there.
+            // software cursor off there. A one-shot `NSCursor.hide()` is
+            // unreliable (AppKit re-shows the cursor on window activation
+            // and cursor-rect updates), so visibility is driven by a
+            // tracking area on the hosting view: hidden while the pointer is
+            // over the game, restored when it leaves — see `mouseEntered`/
+            // `mouseExited` and `hideOSCursor`.
             #if os(macOS)
-            NSCursor.hide()
             stateMachine.cursor.isVisible = true
+            let trackingArea = NSTrackingArea(
+                rect: .zero,
+                options: [.mouseEnteredAndExited, .mouseMoved, .activeInKeyWindow, .inVisibleRect],
+                owner: self,
+                userInfo: nil
+            )
+            view.addTrackingArea(trackingArea)
             #endif
             self.stateMachine = stateMachine
         } catch {
             print("[GunBoundSpriteKit] failed to start state machine: \(error)")
         }
     }
+
+    #if os(macOS)
+    /// Whether we've hidden the OS cursor (NSCursor.hide/unhide must stay
+    /// balanced — they're a global counter).
+    private var isOSCursorHidden = false
+
+    private func hideOSCursor() {
+        guard !isOSCursorHidden else { return }
+        isOSCursorHidden = true
+        NSCursor.hide()
+    }
+
+    private func unhideOSCursor() {
+        guard isOSCursorHidden else { return }
+        isOSCursorHidden = false
+        NSCursor.unhide()
+    }
+
+    override func willMove(from view: SKView) {
+        unhideOSCursor()
+        super.willMove(from: view)
+    }
+    #endif
 
     override func update(_ currentTime: TimeInterval) {
         defer { lastUpdateTime = currentTime }
@@ -128,7 +162,19 @@ final class GameScene: SKScene {
     }
 
     override func mouseMoved(with event: NSEvent) {
+        // Belt-and-braces: AppKit can re-show the cursor (window switches,
+        // cursor-rect updates); re-hide whenever the pointer moves over the
+        // game. Guarded, so the hide/unhide counter stays balanced.
+        hideOSCursor()
         stateMachine?.handleInput(motionEvent(for: event.location(in: self)))
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        hideOSCursor()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        unhideOSCursor()
     }
 
     override func keyDown(with event: NSEvent) {
