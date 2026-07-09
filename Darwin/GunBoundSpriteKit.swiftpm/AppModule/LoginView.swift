@@ -66,7 +66,9 @@ struct LoginView: View {
                     background
                     form
                         .padding()
-                        .scrollContentBackground(.hidden)
+#if !os(tvOS)
+                        .scrollContentBackground(.hidden)  // unavailable on tvOS
+#endif
                         .frame(maxWidth: 440, maxHeight: 320)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                         .padding()
