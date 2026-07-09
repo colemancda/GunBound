@@ -33,6 +33,10 @@ public enum ServerPush: Equatable, Sendable {
     /// this same chat-line insert but isn't confirmed.
     case chatReceived(ChannelChatBroadcast)
 
+    /// A server text notice (`0x5101`) — command responses and system
+    /// messages, shown as a color-coded system line in the chat log.
+    case clientPrint(ClientPrintNotification)
+
     /// Any other notification, undecoded.
     case raw(Packet)
 }
@@ -62,6 +66,11 @@ extension ServerPush {
         case .channelChatBroadcast:
             if let value = try? decoder.decode(ChannelChatBroadcast.self, from: packet) {
                 self = .chatReceived(value)
+                return
+            }
+        case .clientPrintNotification:
+            if let value = try? decoder.decode(ClientPrintNotification.self, from: packet) {
+                self = .clientPrint(value)
                 return
             }
         default:
