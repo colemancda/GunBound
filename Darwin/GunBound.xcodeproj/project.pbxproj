@@ -85,6 +85,12 @@
 		D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
 		D0000000000000000000C0E /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
 		D0000000000000000000C0F /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
+		D00000000000000000000230 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D00000000000000000000231 /* WidgetGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000131 /* WidgetGallery.swift */; };
+		D00000000000000000000330 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D00000000000000000000331 /* WidgetGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000131 /* WidgetGallery.swift */; };
+		D0000000000000000000C30 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D0000000000000000000C31 /* WidgetGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000131 /* WidgetGallery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -113,6 +119,8 @@
 		D00000000000000000000117 /* AvatarShopScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AvatarShopScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000118 /* LoadingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000130 /* WidgetPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetPreview.swift; sourceTree = "<group>"; };
+		D00000000000000000000131 /* WidgetGallery.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetGallery.swift; sourceTree = "<group>"; };
 		D00000000000000000000120 /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		D00000000000000000000121 /* GameSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameSceneView.swift; sourceTree = "<group>"; };
 		D00000000000000000000122 /* GunBoundSpriteKitApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GunBoundSpriteKitApp.swift; sourceTree = "<group>"; };
@@ -201,6 +209,7 @@
 				D00000000000000000000121 /* GameSceneView.swift */,
 				D00000000000000000000122 /* GunBoundSpriteKitApp.swift */,
 				D00000000000000000000405 /* Screens */,
+				D00000000000000000000406 /* Widgets */,
 			);
 			name = "Shared (Darwin/GunBoundSpriteKit.swiftpm/AppModule)";
 			path = GunBoundSpriteKit.swiftpm/AppModule;
@@ -230,6 +239,15 @@
 				D00000000000000000000119 /* InBattleScreen.swift */,
 			);
 			path = Screens;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000406 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000130 /* WidgetPreview.swift */,
+				D00000000000000000000131 /* WidgetGallery.swift */,
+			);
+			path = Widgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -401,6 +419,8 @@
 				D00000000000000000000217 /* AvatarShopScreen.swift in Sources */,
 				D00000000000000000000218 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000219 /* InBattleScreen.swift in Sources */,
+				D00000000000000000000230 /* WidgetPreview.swift in Sources */,
+				D00000000000000000000231 /* WidgetGallery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -423,6 +443,8 @@
 				D00000000000000000000317 /* AvatarShopScreen.swift in Sources */,
 				D00000000000000000000318 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000319 /* InBattleScreen.swift in Sources */,
+				D00000000000000000000330 /* WidgetPreview.swift in Sources */,
+				D00000000000000000000331 /* WidgetGallery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -445,6 +467,8 @@
 				D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */,
 				D0000000000000000000C0E /* LoadingScreen.swift in Sources */,
 				D0000000000000000000C0F /* InBattleScreen.swift in Sources */,
+				D0000000000000000000C30 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000C31 /* WidgetGallery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
