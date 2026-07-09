@@ -42,6 +42,10 @@ final class SpriteKitRenderer: ClientRenderer {
         }
     }
 
+    func texture(from frame: ImgFile.Frame) -> ClientTexture? {
+        SpriteKitClientTexture(makeTexture(from: frame))
+    }
+
     func size(of texture: ClientTexture?) -> (width: Float, height: Float) {
         guard let texture = texture as? SpriteKitClientTexture else { return (0, 0) }
         let size = texture.texture.size()

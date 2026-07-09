@@ -1,6 +1,7 @@
 import CSDL2
 import SDL2Swift
 import GunBound
+import GunBoundFile
 import GunBoundClient
 
 /// Wraps an `SDLTexture` to satisfy the backend-agnostic `ClientTexture`
@@ -31,6 +32,15 @@ final class SDL2Renderer: ClientRenderer {
             return SDL2ClientTexture(texture)
         } catch {
             print("[GunBoundSDL2] warning: couldn't load image '\(name)#\(frameIndex)': \(error)")
+            return nil
+        }
+    }
+
+    func texture(from frame: ImgFile.Frame) -> ClientTexture? {
+        do {
+            return SDL2ClientTexture(try FrameTexture.make(renderer: renderer, frame: frame))
+        } catch {
+            print("[GunBoundSDL2] warning: couldn't rebuild texture from frame: \(error)")
             return nil
         }
     }
