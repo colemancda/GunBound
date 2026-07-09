@@ -136,4 +136,10 @@ public final class AssetLibrary {
         let decoded = DatFile.decompress(data, decodedSize: DatFile.stageDataDecodedSize)
         return try StageDataFile.readRecords(decoded)
     }
+
+    /// Loads and parses a stage's `.lnd` terrain/collision mask (e.g.
+    /// `cave.lnd`) from `graphics.xfs`.
+    public func terrainMask(named name: String) throws -> LndFile {
+        try LndFile.read(entryData(name, in: "graphics.xfs"))
+    }
 }

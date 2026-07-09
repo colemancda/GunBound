@@ -1,5 +1,6 @@
 import GunBound
 import GunBoundProtocol
+import GunBoundFile
 
 /// The stage-asset naming for each map — the archive stores every battle
 /// stage as a codename triple: `<code>.img` (the stage art, ~1600–2000px
@@ -58,3 +59,6 @@ public extension Mobile {
         }
     }
 }
+
+/// The `.lnd` mask satisfies the battle's terrain queries directly.
+extension LndFile: GunBound.BattleTerrain {}
