@@ -54,7 +54,7 @@ struct GunBoundSDL3: ParsableCommand {
 
 @MainActor
 func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) throws {
-    try SDL.initialize(subSystems: [.video, .audio, .events])
+    try SDL.initialize(subSystems: [.video, .audio, .events, .gamepad])
     defer { SDL.quit() }
     try SDL.initializeMixer()
     defer { SDL.quitMixer() }
@@ -98,6 +98,10 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
     SDL.isCursorVisible = false
     stateMachine.cursor.isVisible = true
 
+    // The first connected gamepad drives the virtual cursor (left stick +
+    // South/"A" to click). Opened on connect, released on disconnect.
+    var gamepad: SDLGamepad?
+
     var running = true
     var lastTicks = SDL.ticks
     while running {
@@ -107,6 +111,12 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
                 running = false
             case .keyDown(let scancode, _) where scancode.rawValue == SDL_SCANCODE_ESCAPE.rawValue:
                 running = false
+            case .gamepadAdded(let which):
+                if gamepad == nil {
+                    gamepad = try? SDLGamepad(joystickID: which)
+                }
+            case .gamepadRemoved:
+                gamepad = nil
             default:
                 if let input = translate(event) {
                     stateMachine.handleInput(input)
@@ -117,6 +127,18 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
         let now = SDL.ticks
         let deltaTime = Double(now - lastTicks) / 1_000_000_000
         lastTicks = now
+
+        // Feed the left stick to the virtual cursor. Axes are Int16; the
+        // South face button ("A" / cross) is the click.
+        if let gamepad {
+            let scale: Float = 1.0 / 32767
+            stateMachine.applyGamepad(
+                stickX: Float(gamepad.axis(.leftX)) * scale,
+                stickY: Float(gamepad.axis(.leftY)) * scale,
+                click: gamepad.isPressed(.south),
+                deltaTime: deltaTime
+            )
+        }
 
         try stateMachine.update(deltaTime: deltaTime)
         try stateMachine.render()
