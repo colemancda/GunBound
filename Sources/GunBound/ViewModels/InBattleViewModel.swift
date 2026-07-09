@@ -241,6 +241,10 @@ public final class InBattleViewModel: ScreenViewModel {
     private var shotAttacker: UInt8?
     /// The weapon the in-flight shot was fired with (sets the blast).
     private var shotWeapon: Weapon = .shot1
+    /// The in-flight shot's visual identity (the shooter's mobile and
+    /// weapon) — what the view picks `bullet<N><n|p|s>.img` art with;
+    /// `nil` between shots.
+    public private(set) var activeShot: (mobile: Mobile, weapon: Weapon)?
     /// The local player's selected weapon slot (Tab cycles it).
     public private(set) var selectedWeapon: Weapon = .shot1
     /// Seconds left on the acting player's turn; expiry forfeits it.
@@ -327,6 +331,7 @@ public final class InBattleViewModel: ScreenViewModel {
         power = 0
         projectile = nil
         explosion = nil
+        activeShot = nil
         craters = []
         damageLedger = []
         remoteAim = nil
@@ -410,6 +415,7 @@ public final class InBattleViewModel: ScreenViewModel {
         phase = isMyTurn ? .aiming : .waiting
         power = 0
         remoteAim = nil
+        activeShot = nil
         moveBudget = Self.moveBudgetPerTurn
         turnRemaining = Self.turnDuration
         if isMyTurn {
@@ -790,6 +796,7 @@ public final class InBattleViewModel: ScreenViewModel {
             setPose(.fire(shotWeapon), at: index)
         }
         soundQueue.append(.fire(shooter.mobile, shotWeapon))
+        activeShot = (shooter.mobile, shotWeapon)
         phase = .projectileInFlight
     }
 
