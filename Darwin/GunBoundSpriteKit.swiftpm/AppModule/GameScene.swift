@@ -152,6 +152,10 @@ final class GameScene: SKScene {
         .pointerMoved(x: Float(location.x), y: Float(Self.canvasSize.height - location.y))
     }
 
+    func upEvent(for location: CGPoint) -> ScreenInputEvent {
+        .pointerUp(x: Float(location.x), y: Float(Self.canvasSize.height - location.y))
+    }
+
     #if canImport(UIKit)
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let location = touches.first?.location(in: self) else { return }
@@ -161,6 +165,16 @@ final class GameScene: SKScene {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let location = touches.first?.location(in: self) else { return }
         stateMachine?.handleInput(motionEvent(for: location))
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let location = touches.first?.location(in: self) else { return }
+        stateMachine?.handleInput(upEvent(for: location))
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let location = touches.first?.location(in: self) else { return }
+        stateMachine?.handleInput(upEvent(for: location))
     }
     #endif
 
@@ -174,6 +188,10 @@ final class GameScene: SKScene {
 
     override func mouseDragged(with event: NSEvent) {
         stateMachine?.handleInput(motionEvent(for: event.location(in: self)))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        stateMachine?.handleInput(upEvent(for: event.location(in: self)))
     }
 
     override func mouseMoved(with event: NSEvent) {

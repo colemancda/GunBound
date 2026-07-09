@@ -15,6 +15,8 @@ func translate(_ event: SDLEvent) -> ScreenInputEvent? {
     switch event {
     case .mouseButtonDown(_, let x, let y, _):
         return .pointerDown(x: x, y: y)
+    case .mouseButtonUp(_, let x, let y, _):
+        return .pointerUp(x: x, y: y)
     case .mouseMotion(_, let x, let y, _):
         return .pointerMoved(x: x, y: y)
     case .keyDown(let scancode, let keycode):
