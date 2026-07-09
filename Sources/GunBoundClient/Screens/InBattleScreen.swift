@@ -1,23 +1,26 @@
+import Foundation
 import GunBound
 import GunBoundProtocol
 
-/// View for the In-Battle screen (state 11), slice 1 — the static scene:
-/// the stage terrain (the map codename's `.img`, frame 0) drawn through the
-/// camera at world scale, each combatant's mobile (their `tankN.img` sheet,
-/// frame 0 = idle) at its spawn position with a team-colored name tag, and a
-/// minimal HUD (map name + whose turn). The camera pans with the original's
-/// screen-edge scroll (view-model logic).
+/// View for the In-Battle screen (state 11) — the playable slice: the stage
+/// terrain through the camera, mobiles grounded on the `.lnd` surface, and
+/// the fire loop's visuals — an aim-arc of dots, the power gauge, the
+/// projectile, and an **additively-blended** explosion flash (the glow blend
+/// the original's scene composer flips to for effect layers). HUD shows the
+/// turn, angle, and power.
 ///
-/// Later slices: the layered scene composer (background atlas, effects with
-/// additive blend, mobile animation frames), the terrain mask (`.lnd`),
-/// aiming/firing, and battle chat.
+/// Later slices: the layered scene composer (scenery/background, mobile
+/// animation frames), terrain destruction, wind, and battle chat.
 @MainActor
 public final class InBattleScreen: GameScreen {
     private let viewModel: InBattleViewModel
     private var terrainTexture: ClientTexture?
-    /// Idle sprites keyed by mobile (one `tankN.img` frame 0 per distinct
-    /// mobile in the match).
+    /// Idle sprites keyed by mobile (one `tankN.img` sheet frame 0 per
+    /// distinct mobile in the match).
     private var mobileTextures: [Mobile: ClientTexture] = [:]
+    /// A small round dot (`load_back.img` frame 2) reused for the aim arc,
+    /// the projectile, and (scaled, additive) the explosion flash.
+    private var dotTexture: ClientTexture?
     private var font: LoadedFont?
     private var audio: ClientAudioPlayer?
 
@@ -42,6 +45,7 @@ public final class InBattleScreen: GameScreen {
         for mobile in Set(viewModel.players.map(\.mobile)) {
             mobileTextures[mobile] = renderer.texture(named: mobile.tankImageName, assets: assets)
         }
+        dotTexture = renderer.texture(named: "load_back.img", frame: 2, assets: assets)
         font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         // Battle music: `stage%d.mp3` by stage id, or one of the six tracks
@@ -58,6 +62,7 @@ public final class InBattleScreen: GameScreen {
         viewModel.onExit()
         terrainTexture = nil
         mobileTextures = [:]
+        dotTexture = nil
         font = nil
         audio?.stop()
         audio = nil
@@ -112,10 +117,69 @@ public final class InBattleScreen: GameScreen {
             )
         }
 
-        // Minimal HUD: map name and whose turn (display-only for now).
+        // Aim arc: a dotted preview of the shot's opening trajectory while
+        // aiming/charging (the physics constants match the simulation).
+        if let dotTexture,
+           viewModel.isMyTurn,
+           viewModel.phase == .aiming || viewModel.phase == .charging,
+           let shooter = viewModel.currentTurnPlayer {
+            let radians = viewModel.aimAngle * .pi / 180
+            let speed = max(0.35, viewModel.power) * InBattleViewModel.maxShotSpeed
+            let direction = viewModel.fireDirection
+            var x = shooter.x
+            var y = shooter.y - 24
+            var vx = cos(radians) * speed * direction
+            var vy = -sin(radians) * speed
+            _ = vx
+            for step in 0..<10 {
+                let t: Float = 0.06
+                vy += InBattleViewModel.gravity * t
+                x += cos(radians) * speed * direction * t
+                y += vy * t
+                let position = viewModel.screenPosition(x: x, y: y)
+                let alphaFade = UInt8(200 - step * 15)
+                renderer.draw(dotTexture, in: Rect(x: position.x - 3, y: position.y - 3, width: 6, height: 6), tint: (alphaFade, alphaFade, 120))
+            }
+        }
+
+        // The projectile.
+        if let dotTexture, let shot = viewModel.projectile {
+            let position = viewModel.screenPosition(x: shot.x, y: shot.y)
+            renderer.draw(dotTexture, in: Rect(x: position.x - 5, y: position.y - 5, width: 10, height: 10), tint: (255, 240, 180))
+        }
+
+        // The explosion flash — the additive glow blend, expanding and
+        // cooling over its lifetime.
+        if let dotTexture, let explosion = viewModel.explosion {
+            let progress = Float(min(1, explosion.age / InBattleViewModel.explosionDuration))
+            let radius = 14 + progress * InBattleViewModel.splashRadius
+            let position = viewModel.screenPosition(x: explosion.x, y: explosion.y)
+            let heat = UInt8(255 - progress * 140)
+            renderer.draw(
+                dotTexture,
+                in: Rect(x: position.x - radius, y: position.y - radius, width: radius * 2, height: radius * 2),
+                tint: (255, heat, UInt8(60 + progress * 40)),
+                blend: .additive
+            )
+        }
+
+        // HUD: map, whose turn, and the aim/power readout.
         font.draw("\(viewModel.map)", x: 12, y: 8, using: renderer)
         if let turn = viewModel.currentTurnPlayer {
-            font.draw("Turn: \(turn.name)", x: 12, y: 24, tint: (255, 255, 160), using: renderer)
+            let marker = viewModel.isMyTurn ? "YOUR TURN" : "Turn: \(turn.name)"
+            font.draw(marker, x: 12, y: 24, tint: (255, 255, 160), using: renderer)
+        }
+        if viewModel.isMyTurn, viewModel.phase == .aiming || viewModel.phase == .charging {
+            font.draw("Angle \(Int(viewModel.aimAngle))", x: 12, y: 40, using: renderer)
+            if viewModel.phase == .charging {
+                font.draw("Power \(Int(viewModel.power * 100))", x: 12, y: 56, tint: (255, 180, 120), using: renderer)
+            }
+        }
+
+        // The power gauge along the bottom while charging.
+        if let dotTexture, viewModel.phase == .charging {
+            let width = 300 * viewModel.power
+            renderer.draw(dotTexture, in: Rect(x: 250, y: 574, width: width, height: 12), tint: (255, UInt8(220 - viewModel.power * 160), 80))
         }
     }
 }
