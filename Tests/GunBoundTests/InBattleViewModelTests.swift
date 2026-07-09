@@ -159,13 +159,61 @@ struct InBattleViewModelTests {
         // Slot 1 ("guest") fires at 45°, 80 power, to the right.
         viewModel.apply(.tunnelReceived(TunnelForward(
             sourceSlot: 1,
-            payload: [0x01, 45, 80, 1]
+            payload: [0x01, 45, 80, 1, 127]  // zero wind
         )))
         #expect(viewModel.phase == .projectileInFlight)
         #expect(viewModel.projectile != nil)
         // Launched from the shooter's position (x 1200).
         #expect(abs((viewModel.projectile?.x ?? 0) - 1200) < 30)
         #expect((viewModel.projectile?.vx ?? 0) > 0)
+    }
+
+    /// An impact carves a crater (real collision hole), survivors above the
+    /// hole fall to the remaining ground, and a column blown through to the
+    /// void is a fall-out death.
+    @Test func cratersCarveCollisionAndDropMobiles() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Fire a shot and run it to resolution.
+        viewModel.handle(.activate)
+        viewModel.update(deltaTime: 0.4)
+        viewModel.handle(.activate)
+        var frames = 0
+        while viewModel.phase == .projectileInFlight || viewModel.phase == .impact, frames < 3000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        #expect(viewModel.craters.count == 1)
+
+        // The crater is a real hole: its center is no longer solid ground.
+        let crater = viewModel.craters[0]
+        #expect(!viewModel.isSolidGround(x: crater.x, y: crater.y))
+        // Just outside the radius the floor is intact.
+        #expect(viewModel.isSolidGround(x: crater.x + crater.radius + 30, y: 1000))
+    }
+
+    /// The shooter's wind roll rides in the fire payload (biased by 127) so
+    /// remote sims fly the same shot; the relayed wind bends the flight.
+    @Test func windRelaysAndBendsTheShot() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1700))
+
+        // Remote shot straight up (angle 80) with max leftward wind: the
+        // projectile must drift left of the shooter before landing.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x01, 80, 60, 1, UInt8(127 - 120)]
+        )))
+        var frames = 0
+        while viewModel.phase == .projectileInFlight, frames < 4000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        #expect(viewModel.phase == .impact)
+        #expect((viewModel.explosion?.x ?? 9999) < 1200)  // drifted left of the shooter
     }
 
     /// Without battle data the screen still enters safely (offline path).
