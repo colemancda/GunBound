@@ -31,7 +31,11 @@ struct LoginView: View {
                         serverAddress: serverIP,
                         serverPort: 8370,
                         brokerPort: 8372
-                    )
+                    ),
+                    // Server Select's EXIT button — leave the game and come
+                    // back to this login screen (apps can't self-terminate
+                    // on iOS/tvOS).
+                    onQuit: { self.assetsDirectory = nil }
                 )
                 .ignoresSafeArea()
 #if os(iOS)

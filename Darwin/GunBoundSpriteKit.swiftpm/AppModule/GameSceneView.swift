@@ -8,11 +8,12 @@ import GunBound
 struct GameSceneView: View {
     private let scene: GameScene
 
-    init(assetsDirectory: URL, network: NetworkConfig) {
+    init(assetsDirectory: URL, network: NetworkConfig, onQuit: (() -> Void)? = nil) {
         let scene = GameScene()
         scene.scaleMode = .aspectFit
         scene.assetsDirectory = assetsDirectory
         scene.network = network
+        scene.onQuitRequested = onQuit
         self.scene = scene
     }
 

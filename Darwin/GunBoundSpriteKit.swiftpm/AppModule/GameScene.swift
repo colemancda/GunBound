@@ -12,13 +12,20 @@ final class GameScene: SKScene {
     static let canvasSize = CGSize(width: 800, height: 600)
 
     private var stateMachine: GameStateMachine?
+    private var context: ClientContext?
     private var lastUpdateTime: TimeInterval?
+    private var didRequestQuit = false
 
     /// Set by `LoginView` before this scene is presented — by that point the
     /// assets directory has already been confirmed to exist and decode a
     /// real sprite successfully, so this scene doesn't re-validate it.
     var assetsDirectory: URL!
     var network: NetworkConfig!
+
+    /// Fired once when a screen requests quitting (e.g. Server Select's
+    /// EXIT button) — the SwiftUI host uses it to leave the game and return
+    /// to the login screen, since iOS/tvOS apps can't terminate themselves.
+    var onQuitRequested: (() -> Void)?
 
     override func didMove(to view: SKView) {
         super.didMove(to: view)
@@ -32,6 +39,7 @@ final class GameScene: SKScene {
         let context = ClientContext(assets: assets, renderer: renderer, network: network) {
             SpriteKitAudioPlayer()
         }
+        self.context = context
 
         do {
             stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
@@ -45,6 +53,11 @@ final class GameScene: SKScene {
     override func update(_ currentTime: TimeInterval) {
         defer { lastUpdateTime = currentTime }
         guard let stateMachine else { return }
+        if let context, context.quitRequested, !didRequestQuit {
+            didRequestQuit = true
+            onQuitRequested?()
+            return
+        }
         let deltaTime = lastUpdateTime.map { currentTime - $0 } ?? 0
         do {
             try stateMachine.update(deltaTime: deltaTime)
