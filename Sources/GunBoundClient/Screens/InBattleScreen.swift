@@ -48,6 +48,15 @@ public final class InBattleScreen: GameScreen {
     /// A small round dot (`load_back.img` frame 2) reused for the aim arc,
     /// the projectile, and (scaled, additive) the explosion flash.
     private var dotTexture: ClientTexture?
+    /// The bottom HUD chrome (`play_back.img` frame 1, 800×44): item/weapon
+    /// slot boxes and the power-charge track. Positions below are measured
+    /// empirically against the extracted sprite (not decomp-confirmed
+    /// offsets — the vtable only pins which function renders this, not its
+    /// pixel layout).
+    private var hudBarTexture: ClientTexture?
+    /// The movement gauge chrome (`play_back.img` frame 6, 485×26): the
+    /// "MOVE" label plus its empty track.
+    private var moveBarTexture: ClientTexture?
     private var font: LoadedFont?
     private var audio: ClientAudioPlayer?
 
@@ -81,6 +90,8 @@ public final class InBattleScreen: GameScreen {
             mobileAnimations[mobile] = try? assets.animationTable(named: mobile.tankAnimationName)
         }
         dotTexture = renderer.texture(named: "load_back.img", frame: 2, assets: assets)
+        hudBarTexture = renderer.texture(named: "play_back.img", frame: 1, assets: assets)
+        moveBarTexture = renderer.texture(named: "play_back.img", frame: 6, assets: assets)
         font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         // Battle music: `stage%d.mp3` by stage id, or one of the six tracks
@@ -104,6 +115,8 @@ public final class InBattleScreen: GameScreen {
         bulletArt = [:]
         assets = nil
         dotTexture = nil
+        hudBarTexture = nil
+        moveBarTexture = nil
         font = nil
         audio?.stop()
         audio = nil
@@ -341,10 +354,28 @@ public final class InBattleScreen: GameScreen {
             }
         }
 
-        // The power gauge along the bottom while charging.
+        // The bottom HUD bar: real chrome (item/weapon slot boxes, the
+        // power track) instead of placeholder shapes.
+        if let hudBarTexture {
+            let (width, height) = renderer.size(of: hudBarTexture)
+            renderer.draw(hudBarTexture, in: Rect(x: 0, y: 600 - height, width: width, height: height), tint: nil)
+        }
+        // A soft glow over the acting weapon's slot box (the item-1/item-2/
+        // SS boxes baked into the bar art) — additive so it highlights
+        // without blotting out the icon underneath.
+        if let dotTexture, viewModel.isMyTurn, viewModel.phase == .aiming || viewModel.phase == .charging {
+            let box: Rect
+            switch viewModel.selectedWeapon {
+            case .shot1: box = Rect(x: 6, y: 559, width: 34, height: 35)
+            case .shot2: box = Rect(x: 40, y: 559, width: 48, height: 35)
+            case .special: box = Rect(x: 88, y: 559, width: 34, height: 35)
+            }
+            renderer.draw(dotTexture, in: box, tint: (200, 170, 80), blend: .additive)
+        }
+        // The power gauge fills the bar's baked-in track while charging.
         if let dotTexture, viewModel.phase == .charging {
-            let width = 300 * viewModel.power
-            renderer.draw(dotTexture, in: Rect(x: 250, y: 574, width: width, height: 12), tint: (255, UInt8(220 - viewModel.power * 160), 80))
+            let width = 401 * viewModel.power
+            renderer.draw(dotTexture, in: Rect(x: 243, y: 568, width: width, height: 23), tint: (255, UInt8(220 - viewModel.power * 160), 80))
         }
 
         // The battle chat overlay: the rotating history drawn over the
@@ -361,20 +392,27 @@ public final class InBattleScreen: GameScreen {
             font.draw(line.message, x: x, y: y, tint: colors.message, using: renderer)
         }
 
-        // The chat composer bar while typing (Enter sends).
+        // The chat composer bar while typing (Enter sends) — sits above
+        // the movement gauge, clear of the bottom HUD bar.
         if let draft = viewModel.chatDraft {
             if let dotTexture {
-                renderer.draw(dotTexture, in: Rect(x: 8, y: 550, width: 500, height: 18), tint: (15, 15, 15))
+                renderer.draw(dotTexture, in: Rect(x: 8, y: 494, width: 500, height: 18), tint: (15, 15, 15))
             }
-            font.draw("> \(draft)_", x: 14, y: 553, tint: (255, 255, 255), using: renderer)
+            font.draw("> \(draft)_", x: 14, y: 497, tint: (255, 255, 255), using: renderer)
         }
 
-        // The movement gauge (bottom-left) while free to walk — drains as
-        // the turn's walking budget is spent.
-        if let dotTexture, viewModel.isMyTurn, viewModel.phase == .aiming {
-            let ratio = viewModel.moveBudget / InBattleViewModel.moveBudgetPerTurn
-            renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120, height: 8), tint: (30, 30, 30))
-            renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120 * ratio, height: 8), tint: (120, 200, 255))
+        // The movement gauge: the real "MOVE" bar chrome, filled to the
+        // turn's remaining walking budget — drawn just above the bottom
+        // HUD bar while free to walk.
+        if viewModel.isMyTurn, viewModel.phase == .aiming {
+            if let moveBarTexture {
+                let (width, height) = renderer.size(of: moveBarTexture)
+                renderer.draw(moveBarTexture, in: Rect(x: 12, y: 522, width: width, height: height), tint: nil)
+            }
+            if let dotTexture {
+                let ratio = viewModel.moveBudget / InBattleViewModel.moveBudgetPerTurn
+                renderer.draw(dotTexture, in: Rect(x: 88, y: 532, width: 402 * ratio, height: 10), tint: (120, 200, 255))
+            }
         }
     }
 
