@@ -84,6 +84,8 @@ public final class EnterRoomNumberDialogWidget: Widget {
         switch event {
         case .pointerDown(let x, let y):
             return frame.contains(x: x, y: y)
+        case .scroll(let x, let y, _):
+            return frame.contains(x: x, y: y)
         case .pointerMoved, .activate, .text, .key:
             return false
         }

@@ -76,10 +76,13 @@ public final class ChannelUserListWidget: Widget {
     }
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
-        // Part of the screen chrome, not a modal: only the scrollbar children
-        // consume input; clicks on the panel body fall through (nothing
-        // behind it anyway at the decomp rect).
-        _ = event
+        // Part of the screen chrome, not a modal: the scrollbar children
+        // consume their own input, and a wheel over the panel scrolls the
+        // roster; clicks on the panel body fall through.
+        if case .scroll(let x, let y, let steps) = event, frame.contains(x: x, y: y) {
+            scrollBar.step(steps)
+            return true
+        }
         return false
     }
 }

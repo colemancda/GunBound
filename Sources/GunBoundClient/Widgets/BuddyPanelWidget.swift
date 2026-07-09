@@ -131,6 +131,10 @@ public final class BuddyPanelWidget: Widget {
         switch event {
         case .pointerDown(let x, let y):
             return frame.contains(x: x, y: y)
+        case .scroll(let x, let y, let steps):
+            guard frame.contains(x: x, y: y) else { return false }
+            scrollBar.step(steps)
+            return true
         case .pointerMoved, .activate, .text, .key:
             return false
         }

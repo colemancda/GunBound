@@ -32,7 +32,7 @@ public final class ButtonWidget: Widget {
             guard frame.contains(x: x, y: y) else { return false }
             onClick?()
             return true
-        case .activate, .text, .key:
+        case .activate, .text, .key, .scroll:
             return false
         }
     }

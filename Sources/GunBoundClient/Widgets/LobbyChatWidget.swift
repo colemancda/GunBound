@@ -183,8 +183,12 @@ public final class LobbyChatWidget: Widget {
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
         // Screen chrome, not a modal: the input field and scrollbar children
-        // consume their own input; everything else falls through.
-        _ = event
+        // consume their own input; a wheel over the panel scrolls the
+        // history; everything else falls through.
+        if case .scroll(let x, let y, let steps) = event, frame.contains(x: x, y: y) {
+            scrollBar.step(steps)
+            return true
+        }
         return false
     }
 }

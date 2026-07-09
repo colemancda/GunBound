@@ -130,7 +130,7 @@ public final class TextFieldWidget: Widget {
             guard isFocused else { return false }
             onSubmit?()
             return true
-        case .pointerMoved:
+        case .pointerMoved, .scroll:
             return false
         }
     }

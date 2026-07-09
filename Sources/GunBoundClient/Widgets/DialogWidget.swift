@@ -101,6 +101,8 @@ public final class DialogWidget: Widget {
             return true
         case .pointerMoved, .text, .key:
             return false
+        case .scroll:
+            return true  // modal: nothing behind may scroll
         }
     }
 
