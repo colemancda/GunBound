@@ -1,18 +1,24 @@
 /// User Quit Notification
 ///
-/// Observed with two meanings depending on screen, both no-payload: a simple
-/// ready/unready toggle in the Ready Room, and a player-disconnected
-/// mid-match signal while In-Battle (the disconnecting player's identity is
-/// implicit from the connection itself, not carried in the payload).
-///
-/// **Note:** Reconstructed from static analysis of the original client, not a live packet capture or verified traffic.
+/// Broadcast to the remaining players in a room when someone leaves (either
+/// returning to the lobby or disconnecting). The payload is the vacated
+/// slot, so clients can clear that seat in the Ready Room.
 public struct UserQuitNotification: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .userQuitNotification }
 
-    public init() {}
+    /// The room slot the departing player occupied.
+    public let slot: UInt16
 
-    public init(parsing input: inout ParserSpan) throws {}
+    public init(slot: UInt16) {
+        self.slot = slot
+    }
 
-    public func encode(to output: inout ByteWriter) {}
+    public init(parsing input: inout ParserSpan) throws {
+        self.slot = try UInt16(parsingLittleEndian: &input)
+    }
+
+    public func encode(to output: inout ByteWriter) {
+        output.write(slot, endianness: .little)
+    }
 }
