@@ -34,15 +34,16 @@ private func gameRoomListScreenPreview(showBuddyPanel: Bool = false) -> some Vie
         ]
         viewModel.setBuddyPanelVisible(true)
     }
-    // `settings` bits 18–19 pick the game-mode label (0 SOLO … 3 JEWEL);
-    // `isLocked` shows the padlock; `isPlaying`/fullness pick PLAY/FULL/WAIT.
+    // `RoomSettings(gameMode:)` picks the card's mode label (SOLO/SCORE/TAG/
+    // JEWEL); `isLocked` shows the padlock; `isPlaying`/fullness pick
+    // PLAY/FULL/WAIT.
     viewModel.rooms = [
-        RoomListResponse.Room(id: 1, name: "Rookie zone", map: .metropolis, settings: 0 << 18, playerCount: 2, capacity: ._2_2, isPlaying: false, isLocked: false),
-        RoomListResponse.Room(id: 2, name: "Avatar ON come in", map: .miramoTown, settings: 1 << 18, playerCount: 8, capacity: ._4_4, isPlaying: false, isLocked: false),
-        RoomListResponse.Room(id: 3, name: "1 vs 1 pros only", map: .seaHero, settings: 2 << 18, playerCount: 1, capacity: ._1_1, isPlaying: true, isLocked: false),
-        RoomListResponse.Room(id: 4, name: "password is 1234", map: .dragon, settings: 3 << 18, playerCount: 3, capacity: ._4_4, isPlaying: false, isLocked: true),
-        RoomListResponse.Room(id: 5, name: "no cheats", map: .nirvana, settings: 0 << 18, playerCount: 4, capacity: ._3_3, isPlaying: true, isLocked: false),
-        RoomListResponse.Room(id: 6, name: "GG only", map: .random, settings: 3 << 18, playerCount: 6, capacity: ._4_4, isPlaying: false, isLocked: true),
+        RoomListResponse.Room(id: 1, name: "Rookie zone", map: .metropolis, settings: RoomSettings(gameMode: .solo).rawValue, playerCount: 2, capacity: ._2_2, isPlaying: false, isLocked: false),
+        RoomListResponse.Room(id: 2, name: "Avatar ON come in", map: .miramoTown, settings: RoomSettings(gameMode: .score).rawValue, playerCount: 8, capacity: ._4_4, isPlaying: false, isLocked: false),
+        RoomListResponse.Room(id: 3, name: "1 vs 1 pros only", map: .seaHero, settings: RoomSettings(gameMode: .tag).rawValue, playerCount: 1, capacity: ._1_1, isPlaying: true, isLocked: false),
+        RoomListResponse.Room(id: 4, name: "password is 1234", map: .dragon, settings: RoomSettings(gameMode: .jewel).rawValue, playerCount: 3, capacity: ._4_4, isPlaying: false, isLocked: true),
+        RoomListResponse.Room(id: 5, name: "no cheats", map: .nirvana, settings: RoomSettings(gameMode: .solo).rawValue, playerCount: 4, capacity: ._3_3, isPlaying: true, isLocked: false),
+        RoomListResponse.Room(id: 6, name: "GG only", map: .random, settings: RoomSettings(gameMode: .jewel).rawValue, playerCount: 6, capacity: ._4_4, isPlaying: false, isLocked: true),
     ]
     // Mark room 5 as the player's own joined room, so it renders in the joined
     // card frame.
