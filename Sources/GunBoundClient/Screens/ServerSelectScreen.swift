@@ -43,6 +43,9 @@ public final class ServerSelectScreen: GameScreen {
     /// the world-list scroll window when more than 12 servers are fetched.
     private var rootWidget = Widget()
     private var scrollBar: ScrollBarWidget?
+    /// The shared error popup (`error_back.img` + `b_error_confirm`), hidden
+    /// until `viewModel.state` goes to `.error`.
+    private var errorDialog: DialogWidget?
 
     public init(viewModel: ServerSelectViewModel) {
         self.viewModel = viewModel
@@ -95,6 +98,34 @@ public final class ServerSelectScreen: GameScreen {
         let waitFrameCount = (try? assets.image(named: viewModel.waitImageName).count) ?? 1
         waitFrames = (0..<waitFrameCount).map { renderer.texture(named: viewModel.waitImageName, frame: $0, assets: assets) }
         waitElapsed = 0
+
+        // The shared error popup — added to the tree last so it sits topmost
+        // and, once shown, its modal input handling shadows the scrollbar and
+        // rows behind it.
+        let errorBack = renderer.texture(named: viewModel.errorBackImageName, assets: assets)
+        let (dialogWidth, dialogHeight) = renderer.size(of: errorBack)
+        let dialogFrame = dialogWidth > 0
+            ? Rect(x: (800 - dialogWidth) / 2, y: (600 - dialogHeight) / 2, width: dialogWidth, height: dialogHeight)
+            : DialogWidget.defaultFrame
+        let confirmTexture = renderer.texture(named: viewModel.errorConfirmImageName, assets: assets)
+        let (confirmWidth, confirmHeight) = renderer.size(of: confirmTexture)
+        // Center the OK button along the dialog's lower body.
+        let confirmFrame = confirmWidth > 0
+            ? Rect(x: dialogFrame.x + (dialogFrame.width - confirmWidth) / 2,
+                   y: dialogFrame.y + dialogFrame.height - confirmHeight - 12,
+                   width: confirmWidth, height: confirmHeight)
+            : DialogWidget.defaultConfirmFrame
+        let errorDialog = DialogWidget(
+            frame: dialogFrame,
+            font: textFont,
+            background: errorBack,
+            confirmFrame: confirmFrame,
+            confirmTexture: confirmTexture
+        )
+        errorDialog.isHidden = true
+        errorDialog.onConfirm = { [weak viewModel = self.viewModel] in viewModel?.dismissError() }
+        rootWidget.add(errorDialog)
+        self.errorDialog = errorDialog
     }
 
     public func onExit() {
@@ -111,6 +142,7 @@ public final class ServerSelectScreen: GameScreen {
         textFont = nil
         rootWidget = Widget()
         scrollBar = nil
+        errorDialog = nil
         audio?.stop()
         audio = nil
     }
@@ -126,6 +158,16 @@ public final class ServerSelectScreen: GameScreen {
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
         scrollBar?.contentCount = viewModel.lineCount
+        // Surface the view model's error state through the shared popup; hide
+        // it again once the state clears (its OK button calls `dismissError`).
+        if let errorDialog {
+            if let message = viewModel.state.error {
+                errorDialog.message = message
+                errorDialog.isHidden = false
+            } else {
+                errorDialog.isHidden = true
+            }
+        }
         rootWidget.update(deltaTime: deltaTime)
         // Advance the wait-message animation while busy; restart it from
         // frame 0 the next time it appears.
