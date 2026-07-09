@@ -110,6 +110,18 @@ final class WidgetPreviewScene: SKScene {
         _ = widget?.dispatch(.pointerMoved(x: p.x, y: p.y))
     }
 
+    private var scrollAccumulator: CGFloat = 0
+
+    override func scrollWheel(with event: NSEvent) {
+        let unit: CGFloat = event.hasPreciseScrollingDeltas ? 10 : 1
+        scrollAccumulator += event.scrollingDeltaY / unit
+        let steps = Int(scrollAccumulator.rounded(.towardZero))
+        guard steps != 0 else { return }
+        scrollAccumulator -= CGFloat(steps)
+        let p = point(event.location(in: self))
+        _ = widget?.dispatch(.scroll(x: p.x, y: p.y, steps: -steps))
+    }
+
     override func keyDown(with event: NSEvent) {
         // Same reduction the game scene makes: Return submits, backspace/
         // arrows edit, other printable input becomes text.

@@ -192,6 +192,27 @@ final class GameScene: SKScene {
         unhideOSCursor()
     }
 
+    /// Accumulates trackpad deltas into whole scroll steps (wheel clicks are
+    /// ±1 line each; precise trackpad deltas are ~10px per visual line).
+    private var scrollAccumulator: CGFloat = 0
+
+    override func scrollWheel(with event: NSEvent) {
+        // AppKit: positive deltaY = scroll up; our event: positive steps =
+        // scroll down. Natural-scrolling inversion is already applied by the
+        // system in the delta values.
+        let unit: CGFloat = event.hasPreciseScrollingDeltas ? 10 : 1
+        scrollAccumulator += event.scrollingDeltaY / unit
+        let steps = Int(scrollAccumulator.rounded(.towardZero))
+        guard steps != 0 else { return }
+        scrollAccumulator -= CGFloat(steps)
+        let location = event.location(in: self)
+        stateMachine?.handleInput(.scroll(
+            x: Float(location.x),
+            y: Float(Self.canvasSize.height - location.y),
+            steps: -steps
+        ))
+    }
+
     override func keyDown(with event: NSEvent) {
         // Return/Enter is the confirm/submit key; backspace and arrows are
         // editing keys for text fields; other printable input becomes text
