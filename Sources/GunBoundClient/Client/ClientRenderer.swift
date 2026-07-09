@@ -1,4 +1,5 @@
 import GunBound
+import GunBoundFile
 
 /// An opaque handle to a loaded texture — a marker protocol rather than a
 /// concrete type so each rendering backend (SDL3, SpriteKit, ...) can wrap
@@ -19,6 +20,12 @@ public protocol ClientRenderer: AnyObject {
     /// loaded (logged by the implementation — screens treat a missing asset
     /// as "just don't draw it" rather than a fatal error).
     func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture?
+
+    /// Builds a texture from an already-decoded (and possibly
+    /// caller-mutated) sprite frame — the terrain-destruction path: the
+    /// battle screen punches blast holes into the stage frame's pixels
+    /// and rebuilds its texture from them.
+    func texture(from frame: ImgFile.Frame) -> ClientTexture?
 
     /// The texture's pixel size, `(0, 0)` if unavailable.
     func size(of texture: ClientTexture?) -> (width: Float, height: Float)
