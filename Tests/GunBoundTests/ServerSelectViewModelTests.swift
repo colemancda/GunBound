@@ -299,6 +299,27 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.scrollOffset == 0)
     }
 
+    /// The BUDDY bottom-bar button toggles the shared buddy panel.
+    @Test func buddyButtonTogglesThePanel() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(!viewModel.isBuddyPanelVisible)
+        let buddy = try #require(viewModel.buttons.first { $0.name == "b_server_buddygame.img" })
+        viewModel.handle(.pointerDown(x: buddy.rect.x + 5, y: buddy.rect.y + 5))
+        #expect(viewModel.isBuddyPanelVisible)
+        viewModel.handle(.pointerDown(x: buddy.rect.x + 5, y: buddy.rect.y + 5))
+        #expect(!viewModel.isBuddyPanelVisible)
+
+        viewModel.setBuddyPanelVisible(true)
+        viewModel.dismissBuddyPanel()
+        #expect(!viewModel.isBuddyPanelVisible)
+    }
+
     /// Population gauge levels: currentPlayers·100/maxCapacity in five 20%
     /// buckets.
     @Test func populationGaugeLevels() {
