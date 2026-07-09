@@ -4,7 +4,7 @@ jobs:
 
   macos:
     name: macOS
-    runs-on: macos-15
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
