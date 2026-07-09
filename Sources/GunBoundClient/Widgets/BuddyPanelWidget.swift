@@ -135,7 +135,7 @@ public final class BuddyPanelWidget: Widget {
             guard frame.contains(x: x, y: y) else { return false }
             scrollBar.step(steps)
             return true
-        case .pointerMoved, .activate, .text, .key:
+        case .pointerMoved, .pointerUp, .activate, .text, .key:
             return false
         }
     }

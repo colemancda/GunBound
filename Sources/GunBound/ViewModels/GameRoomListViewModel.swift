@@ -391,7 +391,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
             guard y < 246, steps != 0 else { return }
             step(page: steps > 0 ? 1 : -1)
 
-        case .activate, .text, .key:
+        case .pointerUp, .activate, .text, .key:
             break
         }
     }

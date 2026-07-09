@@ -86,7 +86,7 @@ public final class EnterRoomNumberDialogWidget: Widget {
             return frame.contains(x: x, y: y)
         case .scroll(let x, let y, _):
             return frame.contains(x: x, y: y)
-        case .pointerMoved, .activate, .text, .key:
+        case .pointerMoved, .pointerUp, .activate, .text, .key:
             return false
         }
     }

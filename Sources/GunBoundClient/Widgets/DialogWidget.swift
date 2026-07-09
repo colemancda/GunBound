@@ -95,7 +95,7 @@ public final class DialogWidget: Widget {
         case .activate:
             confirm()
             return true
-        case .pointerDown:
+        case .pointerDown, .pointerUp:
             // Modal: swallow clicks anywhere so the screen behind stays inert
             // (the OK button already had its chance as a child).
             return true

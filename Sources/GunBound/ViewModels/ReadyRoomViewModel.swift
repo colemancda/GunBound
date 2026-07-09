@@ -230,7 +230,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
                 handleButton(buttons[index].action)
             }
 
-        case .activate, .text, .key, .scroll:
+        case .pointerUp, .activate, .text, .key, .scroll:
             break
         }
     }

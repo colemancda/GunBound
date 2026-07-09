@@ -628,7 +628,7 @@ public final class InBattleViewModel: ScreenViewModel {
             camera.y += Float(steps) * 40
             clampCamera()
 
-        case .pointerDown, .key:
+        case .pointerDown, .pointerUp, .key:
             break
         }
     }

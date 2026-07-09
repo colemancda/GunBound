@@ -292,7 +292,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
                   panelRect.contains(x: x, y: y) else { return }
             setScrollOffset(scrollOffset + steps)
 
-        case .text, .key:
+        case .pointerUp, .text, .key:
             break
         }
     }

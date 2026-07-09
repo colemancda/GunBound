@@ -38,7 +38,7 @@ public final class GameStateMachine {
     public func handleInput(_ event: ScreenInputEvent) {
         // Track the pointer so the software cursor follows it.
         switch event {
-        case let .pointerMoved(x, y), let .pointerDown(x, y):
+        case let .pointerMoved(x, y), let .pointerDown(x, y), let .pointerUp(x, y):
             cursor.position = (x, y)
         case .activate, .text, .key, .scroll:
             break
