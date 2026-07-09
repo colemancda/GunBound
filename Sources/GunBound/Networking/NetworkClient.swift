@@ -1,15 +1,15 @@
 import Foundation
 import GunBoundProtocol
 
-/// A minimal client-side connection to a GunBound world server: opens a TCP
-/// socket and performs the nonce + login handshake
-/// (`NonceRequest`/`NonceResponse` → `AuthenticationRequest`/
-/// `AuthenticationResponse`). Deliberately not a full port of the server's
-/// internal `Connection` actor (that type is `internal` to the `GunBound`
-/// target and reused for the accept-side loop, request/response matching,
-/// and outgoing-encryption bookkeeping this client doesn't need yet) — this
-/// is just enough to prove out real network authentication before building
-/// out the rest of the post-login protocol (room list, chat, etc).
+/// A client-side connection to a GunBound world server: opens a TCP socket,
+/// performs the nonce + login handshake, and then runs a background **read
+/// loop** — the client-side counterpart of the decompiled
+/// `ProcessIncomingPackets` pump. Every inbound packet is reassembled from
+/// the byte stream (packets can arrive split or coalesced) and routed:
+/// replies wake the `request()` call awaiting that opcode, notifications are
+/// delivered on the `pushes` stream, and anything else parks in a mailbox
+/// until a matching `request()` arrives (so replies that beat their waiter
+/// are never lost).
 ///
 /// Generic over the socket type (mirroring `Connection<Socket>`'s existing
 /// pattern) purely so tests can substitute a mock `GunBoundSocketTCP`
@@ -21,6 +21,9 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     public enum Error: Swift.Error, Equatable {
         case invalidAddress(String)
         case notAuthenticated
+        /// The connection ended (EOF or a socket error) while a request was
+        /// waiting for its reply.
+        case disconnected
     }
 
     private let socket: Socket
@@ -34,11 +37,33 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     /// encrypt/decrypt its packet body, mirroring `Connection.key`.
     public private(set) var sessionKey: Key?
 
+    /// Unsolicited server notifications (room updates, channel users, …),
+    /// in arrival order. Single-consumer: one screen/view-model task should
+    /// iterate this at a time. Finishes when the connection ends.
+    public let pushes: AsyncStream<ServerPush>
+    private let pushContinuation: AsyncStream<ServerPush>.Continuation
+
+    /// One waiter per expected reply opcode, FIFO within an opcode.
+    private var pending: [Opcode: [CheckedContinuation<Packet, Swift.Error>]] = [:]
+
+    /// Replies that arrived before their `request()` registered a waiter —
+    /// also how the strictly-sequential mock tests keep working: their canned
+    /// responses are all read (and parked here) the moment the loop starts.
+    private var mailbox: [Packet] = []
+
+    /// Unparsed bytes between reads (TCP can split/coalesce packets).
+    private var reassembly: [UInt8] = []
+
+    private var readTask: Task<Void, Never>?
+    private var isFinished = false
+
     private init(socket: Socket) {
         self.socket = socket
+        (self.pushes, self.pushContinuation) = AsyncStream.makeStream(of: ServerPush.self)
     }
 
-    /// Opens a TCP connection to `config.serverAddress`:`config.serverPort`.
+    /// Opens a TCP connection to `config.serverAddress`:`config.serverPort`
+    /// and starts the read loop.
     public static func connect(_ config: NetworkConfig) async throws -> NetworkClient<Socket> {
         guard let destination = GunBoundAddress(address: config.serverAddress, port: config.serverPort) else {
             throw Error.invalidAddress(config.serverAddress)
@@ -47,11 +72,88 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
             throw Error.invalidAddress("0.0.0.0")
         }
         let socket = try await Socket.client(address: local, destination: destination)
-        return NetworkClient(socket: socket)
+        let client = NetworkClient(socket: socket)
+        await client.startReading()
+        return client
     }
 
     public func close() async {
+        readTask?.cancel()
+        finish()
         await socket.close()
+    }
+
+    // MARK: - Read loop
+
+    private func startReading() {
+        guard readTask == nil else { return }
+        readTask = Task { await self.readLoop() }
+    }
+
+    private func readLoop() async {
+        while !Task.isCancelled {
+            let data: Data
+            do {
+                data = try await socket.recieve(Packet.maxSize)
+            } catch {
+                break  // socket closed or failed
+            }
+            guard !data.isEmpty else { break }  // EOF
+            reassembly.append(contentsOf: data)
+            drainReassembly()
+        }
+        finish()
+    }
+
+    /// Extracts every complete packet from the reassembly buffer (the wire
+    /// header's first two bytes are the packet's total length, little-endian)
+    /// and routes each one. Unknown opcodes are skipped; a nonsensical length
+    /// means the stream is corrupt, so the connection is torn down.
+    private func drainReassembly() {
+        while reassembly.count >= Packet.minSize {
+            let length = Int(reassembly[0]) | (Int(reassembly[1]) << 8)
+            guard length >= Packet.minSize, length <= Packet.maxSize else {
+                readTask?.cancel()
+                finish()
+                return
+            }
+            guard reassembly.count >= length else { return }  // partial packet
+            let bytes = Array(reassembly[0..<length])
+            reassembly.removeFirst(length)
+            guard let packet = Packet(data: bytes) else {
+                // Unknown opcode or malformed header — skip this packet.
+                continue
+            }
+            route(packet)
+        }
+    }
+
+    /// Routes one inbound packet: a registered waiter for its opcode wins,
+    /// else notifications go to `pushes`, else it parks in the mailbox for a
+    /// later `request()`.
+    private func route(_ packet: Packet) {
+        if var waiters = pending[packet.opcode], !waiters.isEmpty {
+            let continuation = waiters.removeFirst()
+            pending[packet.opcode] = waiters
+            continuation.resume(returning: packet)
+        } else if packet.opcode.type == .notification {
+            pushContinuation.yield(ServerPush(packet, decoder: decoder))
+        } else {
+            mailbox.append(packet)
+        }
+    }
+
+    /// Ends the connection's inbound side: fails every waiting request and
+    /// finishes the push stream. Idempotent.
+    private func finish() {
+        guard !isFinished else { return }
+        isFinished = true
+        pushContinuation.finish()
+        let waiters = pending.values.flatMap { $0 }
+        pending.removeAll()
+        for continuation in waiters {
+            continuation.resume(throwing: Error.disconnected)
+        }
     }
 
     /// Opens a short-lived connection to a broker/directory server (default
@@ -200,17 +302,38 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         return PlayerAvatar(equipped: equipped, inventory: items)
     }
 
-    /// Sends `requestValue` and decodes the next packet read off the socket
-    /// as `Response`. No request/response ID matching or queueing (unlike
-    /// `Connection`) — fine for the strictly-sequential login handshake this
-    /// is used for today.
+    // MARK: - Sending
+
+    /// Sends a packet without waiting for any reply — for fire-and-forget
+    /// opcodes (page requests, chat, the join variants whose confirmation
+    /// arrives as a push).
+    public func send<Request: GunBoundPacketEncodable>(_ requestValue: Request) async throws {
+        let packet = encoder.encode(requestValue, id: 0x0000)
+        try await socket.send(Data(packet.data))
+    }
+
+    /// Sends `requestValue` and awaits the reply with `Response`'s opcode:
+    /// first checking the mailbox (in case the read loop already parked it),
+    /// otherwise suspending until the loop routes it in. Notifications
+    /// arriving in between flow to `pushes` without disturbing the wait.
     private func request<Request: GunBoundPacketEncodable, Response: GunBoundPacketDecodable>(
         _ requestValue: Request,
         response: Response.Type
     ) async throws -> Response {
-        let packet = encoder.encode(requestValue, id: 0x0000)
-        try await socket.send(Data(packet.data))
-        let data = try await socket.recieve(Packet.maxSize)
-        return try decoder.decodePacket(Response.self, from: [UInt8](data))
+        try await send(requestValue)
+        let packet = try await receivePacket(opcode: Response.opcode)
+        return try decoder.decode(Response.self, from: packet)
+    }
+
+    /// The next inbound packet with `opcode` — from the mailbox if it already
+    /// arrived, else by registering a waiter for the read loop to resume.
+    private func receivePacket(opcode: Opcode) async throws -> Packet {
+        if let index = mailbox.firstIndex(where: { $0.opcode == opcode }) {
+            return mailbox.remove(at: index)
+        }
+        guard !isFinished else { throw Error.disconnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            pending[opcode, default: []].append(continuation)
+        }
     }
 }
