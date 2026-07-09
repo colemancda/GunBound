@@ -75,6 +75,8 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public let dialogCancelImageName = "b_gamelist_no.img"
     /// The CHANNEL user-list panel's chrome.
     public let channelBackImageName = "gamelist_channel.img"
+    /// The lobby chat panel's chrome.
+    public let chatBackImageName = "gamelist_chat.img"
 
     // MARK: Room-card grid geometry (see the type-level doc comment)
     public static let maxVisibleRooms = 6
@@ -157,6 +159,16 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// Settable so tests/previews can populate it directly.
     public var channelUsers: [String] = []
 
+    /// Channel chat lines shown in the chat panel, oldest first, formatted
+    /// `name: message` — fed by `0x201F` broadcasts (which echo the player's
+    /// own sends back, so local sends don't append directly). Capped to the
+    /// most recent `maxChatLines`. Settable for tests/previews.
+    public var chatMessages: [String] = []
+
+    /// The decomp's chat-log panel embeds a ~4 KB history buffer; a line cap
+    /// approximates that bound.
+    public static let maxChatLines = 100
+
     /// The visible page of the room list, in 6-card pages over the fetched
     /// list (Prev/Next buttons). The original re-requests each page from the
     /// server (`0x2100` + page index); our broker returns the whole list in
@@ -224,8 +236,28 @@ public final class GameRoomListViewModel: ScreenViewModel {
             loadRooms()
         case .userJoinedChannel(let notification):
             channelUsers.append(String(describing: notification.username))
+        case .chatReceived(let broadcast):
+            chatMessages.append("\(broadcast.username): \(broadcast.message)")
+            if chatMessages.count > Self.maxChatLines {
+                chatMessages.removeFirst(chatMessages.count - Self.maxChatLines)
+            }
         case .raw:
             break
+        }
+    }
+
+    /// Sends a channel chat line (`0x2010`, encrypted). Fire-and-forget: the
+    /// line appears when the server's `0x201F` broadcast echoes it back —
+    /// the same round-trip the original client renders from.
+    public func sendChat(_ message: String) {
+        let trimmed = message.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let client = delegate.client else { return }
+        Task {
+            do {
+                try await client.send(ChannelChatCommand(message: trimmed))
+            } catch {
+                print("[GunBound] couldn't send chat: \(error)")
+            }
         }
     }
 
