@@ -1,6 +1,9 @@
 import SwiftUI
 import GunBound
 import GunBoundClient
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// Shown before the `GameScene` starts — collects login fields over the
 /// title-screen artwork. Resource discovery lives in `LoginViewModel`
@@ -34,8 +37,14 @@ struct LoginView: View {
                     ),
                     // Server Select's EXIT button — leave the game and come
                     // back to this login screen (apps can't self-terminate
-                    // on iOS/tvOS).
-                    onQuit: { self.assetsDirectory = nil }
+                    // on iOS/tvOS). On macOS the window drops back out of
+                    // fullscreen so the login form is windowed again.
+                    onQuit: {
+                        self.assetsDirectory = nil
+                        #if os(macOS)
+                        Self.setFullscreen(false)
+                        #endif
+                    }
                 )
                 .ignoresSafeArea()
 #if os(iOS)
@@ -118,11 +127,27 @@ struct LoginView: View {
     private func play() {
         if let directory = viewModel.assetsDirectory {
             assetsDirectory = directory
+            // The original runs fullscreen-exclusive 800×600; entering the
+            // game takes the macOS window fullscreen (aspect-fit letterboxed).
+            #if os(macOS)
+            Self.setFullscreen(true)
+            #endif
         } else {
             errorMessage = viewModel.loadFailureMessage
                 ?? "Still loading game assets — try again in a moment."
         }
     }
+
+    #if os(macOS)
+    /// Enters or leaves native fullscreen on the app's window, no-op if
+    /// already in the requested state.
+    private static func setFullscreen(_ fullscreen: Bool) {
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first else { return }
+        if window.styleMask.contains(.fullScreen) != fullscreen {
+            window.toggleFullScreen(nil)
+        }
+    }
+    #endif
 }
 
 #Preview {
