@@ -80,6 +80,8 @@ struct MockDirectoryFetcher: ServerDirectoryFetching {
     
     let result: Result<[ServerDirectoryResponse.Server], Error>
     
+    let sleep: UInt = 3
+    
     init(error: any Error) {
         self.result = .failure(error)
     }
@@ -93,7 +95,7 @@ struct MockDirectoryFetcher: ServerDirectoryFetching {
     }
 
     func fetchServerDirectory(address: String, brokerPort: UInt16) async throws -> [ServerDirectoryResponse.Server] {
-        try await Task.sleep(for: .seconds(1))
+        try await Task.sleep(for: .seconds(sleep))
         return try result.get()
     }
 }
