@@ -252,5 +252,13 @@ public final class InBattleScreen: GameScreen {
             let width = 300 * viewModel.power
             renderer.draw(dotTexture, in: Rect(x: 250, y: 574, width: width, height: 12), tint: (255, UInt8(220 - viewModel.power * 160), 80))
         }
+
+        // The movement gauge (bottom-left) while free to walk — drains as
+        // the turn's walking budget is spent.
+        if let dotTexture, viewModel.isMyTurn, viewModel.phase == .aiming {
+            let ratio = viewModel.moveBudget / InBattleViewModel.moveBudgetPerTurn
+            renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120, height: 8), tint: (30, 30, 30))
+            renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120 * ratio, height: 8), tint: (120, 200, 255))
+        }
     }
 }
