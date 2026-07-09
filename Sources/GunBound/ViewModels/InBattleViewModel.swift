@@ -213,6 +213,14 @@ public final class InBattleViewModel: ScreenViewModel {
     /// The battle clock (seconds since entry) — the timebase for poses and
     /// the view's animation frame selection.
     public private(set) var clock: Double = 0
+    /// The battle chat overlay's history — the decomp's fixed rotating
+    /// buffer (`AddChatLine` dequeues the oldest line past 8).
+    public private(set) var chatLines: [ChatLine] = []
+    public static let maxChatLines = 8
+    /// The chat composer's draft, `nil` when closed. Typing any printable
+    /// character opens it seeded with that character; Enter sends.
+    public private(set) var chatDraft: String?
+    public static let maxChatDraftLength = 60
     /// How long the transient poses run before reverting to `.normal`
     /// (a walk step refreshes `.move`; the sheet runs are 10–25 frames).
     public static let movePoseLinger: Double = 0.3
@@ -258,6 +266,8 @@ public final class InBattleViewModel: ScreenViewModel {
         shotAttacker = nil
         moveBudget = Self.moveBudgetPerTurn
         clock = 0
+        chatLines = []
+        chatDraft = nil
         wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
@@ -420,8 +430,16 @@ public final class InBattleViewModel: ScreenViewModel {
             delegate.requestTransition(to: .gameRoomList)
         case .tunnelReceived(let forward):
             applyTunnel(forward)
-        case .chatReceived, .clientPrint, .roomUpdated, .roomPlayerLeft,
-             .userJoinedChannel, .gameStarted, .hostMigrated, .raw:
+        case .chatReceived(let broadcast):
+            appendChat(ChatLine(
+                sender: String(describing: broadcast.username),
+                message: broadcast.message,
+                type: .normal
+            ))
+        case .clientPrint(let notice):
+            appendChat(ChatLine(message: notice.message, type: .notice))
+        case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .gameStarted,
+             .hostMigrated, .raw:
             break
         }
     }
@@ -485,7 +503,24 @@ public final class InBattleViewModel: ScreenViewModel {
             guard isMyTurn, phase == .aiming else { return }
             walk(1)
 
+        // Typing opens the chat composer (or appends to it); while it's
+        // open, Enter sends the line instead of charging/firing.
+        case .text(let string):
+            openOrAppendChat(string)
+        case .key(.backspace):
+            guard var draft = chatDraft else { return }
+            if draft.isEmpty {
+                chatDraft = nil
+            } else {
+                draft.removeLast()
+                chatDraft = draft
+            }
+
         case .activate:
+            if chatDraft != nil {
+                submitChat()
+                return
+            }
             switch phase {
             case .aiming where isMyTurn:
                 phase = .charging
@@ -504,8 +539,46 @@ public final class InBattleViewModel: ScreenViewModel {
             camera.y += Float(steps) * 40
             clampCamera()
 
-        case .pointerDown, .text, .key:
+        case .pointerDown, .key:
             break
+        }
+    }
+
+    // MARK: - Battle chat
+
+    private func openOrAppendChat(_ string: String) {
+        var draft = chatDraft ?? ""
+        for character in string where draft.count < Self.maxChatDraftLength {
+            guard character != "\n", character != "\r" else { continue }
+            draft.append(character)
+        }
+        chatDraft = draft
+    }
+
+    /// Sends the draft as a chat line (`0x2010`, like the lobby panels)
+    /// and closes the composer. Online the line comes back as the server's
+    /// broadcast; offline it echoes straight into the history.
+    private func submitChat() {
+        let draft = (chatDraft ?? "").trimmingCharacters(in: .whitespaces)
+        chatDraft = nil
+        guard !draft.isEmpty else { return }
+        guard let client = delegate.client else {
+            appendChat(ChatLine(sender: delegate.network.username, message: draft))
+            return
+        }
+        Task {
+            do {
+                try await client.send(ChannelChatCommand(message: draft))
+            } catch {
+                print("[GunBound] couldn't send chat: \(error)")
+            }
+        }
+    }
+
+    private func appendChat(_ line: ChatLine) {
+        chatLines.append(line)
+        if chatLines.count > Self.maxChatLines {
+            chatLines.removeFirst(chatLines.count - Self.maxChatLines)
         }
     }
 
