@@ -161,10 +161,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
         )
     }
 
-    /// The population gauge's rect, beside the row background.
+    /// The population gauge's rect, flush against the row background's right
+    /// edge (the original draws them contiguous, no gap).
     public func gaugeRect(at index: Int) -> Rect {
         let row = rowRect(at: index)
-        return Rect(x: row.x + row.width + 2, y: row.y, width: Self.gaugeSize.width, height: Self.gaugeSize.height)
+        return Rect(x: row.x + row.width, y: row.y, width: Self.gaugeSize.width, height: Self.gaugeSize.height)
     }
 
     /// The gauge fill level (0…4) — `currentPlayers·100/maxCapacity`

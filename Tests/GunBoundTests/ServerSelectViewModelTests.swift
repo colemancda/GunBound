@@ -181,8 +181,8 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.rowRect(at: 0) == Rect(x: 33, y: 58, width: 181, height: 65))
         #expect(viewModel.rowRect(at: 1) == Rect(x: 280, y: 58, width: 181, height: 65))
         #expect(viewModel.rowRect(at: 2) == Rect(x: 33, y: 131, width: 181, height: 65))
-        // Gauge sits beside the row background.
-        #expect(viewModel.gaugeRect(at: 0).x == 33 + 181 + 2)
+        // Gauge sits flush against the row background's right edge.
+        #expect(viewModel.gaugeRect(at: 0).x == 33 + 181)
     }
 
     /// Clicking a row selects it — but only online rows, mirroring
