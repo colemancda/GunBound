@@ -116,5 +116,11 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
 
         try stateMachine.update(deltaTime: deltaTime)
         try stateMachine.render()
+
+        // Screens request quitting through the context (e.g. Server
+        // Select's EXIT button).
+        if context.quitRequested {
+            running = false
+        }
     }
 }
