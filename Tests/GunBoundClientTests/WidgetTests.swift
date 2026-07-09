@@ -349,6 +349,29 @@ struct WidgetTests {
         #expect(unknown.message == (255, 255, 255))
     }
 
+    /// A wheel over a scroll panel steps its scrollbar (positive = down) and
+    /// is consumed; outside the panel it falls through. Modal dialogs swallow
+    /// wheel events so nothing scrolls behind them.
+    @Test func wheelScrollsPanelsAndRespectsModals() {
+        let chat = LobbyChatWidget(font: nil)
+        chat.messages = (1...30).map { ChatLine(message: "line \($0)") }
+        chat.scrollBar.setPosition(0)
+
+        // Inside the panel: scroll down two steps, then back up one.
+        #expect(chat.dispatch(.scroll(x: 100, y: 400, steps: 2)))
+        #expect(chat.scrollBar.position == 2)
+        #expect(chat.dispatch(.scroll(x: 100, y: 400, steps: -1)))
+        #expect(chat.scrollBar.position == 1)
+
+        // Outside: passes through, position unchanged.
+        #expect(!chat.dispatch(.scroll(x: 700, y: 100, steps: 1)))
+        #expect(chat.scrollBar.position == 1)
+
+        // A modal dialog swallows the wheel.
+        let dialog = DialogWidget(font: nil)
+        #expect(dialog.dispatch(.scroll(x: 400, y: 300, steps: 1)))
+    }
+
     @Test func hiddenDialogLetsInputThroughToSiblings() {
         // A hidden dialog must not shadow the widgets behind it.
         let root = ProbeWidget(name: "root")

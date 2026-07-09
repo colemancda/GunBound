@@ -238,6 +238,16 @@ struct GameRoomListViewModelTests {
         // Filter change resets to page 0.
         click(.waitingOnly, in: viewModel)
         #expect(viewModel.page == 0)
+        click(.viewAll, in: viewModel)
+
+        // The wheel over the grid band pages one step per gesture; below the
+        // grid (the chat area) it's ignored by the view model.
+        viewModel.handle(.scroll(x: 150, y: 120, steps: 3))
+        #expect(viewModel.page == 1)
+        viewModel.handle(.scroll(x: 150, y: 120, steps: -1))
+        #expect(viewModel.page == 0)
+        viewModel.handle(.scroll(x: 150, y: 400, steps: 1))
+        #expect(viewModel.page == 0)
     }
 
     /// A `0x200E` push appends the new user to the CHANNEL roster; room

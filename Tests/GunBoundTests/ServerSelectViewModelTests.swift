@@ -281,6 +281,16 @@ struct ServerSelectViewModelTests {
         viewModel.handle(.pointerDown(x: slot0.x + 5, y: slot0.y + 5))
         #expect(viewModel.selectedIndex == 2)
 
+        // The wheel over the panel steps the window too (positive = down).
+        viewModel.handle(.scroll(x: 100, y: 100, steps: 1))
+        #expect(viewModel.scrollOffset == 2)
+        viewModel.handle(.scroll(x: 100, y: 100, steps: -2))
+        #expect(viewModel.scrollOffset == 0)
+        // A wheel outside the panel is ignored.
+        viewModel.handle(.scroll(x: 700, y: 580, steps: 1))
+        #expect(viewModel.scrollOffset == 0)
+        viewModel.setScrollOffset(1)
+
         // Clamped at both ends.
         viewModel.setScrollOffset(99)
         #expect(viewModel.scrollOffset == 2)
