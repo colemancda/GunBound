@@ -34,7 +34,6 @@ public final class ServerSelectScreen: GameScreen {
     private var rowSelectedTexture: ClientTexture?
     /// server_list.img frames 5–9: the five population-gauge levels.
     private var gaugeTextures: [ClientTexture?] = []
-    private var numberFont: LoadedFont?
     private var textFont: LoadedFont?
 
     public init(viewModel: ServerSelectViewModel) {
@@ -57,14 +56,15 @@ public final class ServerSelectScreen: GameScreen {
         viewModel.panelRect = Rect(x: 11, y: 13, width: panelWidth, height: panelHeight)
 
         // Row-state backgrounds and gauge levels live as frames of the same
-        // sheet. Frame mapping (sprite "state" + 1, since frame 0 is the
-        // panel): 1 = online base, 2 = offline, 4 = highlighted.
+        // sheet. Frame mapping confirmed by extracting the frames: 1 = base
+        // (dark title bar, matches the original's normal rows), 2 = the
+        // slightly-brighter connecting state, 3 = brightest (highlighted),
+        // 4 = gray (offline/disabled).
         rowBaseTexture = renderer.texture(named: viewModel.panelImageName, frame: 1, assets: assets)
-        rowOfflineTexture = renderer.texture(named: viewModel.panelImageName, frame: 2, assets: assets)
-        rowSelectedTexture = renderer.texture(named: viewModel.panelImageName, frame: 4, assets: assets)
+        rowSelectedTexture = renderer.texture(named: viewModel.panelImageName, frame: 3, assets: assets)
+        rowOfflineTexture = renderer.texture(named: viewModel.panelImageName, frame: 4, assets: assets)
         gaugeTextures = (5...9).map { renderer.texture(named: viewModel.panelImageName, frame: $0, assets: assets) }
 
-        numberFont = LoadedFont(.numberFont, renderer: renderer, assets: assets)
         textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
@@ -82,7 +82,6 @@ public final class ServerSelectScreen: GameScreen {
         rowOfflineTexture = nil
         rowSelectedTexture = nil
         gaugeTextures = []
-        numberFont = nil
         textFont = nil
         audio?.stop()
         audio = nil
@@ -104,7 +103,11 @@ public final class ServerSelectScreen: GameScreen {
             renderer.draw(panelTexture, in: viewModel.panelRect, tint: nil)
         }
 
-        for (index, server) in viewModel.availableServers.enumerated() {
+        // Pale cyan for descriptions — the decomp's flat RGB565 text color
+        // 0xb77f expanded to 8-bit channels.
+        let descriptionTint: (r: UInt8, g: UInt8, b: UInt8) = (181, 239, 255)
+
+        for (index, server) in viewModel.visibleServers.enumerated() {
             let rect = viewModel.rowRect(at: index)
 
             // Row background by state.
@@ -120,12 +123,14 @@ public final class ServerSelectScreen: GameScreen {
                 renderer.draw(background, in: rect, tint: nil)
             }
 
-            // Server number (the wire serverId + 1) in the row's title bar,
-            // then name + up to two description lines below (the decomp's
-            // y+0x1e origin with a 14px line pitch).
-            numberFont?.draw("\(server.id + 1)", x: rect.x + 8, y: rect.y + 7, using: renderer)
+            // Title bar (spans y+5…y+24 in the frame): the server number
+            // (the wire serverId + 1, white like the original) at x+10, the
+            // name at x+32, both vertically centered at y+8. Description
+            // lines fill the body band — the decomp's y+0x1e origin with a
+            // 14px line pitch — in the original's pale cyan.
             if let textFont {
-                textFont.draw(server.name, x: rect.x + 30, y: rect.y + 6, using: renderer)
+                textFont.draw("\(server.id + 1)", x: rect.x + 10, y: rect.y + 8, using: renderer)
+                textFont.draw(server.name, x: rect.x + 32, y: rect.y + 8, using: renderer)
                 let descriptionLines = server.descriptionText
                     .replacingOccurrences(of: "\\n", with: "\n")
                     .split(separator: "\n", omittingEmptySubsequences: true)
@@ -133,8 +138,9 @@ public final class ServerSelectScreen: GameScreen {
                 for (line, text) in descriptionLines.enumerated() {
                     textFont.draw(
                         String(text).trimmingCharacters(in: .whitespaces),
-                        x: rect.x + 10,
+                        x: rect.x + 12,
                         y: rect.y + 30 + Float(line) * 14,
+                        tint: descriptionTint,
                         using: renderer
                     )
                 }
