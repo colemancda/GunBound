@@ -37,6 +37,10 @@ public enum ServerPush: Equatable, Sendable {
     /// messages, shown as a color-coded system line in the chat log.
     case clientPrint(ClientPrintNotification)
 
+    /// The match is starting (`0x3432`, encrypted) — carries the map and
+    /// per-player spawn data; the Ready Room transitions to Loading on it.
+    case gameStarted(StartGameNotification)
+
     /// Any other notification, undecoded.
     case raw(Packet)
 }
@@ -71,6 +75,11 @@ extension ServerPush {
         case .clientPrintNotification:
             if let value = try? decoder.decode(ClientPrintNotification.self, from: packet) {
                 self = .clientPrint(value)
+                return
+            }
+        case .startGameNotification:
+            if let value = try? decoder.decode(StartGameNotification.self, from: packet) {
+                self = .gameStarted(value)
                 return
             }
         default:

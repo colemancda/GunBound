@@ -271,6 +271,24 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await request(UserReadyRequest(isReady: isReady), response: UserReadyResponse.self)
     }
 
+    /// Selects the player's mobile/tank in the Ready Room (the character
+    /// picker's `0x3200` → `0x3201`).
+    public func selectTank(primary: Mobile, secondary: Mobile = .random) async throws -> RoomSelectTankResponse {
+        try await request(RoomSelectTankRequest(primary: primary, secondary: secondary), response: RoomSelectTankResponse.self)
+    }
+
+    /// Changes the player's team in the Ready Room (`0x3210` → `0x3211`).
+    public func selectTeam(_ team: Team) async throws -> RoomSelectTeamResponse {
+        try await request(RoomSelectTeamRequest(team: team), response: RoomSelectTeamResponse.self)
+    }
+
+    /// Starts the match (host only, `0x3430`). Fire-and-forget: the server's
+    /// `0x3432` start notification (a `.gameStarted` push) carries the
+    /// per-player spawn data and moves everyone to Loading.
+    public func startGame() async throws {
+        try await send(StartGameCommand(value0: 0))
+    }
+
     /// Fetches the player's avatar (opcode `0x6000` → `0x6001`) — equipped
     /// bitmask + owned item IDs. The response body is a 2-byte RTC prefix
     /// followed by an AES blob (encrypted with the session key outside the

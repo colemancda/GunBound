@@ -21,6 +21,11 @@ public final class ClientSession {
     /// (or anything else) has fetched them.
     public var avatar: PlayerAvatar?
 
+    /// The match-start data (`0x3432`) — map + per-player spawn positions —
+    /// set by the Ready Room when the host starts, consumed by Loading and
+    /// the battle screen.
+    public var battle: StartGameNotification?
+
     public init() {}
 }
 
