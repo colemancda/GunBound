@@ -36,5 +36,10 @@ public enum ScreenInputEvent: Equatable, Sendable {
         case backspace
         case left
         case right
+        /// ▲/▼ — no text-editing role; in battle they adjust the aim
+        /// elevation (the original's control scheme: arrows ◀/▶ walk the
+        /// mobile, ▲/▼ move the barrel).
+        case up
+        case down
     }
 }
