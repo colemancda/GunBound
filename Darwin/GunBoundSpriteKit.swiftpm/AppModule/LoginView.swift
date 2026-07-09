@@ -67,9 +67,9 @@ struct LoginView: View {
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                         .padding()
                 }
-                .task { await viewModel.load() }
             }
         }
+        .task { await viewModel.load() }
     }
 
     /// The title art once the view model has decoded it; plain black while
