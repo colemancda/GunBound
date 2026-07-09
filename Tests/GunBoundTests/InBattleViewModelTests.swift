@@ -216,6 +216,78 @@ struct InBattleViewModelTests {
         #expect((viewModel.explosion?.x ?? 9999) < 1200)  // drifted left of the shooter
     }
 
+    /// Damage drains the HP pool, logs a ledger entry, and kills at zero;
+    /// the ranking sums each attacker's shot damage, highest first.
+    @Test func damageDrainsHPAndKillsAtZero() {
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.players[1].hp == InBattleViewModel.maxHP)
+
+        viewModel.applyDamage(300, toSlot: 1, cause: .shot)
+        #expect(viewModel.players[1].hp == 700)
+        #expect(viewModel.players[1].isAlive)
+        #expect(viewModel.damageLedger.count == 1)
+        #expect(viewModel.damageLedger[0].targetSlot == 1)
+        #expect(viewModel.damageLedger[0].value == 300)
+
+        viewModel.applyDamage(900, toSlot: 1, cause: .shot)
+        #expect(viewModel.players[1].hp == 0)  // clamped, not negative
+        #expect(!viewModel.players[1].isAlive)
+
+        // A fall-out logs its cause; the ranking only counts shot damage.
+        viewModel.applyDamage(500, toSlot: 0, cause: .fallOut)
+        #expect(viewModel.damageLedger.last?.cause == .fallOut)
+        let ranking = viewModel.damageRanking
+        #expect(ranking.first?.total == 1200)
+    }
+
+    /// A resolved shot damages by blast ring — the target's HP drops by one
+    /// of the three tier values, not to zero.
+    @Test func splashDamageUsesTheBlastRings() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // A feeble lob from "guest" lands near their own mobile.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x01, 10, 5, 1, 127]
+        )))
+        var frames = 0
+        while viewModel.phase == .projectileInFlight || viewModel.phase == .impact, frames < 3000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        let hit = InBattleViewModel.maxHP - viewModel.players[1].hp
+        #expect(InBattleViewModel.damageTiers.map(\.damage).contains(hit))
+        #expect(viewModel.players[1].isAlive)
+        // The hit is credited to the shooter in the ledger.
+        #expect(viewModel.damageLedger.first?.attackerSlot == 1)
+    }
+
+    /// The relayed live aim (the 0x8402-style broadcast) surfaces as
+    /// `remoteAim` and clears once the shot launches.
+    @Test func aimRelayUpdatesTheRemoteBarrel() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x02, 60, 45, 0]
+        )))
+        #expect(viewModel.remoteAim?.angle == 60)
+        #expect(viewModel.remoteAim?.power == 0.45)
+        #expect(viewModel.remoteAim?.direction == -1)
+
+        // The fire relay replaces the preview with the real shot.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x01, 45, 80, 1, 127]
+        )))
+        #expect(viewModel.remoteAim == nil)
+        #expect(viewModel.phase == .projectileInFlight)
+    }
+
     /// Without battle data the screen still enters safely (offline path).
     @Test func offlineEntryIsSafe() {
         let (viewModel, _) = makeViewModel(battle: false)
