@@ -286,7 +286,14 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     /// `0x3432` start notification (a `.gameStarted` push) carries the
     /// per-player spawn data and moves everyone to Loading.
     public func startGame() async throws {
-        try await send(StartGameCommand(value0: 0))
+        try await send(StartGameCommand())
+    }
+
+    /// Sends in-game traffic to another player through the server's tunnel
+    /// relay (`0x4500`): the payload is delivered to whoever sits in `slot`
+    /// as a `.tunnelReceived` push carrying this player's slot.
+    public func sendTunnel(to slot: UInt8, payload: [UInt8]) async throws {
+        try await send(Tunnel(destinationSlot: slot, payload: payload))
     }
 
     /// Fetches the player's avatar (opcode `0x6000` → `0x6001`) — equipped

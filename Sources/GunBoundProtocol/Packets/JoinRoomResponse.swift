@@ -17,6 +17,14 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoun
 
     public static var opcode: Opcode { .joinRoomResponse }
 
+    /// Return code for a join that was rejected: the room doesn't exist or
+    /// the password is wrong.
+    public static let errorBadRoom: UInt16 = 0x0011
+
+    /// Return code for a join that was rejected because the room is full or
+    /// the game is already in progress.
+    public static let errorRoomFull: UInt16 = 0x2001
+
     /// Return code (0x0000 = success, non-zero = error)
     internal let rtc: UInt16
 
@@ -24,8 +32,11 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoun
     /// only enters the room (→ Ready Room, state 9) on success.
     public var isSuccess: Bool { rtc == 0x0000 }
 
-    /// Unknown value (typically 0x0100)
-    internal let value0: UInt16
+    /// Room slot of the current room master.
+    public let masterSlot: UInt8
+
+    /// Room slot assigned to the joining player.
+    public let slot: UInt8
 
     /// The ID of the room that was joined
     public let room: RoomID
@@ -53,7 +64,8 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoun
 
     public init(
         rtc: UInt16 = 0x0000,
-        value0: UInt16 = 0x0100,
+        masterSlot: UInt8 = 0,
+        slot: UInt8 = 0,
         room: RoomID,
         name: String,
         map: GameMap,
@@ -64,7 +76,8 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoun
         message: String = ""
     ) {
         self.rtc = rtc
-        self.value0 = value0
+        self.masterSlot = masterSlot
+        self.slot = slot
         self.room = room
         self.name = name
         self.map = map
@@ -74,6 +87,21 @@ public struct JoinRoomResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoun
         self.players = players
         self.message = message
     }
+
+    /// A rejected join: only the return code goes over the wire (the other
+    /// fields mirror what decoding an error response produces).
+    public static func error(_ rtc: UInt16) -> JoinRoomResponse {
+        JoinRoomResponse(
+            rtc: rtc,
+            room: RoomID(rawValue: 0),
+            name: "",
+            map: .random,
+            settings: 0,
+            value1: 0,
+            capacity: ._1_1,
+            players: []
+        )
+    }
 }
 
 // MARK: - Decoding
@@ -82,7 +110,22 @@ extension JoinRoomResponse {
 
     public init(parsing input: inout ParserSpan) throws {
         self.rtc = try UInt16(parsingLittleEndian: &input)
-        self.value0 = try UInt16(parsingLittleEndian: &input)
+        // A rejected join is just the return code — nothing else follows.
+        guard rtc == 0x0000 else {
+            self.masterSlot = 0
+            self.slot = 0
+            self.room = RoomID(rawValue: 0)
+            self.name = ""
+            self.map = .random
+            self.settings = 0
+            self.value1 = 0
+            self.capacity = ._1_1
+            self.players = []
+            self.message = ""
+            return
+        }
+        self.masterSlot = try UInt8(parsing: &input)
+        self.slot = try UInt8(parsing: &input)
         self.room = try RoomID(parsing: &input)
         self.name = try String(parsingLengthPrefixedASCII: &input)
         self.map = try GameMap(parsing: &input)
@@ -107,7 +150,10 @@ extension JoinRoomResponse {
 
     public func encode(to output: inout ByteWriter) {
         output.write(rtc, endianness: .little)
-        output.write(value0, endianness: .little)
+        // A rejected join is just the return code — nothing else follows.
+        guard rtc == 0x0000 else { return }
+        output.write(masterSlot)
+        output.write(slot)
         room.encode(to: &output)
         output.writeLengthPrefixed(ascii: name)
         map.encode(to: &output)

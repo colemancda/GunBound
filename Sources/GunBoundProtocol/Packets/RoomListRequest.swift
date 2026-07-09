@@ -18,18 +18,31 @@ public struct RoomListRequest: GunBoundPacket, GunBoundPacketDecodable, GunBound
 
     public static var opcode: Opcode { .roomListRequest }
 
+    /// Rooms shown per page when a paginated request is made.
+    public static let roomsPerPage = 6
+
     /// Filter to apply to the room list
     public var filter: RoomFilter
 
-    public init(filter: RoomFilter = .all) {
+    /// Index of the first room of the requested page (0, 6, 12, …). When
+    /// present the server returns at most ``roomsPerPage`` rooms starting
+    /// there; when absent the full list is returned.
+    public var startIndex: UInt8?
+
+    public init(filter: RoomFilter = .all, startIndex: UInt8? = nil) {
         self.filter = filter
+        self.startIndex = startIndex
     }
 
     public init(parsing input: inout ParserSpan) throws {
         self.filter = try RoomFilter(parsing: &input)
+        self.startIndex = input.isEmpty ? nil : try UInt8(parsing: &input)
     }
 
     public func encode(to output: inout ByteWriter) {
         filter.encode(to: &output)
+        if let startIndex {
+            output.write(startIndex)
+        }
     }
 }

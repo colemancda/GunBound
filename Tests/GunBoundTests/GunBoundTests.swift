@@ -369,7 +369,7 @@ import Testing
             #expect(packet.size == numericCast(packet.data.count))
             #expect(packet.opcode == .roomListRequest)
             #expect(packet.id == 0xD579)
-            assertDecode(RoomListRequest(filter: .waiting), packet)
+            assertDecode(RoomListRequest(filter: .waiting, startIndex: 0), packet)
         }
         do {
             let data = [UInt8](hexString: "0A002BBD002101000000")!
@@ -379,7 +379,7 @@ import Testing
             #expect(packet.size == numericCast(packet.data.count))
             #expect(packet.opcode == .roomListRequest)
             #expect(packet.id == 0xBD2B)
-            assertDecode(RoomListRequest(filter: .all), packet)
+            assertDecode(RoomListRequest(filter: .all, startIndex: 0), packet)
         }
     }
 
@@ -447,7 +447,8 @@ import Testing
         #expect(packet.id == 0xFA0E)
         let value = JoinRoomResponse(
             rtc: 0x0000,
-            value0: 0x0100,
+            masterSlot: 0x00,
+            slot: 0x01,
             room: 1,
             name: "test",
             map: .random,
@@ -739,31 +740,26 @@ import Testing
         #expect(packet.opcode == .startGameCommand)
         #expect(packet.opcode.type == .command)
         #expect(packet.id == 0x3104)
-        let value = StartGameCommand(value0: UInt32(0xF674_9000).bigEndian)
+        let value = StartGameCommand(payload: [0xF6, 0x74, 0x90, 0x00])
         assertDecode(value, packet)
         assertEncode(value, packet)
     }
 
     @Test func startGameNotification() throws {
         /*
-         Map Side A
+         Settings 0 (Map Side A)
          Spawn order / slot: [0, 3, 4, 7, 5, 6, 1, 2]
          Turn order / slot: [0, 1]
          x: 253 y 0
          x: 936 y 0
          */
-        let data = [UInt8](
-            hexString: "5600017A3234A34D16EBFBA6F065ACC095DEA8FEB8356893D0E6E4A889D997E8CF18BEE510BE396B45F40AD9D2A62015DBBE6359208B16F7630BC23041311B1EF4DB1B74E729816BD533773BC813DA67AF8C392FD2EC")!
-        let plainText = [UInt8](hexString: "00020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000")!
-        let packet = try #require(Packet(data: data))
-        #expect(packet.data == data)
-        #expect(packet.size == 86)
-        #expect(packet.size == numericCast(packet.data.count))
-        #expect(packet.opcode == .startGameNotification)
-        #expect(packet.opcode.type == .notification)
-        #expect(packet.id == 0x7A01)
+        // 60 bytes — a whole number of the cipher's 12-byte blocks, so the
+        // encrypt/decrypt roundtrip is exact (no padding appended).
+        let plainText = [UInt8](
+            hexString: "0000000000020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000000000")!
         let key = Key(username: "colemancda", password: "1234", nonce: 0x0001_0203)
         let value = StartGameNotification(
+            settings: 0,
             map: .random,
             players: [
                 StartGameNotification.Player(
@@ -788,12 +784,14 @@ import Testing
                 )
             ],
             events: 0xFF00,
-            commandData: UInt32(0xF674_9000).bigEndian
+            commandData: [0xF6, 0x74, 0x90, 0x00, 0x00, 0x00, 0x00]
         )
-        let plainTextPacket = Packet(opcode: packet.opcode, id: packet.id, parameters: plainText)
-        #expect(try plainTextPacket.encrypt(key: key) == packet)
+        let plainTextPacket = Packet(opcode: .startGameNotification, id: 0x7A01, parameters: plainText)
+        #expect(plainTextPacket.opcode.type == .notification)
         assertDecodeDecrypted(value, plainTextPacket)
         assertEncodeDecrypted(value, plainTextPacket)
+        let packet = try plainTextPacket.encrypt(key: key)
+        #expect(try packet.decrypt(key: key) == plainTextPacket)
         assertEncode(value, packet, key: key)
         assertDecode(value, packet, key: key)
     }
@@ -1086,7 +1084,7 @@ import Testing
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.size == 10)
         #expect(packet.id == 0x3FE5)
-        assertDecode(RoomListRequest(filter: .waiting), packet)
+        assertDecode(RoomListRequest(filter: .waiting, startIndex: 0), packet)
     }
 
     /// Second room list request (same filter, different packet ID).
@@ -1096,7 +1094,7 @@ import Testing
         let packet = try #require(Packet(data: data))
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.id == 0x3FE5)
-        assertDecode(RoomListRequest(filter: .waiting), packet)
+        assertDecode(RoomListRequest(filter: .waiting, startIndex: 0), packet)
     }
 
     // MARK: - Room creation
@@ -2162,7 +2160,7 @@ import Testing
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x3FE5)
-        assertDecode(RoomListRequest(filter: .waiting), packet)
+        assertDecode(RoomListRequest(filter: .waiting, startIndex: 0), packet)
     }
 
     /// [008] SEND>> [cmd=0x0321] [79 bytes]
@@ -3552,7 +3550,7 @@ import Testing
         #expect(packet.opcode == .roomListRequest)
         #expect(packet.size   == 10)
         #expect(packet.id     == 0x3FE5)
-        assertDecode(RoomListRequest(filter: .waiting), packet)
+        assertDecode(RoomListRequest(filter: .waiting, startIndex: 0), packet)
     }
 }
 

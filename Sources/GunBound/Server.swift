@@ -127,6 +127,62 @@ public final class GunBoundServer<TCPSocket: GunBoundSocketTCP, UDPSocket: GunBo
         }
         await connection.send(packet)
     }
+
+    /// Sends a notification to every player currently in the room.
+    internal func broadcast<T>(
+        _ notification: T,
+        to room: Room.ID
+    ) async where T: GunBoundPacketEncodable {
+        guard let room = try? await dataSource.room(for: room) else {
+            return
+        }
+        for player in room.players {
+            await storage.connections[player.address]?.send(notification)
+        }
+    }
+
+    /// Room-leave lifecycle: removes the player from their current room,
+    /// elects a new master if the leaver held the seat, and notifies the
+    /// remaining players — `UserQuitNotification` (0x3020) with the vacated
+    /// slot, plus a `HostMigrationNotification` (0x3400) when the master
+    /// seat moved. Emptied rooms are cleaned up by the data source scans
+    /// that follow (disconnect or channel join).
+    internal func notifyRoomLeave(username: Username) async {
+        guard let roomID = try? await dataSource.room(for: username) else {
+            return
+        }
+        let departure = try? await dataSource.update(room: roomID) { (room: inout Room) -> (slot: UInt8, newMaster: UInt8?, room: Room)? in
+            guard let index = room.players.firstIndex(where: { $0.username == username }) else {
+                return nil
+            }
+            let leaver = room.players.remove(at: index)
+            var newMaster: UInt8?
+            if leaver.isAdmin {
+                newMaster = room.electNewMaster()
+            }
+            return (leaver.id, newMaster, room)
+        }
+        guard let (slot, newMaster, room) = departure ?? nil,
+              room.players.isEmpty == false else {
+            return
+        }
+        let quit = UserQuitNotification(slot: UInt16(slot))
+        for player in room.players {
+            await storage.connections[player.address]?.send(quit)
+        }
+        if let masterSlot = newMaster {
+            let migration = HostMigrationNotification(
+                masterSlot: masterSlot,
+                name: room.name,
+                map: room.map,
+                settings: room.settings,
+                capacity: room.capacity
+            )
+            for player in room.players {
+                await storage.connections[player.address]?.send(migration)
+            }
+        }
+    }
 }
 
 // MARK: - Supporting Types
@@ -486,7 +542,10 @@ public actor InMemoryGunBoundServerDataSource: GunBoundServerDataSource {
         if let existing = room.players.first(where: { $0.username == username }) {
             return (room, existing)
         }
-        guard let playerID = room.nextID else {
+        // reject joins into a full room or a game already in progress
+        guard room.isPlaying == false,
+              room.players.count < Int(room.capacity.rawValue),
+              let playerID = room.nextID else {
             throw GunBoundError.roomFull
         }
         let player = Room.PlayerSession(
@@ -718,6 +777,10 @@ internal extension GunBoundServer {
             self.server = server
             self.connection = await GunBound.Connection(socket: socket, log: log) { error in
                 let username = await server.storage.connections[address]?.connection.username
+                // notify the departing player's room before the state is torn down
+                if let username = username {
+                    await server.notifyRoomLeave(username: username)
+                }
                 await server.storage.removeConnection(address)
                 await server.dataSource.didDisconnect(address, username: username)
             }
@@ -755,16 +818,32 @@ internal extension GunBoundServer {
             await connection.register { [unowned self] in await self.roomSetTitle($0) }
             // room change capacity
             await connection.register { [unowned self] in await self.roomChangeCapacity($0) }
+            // room detail
+            await register { [unowned self] in try await self.roomDetail($0) }
+            // user lookup
+            await register { [unowned self] in try await self.userLookup($0) }
             // user ready
             await register { [unowned self] in try await self.userReady($0) }
             // user death (in-game)
             await register { [unowned self] in try await self.userDeath($0) }
+            // player resurrect (in-game)
+            await connection.register { [unowned self] in await self.resurrect($0) }
+            // jewel mode end (in-game)
+            await connection.register { [unowned self] in await self.endGameJewel($0) }
+            // in-game tunnel relay
+            await connection.register { [unowned self] in await self.tunnel($0) }
             // game result
             await connection.register { [unowned self] in await self.gameResult($0) }
             // start game
             await connection.register { [unowned self] in await self.startGame($0) }
             // return to room after game
             await register { [unowned self] in try await self.roomReturnResult($0) }
+            // cash balance refresh
+            await connection.register { [unowned self] in await self.cashUpdateRequest($0) }
+            // broadcast message
+            await connection.register { [unowned self] in await self.bcm($0) }
+            // keep alive
+            await connection.register { [unowned self] in await self.keepAlive($0) }
             // avatar shop
             await connection.register { [unowned self] in await self.getAvatar($0) }
             await connection.register { [unowned self] in await self.setAvatar($0) }
@@ -983,6 +1062,9 @@ internal extension GunBoundServer {
             if targetChannel == 0xFFFF {
                 targetChannel = 0
             }
+            // returning to the lobby leaves the current room — notify the
+            // room before the data source removes the membership
+            await self.server.notifyRoomLeave(username: username)
             // get users in channel
             let channel = try await self.server.dataSource.join(
                 channel: targetChannel,
@@ -1103,7 +1185,17 @@ internal extension GunBoundServer {
             // current channel
             let channel = self.state.channel
             // fetch rooms
-            let rooms = try await self.server.dataSource.rooms(in: channel, filter: request.filter).map {
+            var filteredRooms = try await self.server.dataSource.rooms(in: channel, filter: request.filter)
+            // paginated request: serve one page starting at the given index
+            if let startIndex = request.startIndex.map(Int.init) {
+                if startIndex < filteredRooms.count {
+                    let endIndex = min(startIndex + RoomListRequest.roomsPerPage, filteredRooms.count)
+                    filteredRooms = Array(filteredRooms[startIndex..<endIndex])
+                } else {
+                    filteredRooms = []
+                }
+            }
+            let rooms = filteredRooms.map {
                 RoomListResponse.Room(
                     id: $0.id,
                     name: $0.name,
@@ -1168,12 +1260,24 @@ internal extension GunBoundServer {
                 guard let username = await self.connection.username else {
                     throw GunBoundError.notAuthenticated
                 }
-                // get room password
-                let password = try await self.server.dataSource.room(for: request.room).password
-                // validate password
-                guard password == request.password else {
-                    // TODO: Return error response
-                    throw GunBoundError.invalidPassword
+                // reject unknown rooms and wrong passwords with an error
+                // response — the client shows the failure and stays in the
+                // lobby, so the connection must survive
+                guard let existingRoom = try? await self.server.dataSource.room(for: request.room),
+                      existingRoom.password == request.password
+                else {
+                    await respond(JoinRoomResponse.error(JoinRoomResponse.errorBadRoom))
+                    return
+                }
+                // reject full rooms and games already in progress (rejoining
+                // members bypass the check — the join below is idempotent)
+                let isMember = existingRoom.players.contains { $0.username == username }
+                guard isMember
+                    || (existingRoom.isPlaying == false
+                        && existingRoom.players.count < Int(existingRoom.capacity.rawValue))
+                else {
+                    await respond(JoinRoomResponse.error(JoinRoomResponse.errorRoomFull))
+                    return
                 }
                 // send notification
                 Task {
@@ -1211,7 +1315,8 @@ internal extension GunBoundServer {
                     }
                 let response = JoinRoomResponse(
                     rtc: 0x0000,
-                    value0: 0x0100,
+                    masterSlot: room.master?.id ?? 0,
+                    slot: player.id,
                     room: room.id,
                     name: room.name,
                     map: room.map,
@@ -1253,19 +1358,36 @@ internal extension GunBoundServer {
                         await self.server.storage.connections[player.address]?.send(notification)
                     }
                 }
+            } catch GunBoundError.roomFull {
+                await respond(JoinRoomResponse.error(JoinRoomResponse.errorRoomFull))
             } catch {
                 await close(error)
             }
         }
 
+        /// Broadcasts the room-changed notification (0x3105) to every player
+        /// in the current room, so all Ready Rooms re-sync — not just the
+        /// player who made the change.
         private func updateRoom() async {
             log("Room Update")
-            let notification = RoomUpdateNotification()
-            await send(notification)
+            guard let id = self.state.room else {
+                await send(RoomUpdateNotification())
+                return
+            }
+            await self.server.broadcast(RoomUpdateNotification(), to: id)
         }
 
-        private func cleanupRooms() async {
-
+        /// Runs `body` against the current room only when the requesting user
+        /// holds the master seat. Returns `true` when the change was applied.
+        private func updateRoomAsMaster(_ body: @escaping (inout Room) -> ()) async throws -> Bool {
+            guard let id = self.state.room,
+                let username = await self.connection.username
+            else { return false }
+            return try await self.server.dataSource.update(room: id) { room in
+                guard room.master?.username == username else { return false }
+                body(&room)
+                return true
+            }
         }
 
         private func roomSelectTank(_ request: RoomSelectTankRequest) async throws -> RoomSelectTankResponse {
@@ -1309,21 +1431,16 @@ internal extension GunBoundServer {
                 else { return }
                 room.players[index].team = request.team
             }
+            // let the whole room re-sync the team change
+            await updateRoom()
             return RoomSelectTeamResponse()
         }
 
         private func roomChangeStage(_ command: RoomChangeStageCommand) async {
             log("Change Room Stage - \(command.map)")
-            // get current room
-            guard let id = self.state.room else {
-                return
-            }
-            // update player session state
+            // only the room master may change the map
             do {
-                try await self.server.dataSource.update(room: id) { room in
-                    assert(room.id == id)
-                    room.map = command.map
-                }
+                guard try await updateRoomAsMaster({ $0.map = command.map }) else { return }
             } catch {
                 await close(error)
                 return
@@ -1333,16 +1450,9 @@ internal extension GunBoundServer {
 
         private func roomChangeOption(_ command: RoomChangeOptionCommand) async {
             log("Change Room Options - \(command.settings.toHexadecimal())")
-            // get current room
-            guard let id = self.state.room else {
-                return
-            }
-            // update player session state
+            // only the room master may change the settings
             do {
-                try await self.server.dataSource.update(room: id) { room in
-                    assert(room.id == id)
-                    room.settings = command.settings
-                }
+                guard try await updateRoomAsMaster({ $0.settings = command.settings }) else { return }
             } catch {
                 await close(error)
                 return
@@ -1352,16 +1462,13 @@ internal extension GunBoundServer {
 
         private func roomChangeCapacity(_ command: RoomChangeCapacityCommand) async {
             log("Change Room Capacity - \(command.capacity)")
-            // get current room
-            guard let id = self.state.room else {
-                return
-            }
-            // update player session state
+            // only the room master may change the capacity
             do {
-                try await self.server.dataSource.update(room: id) { room in
-                    assert(room.id == id)
+                guard try await updateRoomAsMaster({ room in
+                    // never shrink below the current occupancy
+                    guard room.players.count <= Int(command.capacity.rawValue) else { return }
                     room.capacity = command.capacity
-                }
+                }) else { return }
             } catch {
                 await close(error)
                 return
@@ -1371,16 +1478,9 @@ internal extension GunBoundServer {
 
         private func roomSetTitle(_ command: RoomSetTitleCommand) async {
             log("Set Room Title - \(command.title)")
-            // get current room
-            guard let id = self.state.room else {
-                return
-            }
-            // update player session state
+            // only the room master may rename the room
             do {
-                try await self.server.dataSource.update(room: id) { room in
-                    assert(room.id == id)
-                    room.name = command.title
-                }
+                guard try await updateRoomAsMaster({ $0.name = command.title }) else { return }
             } catch {
                 await close(error)
                 return
@@ -1415,29 +1515,79 @@ internal extension GunBoundServer {
             }
             // Transition the dying player from alive → dead.
             // Guard: must be in an active game and the slot must currently be alive.
-            let shouldCheckEnd = try await self.server.dataSource.update(room: id) { room in
+            // In score mode the death also costs the team a life.
+            let death = try await self.server.dataSource.update(room: id) { room -> (slot: UInt8, team: Team)? in
                 guard room.isPlaying,
                       let index = room.players.firstIndex(where: { $0.username == username }),
                       room.players[index].status == .alive else {
-                    return false
+                    return nil
                 }
                 room.players[index].status = .dead
-                return true
+                let team = room.players[index].team
+                if room.gameMode == .score, var score = room.score {
+                    switch team {
+                    case .a: score.a = max(score.a - 1, 0)
+                    case .b: score.b = max(score.b - 1, 0)
+                    }
+                    room.score = score
+                }
+                return (room.players[index].id, team)
             }
-            if shouldCheckEnd {
+            if let death = death {
+                // announce the death to the whole room (0x4102)
+                let notification = PlayerDeadNotification(slot: death.slot, team: death.team)
+                await self.server.broadcast(notification, to: id)
                 await checkPlayEnd(roomID: id)
             }
             return UserDeathResponse()
         }
 
+        /// Player resurrected in-game (0x4104): flip the slot back to alive
+        /// so the end-of-game check doesn't count a revived player as dead.
+        private func resurrect(_ command: PlayerResurrectCommand) async {
+            log("Player Resurrect")
+            guard let id = self.state.room,
+                  let username = await self.connection.username else {
+                return
+            }
+            do {
+                try await self.server.dataSource.update(room: id) { room in
+                    guard room.isPlaying,
+                          let index = room.players.firstIndex(where: { $0.username == username }),
+                          room.players[index].status == .dead else {
+                        return
+                    }
+                    room.players[index].status = .alive
+                }
+            } catch {
+                await close(error)
+            }
+        }
+
+        /// Jewel mode end (0x4200): the finishing client submits its
+        /// end-of-game summary, which is relayed unmodified to every player
+        /// in the room as a game-end notification (0x4410).
+        private func endGameJewel(_ command: EndGameJewelCommand) async {
+            log("End Game Jewel")
+            guard let id = self.state.room else {
+                return
+            }
+            guard let room = try? await self.server.dataSource.room(for: id), room.isPlaying else {
+                return
+            }
+            let notification = GameEndNotification(payload: command.payload)
+            await self.server.broadcast(notification, to: id)
+        }
+
         private func gameResult(_ command: GameResultCommand) async {
-            log("Game Result")
+            log("Game Result - \(command.results.count) result(s)")
             do {
                 guard let id = self.state.room else {
                     throw GunBoundError.notInRoom
                 }
                 let players = try await self.server.dataSource.update(room: id) { room in
                     room.isPlaying = false
+                    room.score = nil
                     for i in room.players.indices {
                         room.players[i].status = .waiting
                     }
@@ -1456,40 +1606,26 @@ internal extension GunBoundServer {
         }
 
         /// Server-side end-of-game check, called after every player death.
-        ///  - Jewel mode (settings & 0xC0000 == 0x40000 / 0xC0000): compare team death counts
-        ///    against the kill threshold encoded in bits [23:20] of `settings`.
-        ///  - Score / Solo mode (default): game ends when only one team has alive players.
+        /// In score mode a team whose lives reach zero loses; in every mode a
+        /// team with no alive players loses (jewel mode additionally ends via
+        /// the client's 0x4200 submission). The winner is announced to the
+        /// whole room as a game-end notification (0x4410) and the room
+        /// returns to the waiting state.
         private func checkPlayEnd(roomID: Room.ID) async {
             do {
                 let room = try await self.server.dataSource.room(for: roomID)
                 guard room.isPlaying else { return }
-
-                let gameMode = room.settings & 0x000C_0000
-                let gameOver: Bool
-
-                if gameMode == 0x0004_0000 || gameMode == 0x000C_0000 {
-                    // Jewel mode: a team loses when its death count reaches the kill threshold
-                    let killThreshold = Int((room.settings >> 20) & 0xF)
-                    guard killThreshold > 0 else { return }
-                    let teamADeaths = room.players.filter { $0.team == .a && $0.status == .dead }.count
-                    let teamBDeaths = room.players.filter { $0.team == .b && $0.status == .dead }.count
-                    gameOver = teamADeaths >= killThreshold || teamBDeaths >= killThreshold
-                } else {
-                    // Score / Solo mode: game ends when at most one team still has alive players
-                    let aliveTeams = Set(room.players.filter { $0.status == .alive }.map { $0.team })
-                    gameOver = aliveTeams.count <= 1
-                }
-
-                guard gameOver else { return }
+                guard let winner = room.winningTeam else { return }
 
                 let players = try await self.server.dataSource.update(room: roomID) { room in
                     room.isPlaying = false
+                    room.score = nil
                     for i in room.players.indices {
                         room.players[i].status = .waiting
                     }
                     return room.players
                 }
-                let notification = GameResultNotification()
+                let notification = GameEndNotification(winner: winner)
                 for player in players {
                     guard let connection = await self.server.storage.connections[player.address] else { continue }
                     await connection.send(notification)
@@ -1502,12 +1638,15 @@ internal extension GunBoundServer {
         private func startGame(_ command: StartGameCommand) async {
             log("Start Game")
             do {
-                guard let id = self.state.room else {
+                guard let id = self.state.room,
+                      let username = await self.connection.username else {
                     throw GunBoundError.notInRoom
                 }
                 // Atomically validate pre-conditions and transition to playing.
                 // Returns (started: Bool, room: Room) — started is false if any guard fails.
                 let (started, room) = try await self.server.dataSource.update(room: id) { room in
+                    // only the room master can start the game
+                    guard room.master?.username == username else { return (false, room) }
                     // reject if already in progress
                     guard !room.isPlaying else { return (false, room) }
                     // all non-admin slots must be ready (matches binary guard loop)
@@ -1521,6 +1660,15 @@ internal extension GunBoundServer {
                     room.isPlaying = true
                     for i in room.players.indices {
                         room.players[i].status = .alive
+                    }
+                    // score mode: each team starts with a shared pool of lives
+                    // sized from the head count (reference emulator formula)
+                    if room.gameMode == .score {
+                        var lives = room.players.count / 2
+                        if lives % 2 != 0 { lives += 1 }
+                        room.score = Room.TeamScore(a: lives + 1, b: lives + 1)
+                    } else {
+                        room.score = nil
                     }
                     return (true, room)
                 }
@@ -1551,10 +1699,11 @@ internal extension GunBoundServer {
                 }
                 assert(players.count == room.players.count)
                 let notification = StartGameNotification(
+                    settings: room.settings,
                     map: map,
                     players: players,
                     events: 0xFF00,
-                    commandData: command.value0
+                    commandData: command.payload
                 )
                 for player in room.players {
                     guard let connection = await self.server.storage.connections[player.address] else {
@@ -1570,6 +1719,78 @@ internal extension GunBoundServer {
         private func roomReturnResult(_ request: RoomReturnResultRequest) async throws -> RoomReturnResultResponse {
             log("Room Return Result")
             return RoomReturnResultResponse()
+        }
+
+        /// In-game tunnel relay (0x4500 → 0x4501): forwards the opaque game
+        /// payload to the player in the addressed slot, replacing the
+        /// destination slot with the sender's slot. This is the transport
+        /// for all in-match gameplay traffic.
+        private func tunnel(_ command: Tunnel) async {
+            guard let id = self.state.room,
+                  let username = await self.connection.username else {
+                return
+            }
+            guard let room = try? await self.server.dataSource.room(for: id),
+                  let sender = room.players.first(where: { $0.username == username }),
+                  let destination = room.players.first(where: { $0.id == command.destinationSlot })
+            else {
+                log("Tunnel - invalid destination slot \(command.destinationSlot)")
+                return
+            }
+            let forward = TunnelForward(sourceSlot: sender.id, payload: command.payload)
+            await self.server.storage.connections[destination.address]?.send(forward)
+        }
+
+        private func roomDetail(_ request: RoomDetailRequest) async throws -> RoomDetailResponse {
+            log("Room Detail - \(request.room)")
+            let room = try await self.server.dataSource.room(for: request.room)
+            return RoomDetailResponse(
+                name: room.name,
+                readyID: room.master?.id ?? 0
+            )
+        }
+
+        private func userLookup(_ request: UserIdRequest) async throws -> UserIdResponse {
+            log("User Lookup - \(request.username)")
+            // must be authenticated (the response is session-encrypted)
+            guard await self.connection.username != nil else {
+                throw GunBoundError.notAuthenticated
+            }
+            // echo the requested name with empty stats when unknown
+            guard let user = try? await self.server.dataSource.user(for: request.username) else {
+                return UserIdResponse(nickname1: request.username, nickname2: request.username)
+            }
+            return UserIdResponse(
+                nickname1: user.id,
+                nickname2: user.id,
+                guild: user.guild,
+                rankCurrent: Int16(bitPattern: user.rankCurrent),
+                rankSeason: Int16(bitPattern: user.rankSeason)
+            )
+        }
+
+        /// Cash refresh request (0x6100): reply with the same cash update
+        /// notification (0x1032) that is pushed after login.
+        private func cashUpdateRequest(_ request: CashUpdateRequest) async {
+            await cashUpdate()
+        }
+
+        /// Broadcast message (0x5010): relayed to every authenticated
+        /// connection as a client print notification (0x5101).
+        private func bcm(_ command: Bcm) async {
+            log("BCM - \(command.message)")
+            guard await self.connection.username != nil else {
+                return
+            }
+            let notification = ClientPrintNotification(message: command.message)
+            for connection in await self.server.storage.connections.values {
+                guard await connection.connection.username != nil else { continue }
+                await connection.send(notification)
+            }
+        }
+
+        private func keepAlive(_ packet: KeepAlive) async {
+            log("Keep Alive")
         }
 
         // MARK: - Avatar Shop

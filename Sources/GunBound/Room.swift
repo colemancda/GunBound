@@ -31,6 +31,10 @@ public struct Room: Equatable, Hashable, Codable, Identifiable, Sendable {
     public var players: [PlayerSession]
 
     public var message: String
+
+    /// Remaining lives per team while a score-mode game is in progress;
+    /// `nil` outside of score-mode games.
+    public var score: TeamScore? = nil
 }
 
 // MARK: - Supporting Types
@@ -55,6 +59,22 @@ public extension Room {
         public var status: PlayerSlotStatus
 
         public var isAdmin: Bool
+    }
+}
+
+public extension Room {
+
+    /// Remaining lives per team in a score-mode game.
+    struct TeamScore: Equatable, Hashable, Codable, Sendable {
+
+        public var a: Int
+
+        public var b: Int
+
+        public init(a: Int, b: Int) {
+            self.a = a
+            self.b = b
+        }
     }
 }
 
@@ -93,6 +113,45 @@ public extension Room {
         let aTeamCount = playerTeams.filter { $0 == .a }.count
         let bTeamCount = playerTeams.filter { $0 == .b }.count
         return aTeamCount > bTeamCount ? .b : .a
+    }
+
+    /// The room master (admin) session, if any.
+    var master: PlayerSession? {
+        players.first(where: { $0.isAdmin })
+    }
+
+    /// The game mode encoded in the settings bitmask.
+    var gameMode: GunBoundProtocol.GameMode? {
+        GunBoundProtocol.GameMode(settings: settings)
+    }
+
+    /// Elects the player in the lowest occupied slot as the new master.
+    /// Returns the new master's slot, or `nil` if the room is empty.
+    @discardableResult
+    mutating func electNewMaster() -> PlayerSession.ID? {
+        guard let index = players.indices.min(by: { players[$0].id < players[$1].id }) else {
+            return nil
+        }
+        for i in players.indices {
+            players[i].isAdmin = false
+        }
+        players[index].isAdmin = true
+        return players[index].id
+    }
+
+    /// The winning team if the game has ended, `nil` while it is still in
+    /// progress: in score mode a team whose lives reach zero loses; in any
+    /// mode a team with no alive players loses.
+    var winningTeam: Team? {
+        if gameMode == .score, let score = score {
+            if score.a <= 0 { return .b }
+            if score.b <= 0 { return .a }
+        }
+        let teamAAlive = players.contains { $0.team == .a && $0.status == .alive }
+        let teamBAlive = players.contains { $0.team == .b && $0.status == .alive }
+        if teamAAlive == false { return .b }
+        if teamBAlive == false { return .a }
+        return nil
     }
 }
 

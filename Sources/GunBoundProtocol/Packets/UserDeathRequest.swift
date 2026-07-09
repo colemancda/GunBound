@@ -7,7 +7,7 @@ public struct UserDeathRequest: GunBoundPacket, GunBoundPacketEncodable, GunBoun
 
     internal let value1: UInt32
 
-    internal init(value0: UInt8, value1: UInt32) {
+    public init(value0: UInt8 = 0, value1: UInt32 = 0) {
         self.value0 = value0
         self.value1 = value1
     }

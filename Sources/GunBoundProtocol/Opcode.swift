@@ -56,6 +56,11 @@ public enum Opcode: UInt16, Sendable {
     /// Cash Update Notification - update player's cash balance
     case cashUpdateNotification = 0x1032
 
+    /// Cash Update Request - client asks for a fresh cash balance (sent when
+    /// entering the shop, among others); the server answers with a
+    /// `cashUpdateNotification` (0x1032).
+    case cashUpdateRequest = 0x6100
+
     /// Gold Update Request - request current gold balance
     case goldUpdateRequest = 0x6104
 
@@ -209,20 +214,20 @@ public enum Opcode: UInt16, Sendable {
     /// Room Return Result Response
     case roomReturnResultResponse = 0x3233
 
-    /// User Quit Notification - observed with two meanings depending on
-    /// screen: a no-payload ready/unready toggle in the Ready Room, and a
-    /// player-disconnected-mid-match signal while In-Battle.
-    /// (observed via static analysis of the original client)
+    /// User Quit Notification - broadcast to the remaining players when
+    /// someone leaves the room; the payload is the vacated slot (UInt16 LE).
     case userQuitNotification = 0x3020
 
     /// Room Change Team Notification (tentative) - single byte team value.
     /// (observed via static analysis of the original client)
     case roomChangeTeamNotification = 0x3151
 
-    /// Room Ready Button Refresh Notification - no payload; tells the client
-    /// to redraw its primary action button (Ready vs. Start Game, depending
-    /// on room ownership). (observed via static analysis of the original client)
-    case roomReadyButtonRefreshNotification = 0x3400
+    /// Host Migration Notification - broadcast to the room when the master
+    /// leaves and another player takes over: new master slot followed by a
+    /// room summary (title, map, settings, item state, capacity). Receiving
+    /// it also makes the client redraw its primary action button (Ready vs.
+    /// Start Game, depending on room ownership).
+    case hostMigrationNotification = 0x3400
 
     /// Room Ready Confirmation Notification - no payload; shared confirmation
     /// tail also reachable via team/tank/map-selection opcodes.
@@ -261,12 +266,10 @@ public enum Opcode: UInt16, Sendable {
     /// Play Result Notification - broadcast game results
     case playResultNotification = 0x4413
 
-    /// User Disconnect Notification - a second, companion disconnect signal
-    /// alongside `userQuitNotification`; payload is a bitmask checked against
-    /// `0xf000`, gating a position field and cooldown flag (not fully
-    /// disambiguated from `userQuitNotification`'s trigger conditions).
-    /// (observed via static analysis of the original client)
-    case userDisconnectNotification = 0x4102
+    /// Player Dead Notification - broadcast to every player in the room when
+    /// someone dies in-game: dead player's slot, 10 reserved bytes, and the
+    /// dead player's team (12 bytes total, one AES block).
+    case playerDeadNotification = 0x4102
 
     // MARK: - Server/Admin Commands
 
@@ -315,11 +318,18 @@ public enum Opcode: UInt16, Sendable {
     /// Client Set Passable Authority - set passable authority level
     case clientSetPassableAuthority = 0x512a  // SVC_CMD_SET_PASSABLE_AUTH
 
-    /// Rebroadcast - rebroadcast packet to other players
-    case rebroadcast = 0x4410
+    /// Game End Notification - broadcast to the room when the match ends:
+    /// the winning team byte followed by reserved bytes (or, for jewel mode,
+    /// the relayed end-of-game payload the finishing client submitted).
+    case gameEndNotification = 0x4410
 
-    /// Tunnel - P2P tunneling packet for direct connection
+    /// Tunnel - in-game relay: gameplay traffic addressed to a room slot,
+    /// forwarded by the server to that player as a `tunnelForward` (0x4501).
     case tunnel = 0x4500  // SVC_TUNNEL
+
+    /// Tunnel Forward - server-to-client leg of the tunnel: the sender's
+    /// room slot followed by the opaque game payload.
+    case tunnelForward = 0x4501
 
     // MARK: - Shop/Avatar
 
@@ -472,14 +482,16 @@ public extension Opcode {
         case .roomReturnResultResponse: return .response
         case .userQuitNotification: return .notification
         case .roomChangeTeamNotification: return .notification
-        case .roomReadyButtonRefreshNotification: return .notification
+        case .hostMigrationNotification: return .notification
         case .roomReadyConfirmationNotification: return .notification
-        case .userDisconnectNotification: return .notification
+        case .playerDeadNotification: return .notification
         case .gameDropUserCommand: return .command
         case .policeAccuse: return .command
         case .userInfo: return .notification
         case .bcm: return .command
-        case .rebroadcast: return .command
+        case .gameEndNotification: return .notification
+        case .tunnelForward: return .notification
+        case .cashUpdateRequest: return .command
         case .close: return .notification
         case .getAvatarRequest: return .request
         case .getAvatarResponse: return .response
@@ -517,6 +529,9 @@ public extension Opcode {
             .channelChatBroadcast,
             .endGameJewelCommand,
             .playResurrect,
+            .playResultCommand,
+            .playerDeadNotification,
+            .gameEndNotification,
             // incoming avatar shop requests are encrypted
             .setAvatarRequest,
             .buyGoldRequest,

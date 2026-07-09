@@ -86,7 +86,7 @@ struct NetworkClientPumpTests {
     /// An unknown notification opcode surfaces as `.raw` rather than being
     /// dropped — screens can decode packet types this layer doesn't model.
     @Test func unmodeledNotificationsArriveRaw() async throws {
-        let packet = Packet(opcode: .roomReadyButtonRefreshNotification, parameters: [0x00, 0x00])
+        let packet = Packet(opcode: .roomReadyConfirmationNotification, parameters: [0x00, 0x00])
         MockGunBoundSocket.queuedResponses = [packet.data]
         let client = try await NetworkClient<MockGunBoundSocket>.connect(Self.config)
 

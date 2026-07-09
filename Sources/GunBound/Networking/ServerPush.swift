@@ -41,6 +41,26 @@ public enum ServerPush: Equatable, Sendable {
     /// per-player spawn data; the Ready Room transitions to Loading on it.
     case gameStarted(StartGameNotification)
 
+    /// A player left the room (`0x3020`) — carries the vacated slot so the
+    /// Ready Room can clear that seat.
+    case userQuit(UserQuitNotification)
+
+    /// The room master left and another player took over (`0x3400`) —
+    /// carries the new master's slot and a room summary.
+    case hostMigrated(HostMigrationNotification)
+
+    /// In-game tunnel traffic (`0x4501`) — an opaque game payload relayed
+    /// from another player's slot.
+    case tunnelReceived(TunnelForward)
+
+    /// A player died in-game (`0x4102`, encrypted) — carries the dead
+    /// player's slot and team.
+    case playerDied(PlayerDeadNotification)
+
+    /// The match is over (`0x4410`, encrypted) — the winning team, or the
+    /// relayed jewel-mode summary.
+    case gameEnded(GameEndNotification)
+
     /// Any other notification, undecoded.
     case raw(Packet)
 }
@@ -80,6 +100,31 @@ extension ServerPush {
         case .startGameNotification:
             if let value = try? decoder.decode(StartGameNotification.self, from: packet) {
                 self = .gameStarted(value)
+                return
+            }
+        case .userQuitNotification:
+            if let value = try? decoder.decode(UserQuitNotification.self, from: packet) {
+                self = .userQuit(value)
+                return
+            }
+        case .hostMigrationNotification:
+            if let value = try? decoder.decode(HostMigrationNotification.self, from: packet) {
+                self = .hostMigrated(value)
+                return
+            }
+        case .tunnelForward:
+            if let value = try? decoder.decode(TunnelForward.self, from: packet) {
+                self = .tunnelReceived(value)
+                return
+            }
+        case .playerDeadNotification:
+            if let value = try? decoder.decode(PlayerDeadNotification.self, from: packet) {
+                self = .playerDied(value)
+                return
+            }
+        case .gameEndNotification:
+            if let value = try? decoder.decode(GameEndNotification.self, from: packet) {
+                self = .gameEnded(value)
                 return
             }
         default:
