@@ -17,9 +17,11 @@ public final class GameRoomListScreen: GameScreen {
     private let viewModel: GameRoomListViewModel
     private var backgroundTexture: ClientTexture?
     private var buttonTextures: [ClientTexture?] = []
-    private var cardTexture: ClientTexture?
-    private var cardHighlightTexture: ClientTexture?
-    private var statusTextures: [GameRoomListViewModel.RoomStatus: ClientTexture] = [:]
+    /// `gamelist_back.img` frames keyed by frame index (see `RenderRoomCard`):
+    /// 1–6 card backgrounds, 7–9 status icons, 10–13 game-mode labels, 15
+    /// padlock. Stored sparse by index so drawing reads them by the frame
+    /// number the view model computes.
+    private var cardFrames: [Int: ClientTexture] = [:]
     private var font: LoadedFont?
     private var textFont: LoadedFont?
     /// Widget tree — currently just the shared buddy panel, hidden until the
@@ -37,13 +39,11 @@ public final class GameRoomListScreen: GameScreen {
         let assets = context.assets
         backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
 
-        // Room-card states + status icons live as extra frames of the same
-        // background sprite sheet.
-        cardTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 1, assets: assets)
-        cardHighlightTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 2, assets: assets)
-        let statusFrames: [(GameRoomListViewModel.RoomStatus, Int)] = [(.waiting, 7), (.playing, 8), (.full, 9)]
-        for (status, frame) in statusFrames {
-            statusTextures[status] = renderer.texture(named: viewModel.backgroundImageName, frame: frame, assets: assets)
+        // Card backgrounds (1–6), status icons (7–9), game-mode labels
+        // (10–13), and the padlock (15) all live as extra frames of the
+        // background sheet; load each frame the card renderer can ask for.
+        for frame in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15] {
+            cardFrames[frame] = renderer.texture(named: viewModel.backgroundImageName, frame: frame, assets: assets)
         }
 
         font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
@@ -98,9 +98,7 @@ public final class GameRoomListScreen: GameScreen {
         viewModel.onExit()
         backgroundTexture = nil
         buttonTextures = []
-        cardTexture = nil
-        cardHighlightTexture = nil
-        statusTextures = [:]
+        cardFrames = [:]
         font = nil
         textFont = nil
         rootWidget = Widget()
@@ -133,32 +131,45 @@ public final class GameRoomListScreen: GameScreen {
         let visibleRooms = viewModel.visibleRooms
         for (index, room) in visibleRooms.enumerated() {
             let rect = viewModel.roomRect(at: index)
-            let highlighted = index == viewModel.selectedRoomIndex || index == viewModel.hoveredRoomIndex
-            if let card = highlighted ? (cardHighlightTexture ?? cardTexture) : cardTexture {
+            let rightColumn = index / 3 != 0
+
+            // Card background — frame 1–6 by column, joined, and hover/select
+            // state (RenderRoomCard).
+            if let card = cardFrames[viewModel.cardFrame(forVisibleSlot: index)] {
                 renderer.draw(card, in: rect, tint: nil)
             }
-            // Status icon, right-aligned within the card.
-            let status = viewModel.status(of: room)
-            if let icon = statusTextures[status] {
-                let (iconWidth, iconHeight) = renderer.size(of: icon)
-                let iconRect = Rect(
-                    x: rect.x + rect.width - iconWidth - 8,
-                    y: rect.y + (rect.height - iconHeight) / 2,
-                    width: iconWidth,
-                    height: iconHeight
-                )
-                renderer.draw(icon, in: iconRect, tint: nil)
+
+            // Draws a `gamelist_back.img` icon frame at a card-relative offset,
+            // at its own natural size.
+            func drawIcon(_ frame: Int, atX offsetX: Float, y offsetY: Float) {
+                guard let icon = cardFrames[frame] else { return }
+                let (w, h) = renderer.size(of: icon)
+                renderer.draw(icon, in: Rect(x: rect.x + offsetX, y: rect.y + offsetY, width: w, height: h), tint: nil)
             }
 
-            // Bitmap-font text: room number (top-left) and players/max count
-            // (bottom-left) — the decomp's `%d` and `%3d/%3d` overlays. Room
-            // *name* needs the general `font.fnt`, not decoded yet.
+            // Status (PLAY/FULL/WAIT), game-mode label (SOLO…JEWEL), and the
+            // padlock when the room is private — all at their decomp offsets.
+            drawIcon(viewModel.statusFrame(of: room),
+                     atX: GameRoomListViewModel.statusIconOffset.x, y: GameRoomListViewModel.statusIconOffset.y)
+            drawIcon(viewModel.modeFrame(of: room),
+                     atX: GameRoomListViewModel.modeIconOffset.x, y: GameRoomListViewModel.modeIconOffset.y)
+            if room.isLocked {
+                drawIcon(15, atX: GameRoomListViewModel.lockIconX(rightColumn: rightColumn),
+                         y: GameRoomListViewModel.lockIconOffsetY)
+            }
+
+            // Bitmap-font text in the card's top strip: room number + name on
+            // the left, and the players/max count flanking the "/" baked into
+            // the card art near the right edge (the decomp's `%d` / count
+            // overlays).
             if let font {
-                let numberText = "\(index + 1)"
-                font.draw(numberText, x: rect.x + 8, y: rect.y + 6, using: renderer)
-                // Room name (Latin bitmap font) to the right of the number.
-                textFont?.draw(room.name, x: rect.x + 8 + font.width(of: numberText) + 8, y: rect.y + 6, using: renderer)
-                font.draw("\(room.playerCount)/\(room.capacity.rawValue)", x: rect.x + 8, y: rect.y + rect.height - font.lineHeight - 6, using: renderer)
+                let numberText = "\(room.id.rawValue)"
+                font.draw(numberText, x: rect.x + 12, y: rect.y + 8, using: renderer)
+                textFont?.draw(room.name, x: rect.x + 12 + font.width(of: numberText) + 8, y: rect.y + 8, using: renderer)
+                // The baked separator sits at ~x+198; count numbers flank it.
+                let players = "\(room.playerCount)"
+                font.draw(players, x: rect.x + 194 - font.width(of: players), y: rect.y + 8, using: renderer)
+                font.draw("\(room.capacity.rawValue)", x: rect.x + 203, y: rect.y + 8, using: renderer)
             }
         }
 
