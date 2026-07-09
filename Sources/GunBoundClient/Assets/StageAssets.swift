@@ -45,19 +45,22 @@ public extension GameMap {
 
 public extension Mobile {
 
-    /// The mobile's in-battle sprite sheet (`tank1.img` … `tank16.img`,
-    /// 455 frames of 36×40 cells; frame 0 = the idle pose). The sheets are
-    /// 1-indexed in raw-value order, with Dragon/Knight (raw `0x11`/`0x12`)
-    /// as sheets 15/16; `.random` falls back to Armor's sheet (a started
+    /// The mobile's asset number — the `N` in the sprite sheet name
+    /// (`tankN.img`, 455 frames of 36×40 cells) and in the per-mobile
+    /// sound effects (`<N><weapon>fire.xes`, `<N>move.xes`, …). Assets
+    /// are 1-indexed in raw-value order, with Dragon/Knight (raw
+    /// `0x11`/`0x12`) as 15/16; `.random` falls back to Armor (a started
     /// match should have resolved it).
-    var tankImageName: String {
+    var sheetNumber: Int {
         switch self {
-        case .dragon: return "tank15.img"
-        case .knight: return "tank16.img"
-        case .random: return "tank1.img"
-        default: return "tank\(Int(rawValue) + 1).img"
+        case .dragon: return 15
+        case .knight: return 16
+        case .random: return 1
+        default: return Int(rawValue) + 1
         }
     }
+
+    var tankImageName: String { "tank\(sheetNumber).img" }
 
     /// The sheet's paired `.epa` animation table (named frame runs:
     /// `normal`, `move`, `fire1`, `shock`, `dead`, the `w`-prefixed
