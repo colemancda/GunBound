@@ -238,12 +238,11 @@ public final class GameRoomListViewModel: ScreenViewModel {
         }
     }
 
-    /// The game-mode label frame (SOLO … JEWEL), `10 + (settings bits 18–19)`,
-    /// mirroring `RenderRoomCard`'s `(info >> 0x12 & 3) + 10`. The exact
-    /// `settings` bit layout isn't confirmed against ours, so this may need a
-    /// tweak once the mode encoding is pinned down; it defaults to SOLO (10).
+    /// The game-mode label frame (SOLO / SCORE / TAG / JEWEL), mirroring
+    /// `RenderRoomCard`'s `(info >> 0x12 & 3) + 10` via the typed
+    /// `RoomSettings` bitmask.
     public func modeFrame(of room: RoomListResponse.Room) -> Int {
-        10 + Int((room.settings >> 18) & 3)
+        10 + room.roomSettings.modeLabelIndex
     }
 
     // MARK: - Input
