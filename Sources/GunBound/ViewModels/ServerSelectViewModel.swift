@@ -41,11 +41,18 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public let musicName: String? = "channel.mp3"
     public let loopMusic = true
 
-    /// Confirmed positions — see the type-level doc comment.
+    /// The three bottom-bar buttons at confirmed positions (see the
+    /// type-level doc comment), plus the WORLD LIST panel's own two buttons
+    /// — `BuildWorldListPanel` (`0x5099d0`) creates a View All / Friends
+    /// pair (msgs `0x44c`/`0x44d`) at the bottom of the panel; their exact
+    /// positions aren't decomp-recorded, so those two rects are measured
+    /// from a screenshot of the original.
     public let buttons: [Button] = [
         Button(name: "b_server_exitgame.img", rect: Rect(x: 40, y: 551, width: 107, height: 45)),
         Button(name: "b_server_buddygame.img", rect: Rect(x: 163, y: 551, width: 107, height: 45)),
         Button(name: "b_server_choiceserver.img", rect: Rect(x: 409, y: 551, width: 107, height: 45)),
+        Button(name: "b_server_all.img", rect: Rect(x: 335, y: 512, width: 81, height: 33)),
+        Button(name: "b_server_friend.img", rect: Rect(x: 425, y: 512, width: 80, height: 33)),
     ]
 
     /// Not decomp-confirmed — see the type-level doc comment. Set by the
@@ -87,6 +94,18 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public static let gaugeSize = (width: Float(42), height: Float(65))
     static let rowOrigin = (x: Float(0x16), y: Float(0x2d))  // relative to panel
     static let rowPitch = (x: Float(0xf7), y: Float(0x49))
+
+    /// How many rows fit on screen: 6 per column × 2 columns (a 7th row
+    /// would start past the panel's bottom edge). A 16-entry page holds
+    /// more than fits — the remainder needs the scroll widget, which isn't
+    /// implemented yet.
+    public static let maxVisibleRows = 12
+
+    /// The servers actually drawn/hit-tested — the fetched list capped to
+    /// the 12 on-screen row slots.
+    public var visibleServers: ArraySlice<ServerDirectoryResponse.Server> {
+        availableServers.prefix(Self.maxVisibleRows)
+    }
 
     /// The highlighted row (the state object's `+0x08`, init −1): set by
     /// clicking an online row (`WorldListRowHitTest` only accepts online
@@ -157,23 +176,27 @@ public final class ServerSelectViewModel: ScreenViewModel {
             // No user interaction while the list is loading or a connect
             // attempt is already in flight.
             guard !state.isLoading, !state.isConnecting else { return }
-            // Row click first — `WorldListRowHitTest` maps the click through
-            // the same grid geometry as the renderer and only accepts online
-            // rows (fullness is checked later, at connect time).
-            if let row = (0..<availableServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) {
-                if availableServers[row].isEnabled {
-                    selectedIndex = row
+            // Button click first (the panel's View All / Friends buttons
+            // overlap the panel area), then row hit-testing —
+            // `WorldListRowHitTest` maps the click through the same grid
+            // geometry as the renderer and only accepts online rows
+            // (fullness is checked later, at connect time).
+            if let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) {
+                switch buttons[index].name {
+                case "b_server_choiceserver.img":
+                    connect()
+                case "b_server_exitgame.img":
+                    delegate.requestQuit()
+                case "b_server_all.img":
+                    reload()
+                default:
+                    print("[GunBound] clicked server-select button: \(buttons[index].name)")
                 }
                 return
             }
-            guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
-            switch buttons[index].name {
-            case "b_server_choiceserver.img":
-                connect()
-            case "b_server_exitgame.img":
-                delegate.requestQuit()
-            default:
-                print("[GunBound] clicked server-select button: \(buttons[index].name)")
+            if let row = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }),
+               availableServers[row].isEnabled {
+                selectedIndex = row
             }
 
         case .activate:
