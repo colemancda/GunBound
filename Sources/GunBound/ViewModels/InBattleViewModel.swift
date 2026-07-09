@@ -1,26 +1,31 @@
+import Foundation
 import GunBoundProtocol
 
 /// The terrain queries the battle needs — implemented by the client layer's
 /// `.lnd` mask parser (the per-pixel stage collision map). A protocol here
 /// because the `GunBound` module doesn't depend on the file-format library.
 public protocol BattleTerrain: Sendable {
+    /// Whether the cell at (x, y) is solid ground (out of bounds = air).
+    func isSolid(x: Int, y: Int) -> Bool
     /// The terrain-surface y at column `x` nearest `y` (up out of ground,
     /// or down onto it); `nil` off the map.
     func surfaceLevel(atX x: Int, near y: Int) -> Int?
 }
 
-/// Logic for the In-Battle screen (state 11) — the first real slice of the
-/// battle: the static scene. Consumes the `0x3432` start data stored in
-/// `session.battle` (map + per-player spawns/tanks/turn order), drives a
-/// camera over the stage world with the original's screen-edge scrolling
-/// (`State11_InBattle` slot 9's 8-direction edge-scroll logic), and reacts
-/// to the battle pushes: `playerDied` grays a slot, `userQuit` removes one,
-/// and `gameEnded` returns everyone to the lobby.
+/// Logic for the In-Battle screen (state 11) — the playable slice: the
+/// static scene (spawns/camera from the `0x3432` start data, the original's
+/// edge-scrolled camera) plus the fire loop — aim with ◀/▶, charge and
+/// release with Enter, a parabolic projectile that collides with the `.lnd`
+/// terrain, splash damage, and turn cycling. Shots relay to the other
+/// players through the server tunnel (`0x4500`), and every client resolves
+/// the same deterministic simulation.
 ///
-/// The turn state machine, aiming/firing, ballistics, terrain destruction,
-/// and the layered effect rendering are later slices — `.activate` returns
-/// to the lobby as a placeholder exit until the match flow ends games
-/// properly.
+/// **Documented divergence**: the original client sends only angle+power and
+/// the *server* resolves the shot (the `0x8403` payload's eight
+/// server-computed shorts — no local ballistics in the client at all). Our
+/// server doesn't simulate shots, so the clients run identical local
+/// physics off the relayed angle/power instead. Wind, walking, item use,
+/// and terrain destruction are later slices.
 @MainActor
 public final class InBattleViewModel: ScreenViewModel {
 
@@ -48,23 +53,76 @@ public final class InBattleViewModel: ScreenViewModel {
         }
     }
 
+    /// The turn/fire state machine (a simplified local stand-in for the
+    /// original's `ProcessBattleAction` turn machine).
+    public enum TurnPhase: Equatable, Sendable {
+        /// Another player's turn (or a remote shot resolving).
+        case waiting
+        /// Our turn: ◀/▶ aim, Enter starts the charge.
+        case aiming
+        /// Power charging; Enter (or a full gauge) fires.
+        case charging
+        /// A projectile is in flight (ours or a relayed remote shot).
+        case projectileInFlight
+        /// The explosion is playing; damage + turn advance on completion.
+        case impact
+    }
+
+    public struct Projectile: Equatable, Sendable {
+        public var x: Float
+        public var y: Float
+        public var vx: Float
+        public var vy: Float
+    }
+
+    public struct Explosion: Equatable, Sendable {
+        public let x: Float
+        public let y: Float
+        public var age: Double = 0
+
+        public init(x: Float, y: Float) {
+            self.x = x
+            self.y = y
+        }
+    }
+
+    // MARK: Tuning
+
     /// Half the 800×600 view — the original biases world→screen by
     /// (+400, +0x12a) after subtracting the camera.
     public static let halfView = (x: Float(400), y: Float(0x12a))
-
-    /// Edge-scroll: the band width at each screen edge that pans the camera,
-    /// and the pan speed (the original's slot-9 edge-scroll logic; the speed
-    /// is approximated — not extracted from the decomp).
     public static let edgeBand: Float = 24
     public static let edgeScrollSpeed: Float = 480
+    /// Elevation limits (degrees) and the per-keypress step.
+    public static let aimRange: ClosedRange<Float> = 10...80
+    public static let aimStep: Float = 2
+    /// Seconds to charge the gauge from empty to full (auto-fires at full).
+    public static let chargeDuration: Double = 1.5
+    /// Muzzle speed at full power (px/s) and gravity (px/s², y-down world).
+    public static let maxShotSpeed: Float = 900
+    public static let gravity: Float = 450
+    /// Splash-damage radius (px) and the explosion's display time.
+    public static let splashRadius: Float = 55
+    public static let explosionDuration: Double = 0.7
+
+    // MARK: State
 
     public private(set) var players: [BattlePlayer] = []
     public private(set) var map: GameMap = .random
+    public private(set) var phase: TurnPhase = .waiting
+    public private(set) var aimAngle: Float = 45
+    /// Charge level, `0…1`, while `phase == .charging`.
+    public private(set) var power: Float = 0
+    public private(set) var projectile: Projectile?
+    public private(set) var explosion: Explosion?
+    public private(set) var terrain: (any BattleTerrain)?
 
     /// Camera center, in stage-world coordinates, clamped to the world.
     public private(set) var camera: (x: Float, y: Float) = (400, 298)
     private var worldSize: (width: Float, height: Float) = (1800, 1800)
     private var pointer: (x: Float, y: Float)?
+    /// The turn-order value whose owner is acting now.
+    private var turnCursor = 0
 
     private var pushTask: Task<Void, Never>?
     private let delegate: ViewModelDelegate
@@ -86,6 +144,12 @@ public final class InBattleViewModel: ScreenViewModel {
                 turnOrder: Int($0.turnOrder)
             )
         }
+        turnCursor = players.map(\.turnOrder).min() ?? 0
+        phase = isMyTurn ? .aiming : .waiting
+        aimAngle = 45
+        power = 0
+        projectile = nil
+        explosion = nil
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
         camera = (own?.x ?? Self.halfView.x, own?.y ?? Self.halfView.y)
@@ -107,11 +171,7 @@ public final class InBattleViewModel: ScreenViewModel {
     }
 
     /// The stage's terrain mask, once the screen has loaded the `.lnd` —
-    /// snapping every mobile onto the terrain surface at its spawn column
-    /// (the server's spawn points are approximate; the original grounds
-    /// mobiles against the mask).
-    public private(set) var terrain: (any BattleTerrain)?
-
+    /// snapping every mobile onto the terrain surface at its spawn column.
     public func setTerrain(_ terrain: any BattleTerrain) {
         self.terrain = terrain
         for index in players.indices {
@@ -127,16 +187,48 @@ public final class InBattleViewModel: ScreenViewModel {
         }
     }
 
-    /// The player whose turn it is (lowest turn order among the living) —
-    /// display-only until the turn machine exists.
+    // MARK: Turn state
+
+    /// The acting player — the owner of the current turn cursor.
     public var currentTurnPlayer: BattlePlayer? {
-        players.filter(\.isAlive).min { $0.turnOrder < $1.turnOrder }
+        players.first { $0.turnOrder == turnCursor && $0.isAlive }
+            ?? players.filter(\.isAlive).min { $0.turnOrder < $1.turnOrder }
+    }
+
+    /// Whether the local player is acting. Offline (no connection) every
+    /// turn is locally controllable, keeping the loop playable solo.
+    public var isMyTurn: Bool {
+        guard let current = currentTurnPlayer else { return false }
+        return delegate.client == nil || current.name == delegate.network.username
+    }
+
+    private func advanceTurn() {
+        let living = players.filter(\.isAlive).map(\.turnOrder).sorted()
+        guard !living.isEmpty else { return }
+        turnCursor = living.first { $0 > turnCursor } ?? living[0]
+        phase = isMyTurn ? .aiming : .waiting
+        power = 0
+        // Snap the camera back to the new acting player.
+        if let current = currentTurnPlayer {
+            camera = (current.x, current.y)
+            clampCamera()
+        }
     }
 
     /// World → screen: subtract the camera, bias by half the view (the
     /// original's `world − cam + (400, 0x12a)`).
     public func screenPosition(x: Float, y: Float) -> (x: Float, y: Float) {
         (x - camera.x + Self.halfView.x, y - camera.y + Self.halfView.y)
+    }
+
+    /// The horizontal facing of the acting player's shot: toward the living
+    /// enemies' center (+1 right / −1 left), defaulting right.
+    public var fireDirection: Float {
+        guard let shooter = currentTurnPlayer else { return 1 }
+        let enemies = players.filter { $0.isAlive && $0.team != shooter.team }
+        guard !enemies.isEmpty else { return 1 }
+        let center = enemies.map(\.x).reduce(0, +) / Float(enemies.count)
+        return center >= shooter.x ? 1 : -1
     }
 
     // MARK: - Server pushes
@@ -151,7 +243,12 @@ public final class InBattleViewModel: ScreenViewModel {
         }
     }
 
-    /// Applies one battle push — split out so tests can drive it directly.
+    /// The tunnel payload tag for a relayed shot:
+    /// `[0x01, angle, power, direction]` (angle in degrees, power `0…100`,
+    /// direction `0` = left, `1` = right).
+    static let fireTag: UInt8 = 0x01
+
+    /// Applies one server push — split out so tests can drive it directly.
     public func apply(_ push: ServerPush) {
         switch push {
         case .playerDied(let dead):
@@ -163,33 +260,163 @@ public final class InBattleViewModel: ScreenViewModel {
         case .gameEnded:
             delegate.session.battle = nil
             delegate.requestTransition(to: .gameRoomList)
+        case .tunnelReceived(let forward):
+            applyTunnel(forward)
         case .chatReceived, .clientPrint, .roomUpdated, .roomPlayerLeft,
-             .userJoinedChannel, .gameStarted, .hostMigrated, .tunnelReceived, .raw:
+             .userJoinedChannel, .gameStarted, .hostMigrated, .raw:
             break
         }
     }
 
-    // MARK: - Input / camera
+    private func applyTunnel(_ forward: TunnelForward) {
+        guard forward.payload.count >= 4, forward.payload[0] == Self.fireTag,
+              let shooter = players.first(where: { $0.slot == forward.sourceSlot })
+        else { return }
+        let angle = Float(forward.payload[1])
+        let power = Float(forward.payload[2]) / 100
+        let direction: Float = forward.payload[3] == 0 ? -1 : 1
+        launch(from: shooter, angle: angle, power: power, direction: direction)
+    }
+
+    // MARK: - Input
 
     public func handle(_ event: ScreenInputEvent) {
         switch event {
         case .pointerMoved(let x, let y):
             pointer = (x, y)
+
+        case .key(.left):
+            guard isMyTurn, phase == .aiming || phase == .charging else { return }
+            aimAngle = min(Self.aimRange.upperBound, aimAngle + Self.aimStep)
+        case .key(.right):
+            guard isMyTurn, phase == .aiming || phase == .charging else { return }
+            aimAngle = max(Self.aimRange.lowerBound, aimAngle - Self.aimStep)
+
+        case .activate:
+            switch phase {
+            case .aiming where isMyTurn:
+                phase = .charging
+                power = 0
+            case .charging:
+                fire()
+            case .waiting where delegate.client == nil && currentTurnPlayer == nil:
+                // Offline with no battle data: the placeholder exit.
+                delegate.session.battle = nil
+                delegate.requestTransition(to: .gameRoomList)
+            default:
+                break
+            }
+
         case .scroll(_, _, let steps):
             camera.y += Float(steps) * 40
             clampCamera()
-        case .activate:
-            // Placeholder exit until the match flow ends games properly.
-            delegate.session.battle = nil
-            delegate.requestTransition(to: .gameRoomList)
+
         case .pointerDown, .text, .key:
             break
         }
     }
 
+    /// Commits the shot: relays it through the tunnel and starts the local
+    /// simulation (every client resolves the same deterministic flight).
+    private func fire() {
+        guard let shooter = currentTurnPlayer else { return }
+        let angle = aimAngle
+        let strength = power
+        let direction = fireDirection
+        if let client = delegate.client {
+            let payload: [UInt8] = [
+                Self.fireTag,
+                UInt8(min(255, max(0, angle.rounded()))),
+                UInt8(min(100, max(0, (strength * 100).rounded()))),
+                direction > 0 ? 1 : 0,
+            ]
+            let targets = players.filter { $0.slot != shooter.slot }.map(\.slot)
+            Task {
+                for slot in targets {
+                    try? await client.sendTunnel(to: slot, payload: payload)
+                }
+            }
+        }
+        launch(from: shooter, angle: angle, power: strength, direction: direction)
+    }
+
+    private func launch(from shooter: BattlePlayer, angle: Float, power: Float, direction: Float) {
+        let radians = angle * .pi / 180
+        let speed = max(0.15, power) * Self.maxShotSpeed
+        projectile = Projectile(
+            x: shooter.x,
+            y: shooter.y - 24,  // muzzle above the mobile
+            vx: cos(radians) * speed * direction,
+            vy: -sin(radians) * speed
+        )
+        phase = .projectileInFlight
+    }
+
+    // MARK: - Simulation
+
     public func update(deltaTime: Double) {
-        // The original's screen-edge camera scroll: pan while the pointer
-        // sits in the edge bands (8-directional — corners pan diagonally).
+        switch phase {
+        case .charging:
+            power = min(1, power + Float(deltaTime / Self.chargeDuration))
+            if power >= 1 {
+                fire()  // a full gauge fires, like the original
+            }
+        case .projectileInFlight:
+            stepProjectile(deltaTime)
+        case .impact:
+            explosion?.age += deltaTime
+            if let explosion, explosion.age >= Self.explosionDuration {
+                resolveImpact(at: explosion)
+            }
+        case .aiming, .waiting:
+            edgeScroll(deltaTime)
+        }
+    }
+
+    private func stepProjectile(_ deltaTime: Double) {
+        guard var shot = projectile else { return }
+        // Substeps keep fast shots from tunneling through thin terrain.
+        let substeps = 4
+        let dt = Float(deltaTime) / Float(substeps)
+        for _ in 0..<substeps {
+            shot.vy += Self.gravity * dt
+            shot.x += shot.vx * dt
+            shot.y += shot.vy * dt
+            let solid = terrain?.isSolid(x: Int(shot.x), y: Int(shot.y)) ?? false
+            let offMap = shot.y > worldSize.height + 200 || shot.x < -400 || shot.x > worldSize.width + 400
+            if solid || offMap {
+                projectile = nil
+                if solid {
+                    explosion = Explosion(x: shot.x, y: shot.y)
+                    phase = .impact
+                } else {
+                    // Splashed off the map — no crater, straight to next turn.
+                    advanceTurn()
+                }
+                return
+            }
+        }
+        projectile = shot
+        // The camera tracks the shot.
+        camera = (shot.x, shot.y)
+        clampCamera()
+    }
+
+    private func resolveImpact(at explosion: Explosion) {
+        // Splash damage: anyone inside the radius falls (local resolution —
+        // see the type-level divergence note).
+        for index in players.indices where players[index].isAlive {
+            let dx = players[index].x - explosion.x
+            let dy = players[index].y - explosion.y
+            if (dx * dx + dy * dy).squareRoot() <= Self.splashRadius {
+                players[index].isAlive = false
+            }
+        }
+        self.explosion = nil
+        advanceTurn()
+    }
+
+    private func edgeScroll(_ deltaTime: Double) {
         guard let pointer else { return }
         let dt = Float(deltaTime)
         var dx: Float = 0
