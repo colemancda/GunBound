@@ -16,12 +16,14 @@ struct LobbyLoopbackTests {
 
     /// Starts an in-process world server on an ephemeral loopback port with
     /// the standard admin user (same seeding as the `GunBoundServer world`
-    /// executable).
+    /// executable) plus a plain guest account for two-client tests.
     private static func startServer() async throws -> (server: GunBoundServer<GunBoundSocketIPv4TCP, GunBoundSocketIPv4UDP, InMemoryGunBoundServerDataSource>, port: UInt16) {
         let dataSource = InMemoryGunBoundServerDataSource()
         await dataSource.update {
             $0.passwords["admin"] = "1234"
             $0.users["admin"] = User(id: "admin", isBanned: false, rank: .administrator, gold: 0, cash: 0)
+            $0.passwords["guest"] = "1234"
+            $0.users["guest"] = User(id: "guest", isBanned: false, rank: .chick, gold: 0, cash: 0)
         }
         // Ephemeral port, retrying a few times in case of a collision.
         var lastError: Swift.Error?
@@ -116,5 +118,61 @@ struct LobbyLoopbackTests {
         }
         #expect(received?.message == "hello loopback")
         #expect(received.map { String(describing: $0.username) } == "admin")
+    }
+
+    /// The full Ready Room flow with two real clients: the host creates a
+    /// room, a guest joins, picks a mobile (`0x3200`), switches to team B
+    /// (`0x3210`), readies up (`0x3230`), and the host starts (`0x3430`) —
+    /// then **both** clients receive the encrypted `0x3432` start push with
+    /// the map and spawn data.
+    @Test func twoClientReadyRoomFlowStartsTheGame() async throws {
+        let (server, port) = try await Self.startServer()
+        defer { withExtendedLifetime(server) {} }
+
+        func connect(_ username: String) async throws -> NetworkClient<GunBoundSocketIPv4TCP> {
+            let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(NetworkConfig(
+                username: username, password: "1234",
+                serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
+            ))
+            let auth = try await client.authenticate(username: username, password: "1234")
+            #expect(auth.status == .success, "\(username)")
+            let channel = try await client.joinChannel()
+            #expect(channel.isSuccess, "\(username)")
+            return client
+        }
+
+        let host = try await connect("admin")
+        defer { Task { await host.close() } }
+        let guest = try await connect("guest")
+        defer { Task { await guest.close() } }
+
+        // Host creates and enters the room; guest joins it.
+        let created = try await host.createRoom(name: "ready flow", capacity: ._2_2)
+        let hostJoin = try await host.joinRoom(created.room)
+        #expect(hostJoin.isSuccess)
+        let guestJoin = try await guest.joinRoom(created.room)
+        #expect(guestJoin.isSuccess)
+
+        // Guest: pick a mobile, move to team B, ready up.
+        _ = try await guest.selectTank(primary: .boomer)
+        _ = try await guest.selectTeam(.b)
+        let ready = try await guest.setReady(true)
+        #expect(ready.isSuccess)
+
+        // Host starts; both clients get the 0x3432 push (decrypted by the
+        // pump — startGameNotification is an encrypted opcode).
+        try await host.startGame()
+
+        for client in [host, guest] {
+            var started: StartGameNotification?
+            for await push in await client.pushes {
+                if case .gameStarted(let notification) = push {
+                    started = notification
+                    break
+                }
+            }
+            #expect(started != nil)
+            #expect(started?.players.count == 2)
+        }
     }
 }
