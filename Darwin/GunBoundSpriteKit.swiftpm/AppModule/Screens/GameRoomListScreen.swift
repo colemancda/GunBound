@@ -16,13 +16,24 @@ import GunBoundClient
     gameRoomListScreenPreview()
 }
 
+#Preview("Game Room List — Buddy Panel") {
+    gameRoomListScreenPreview(showBuddyPanel: true)
+}
+
 /// Preview body lives in a plain function (not the #Preview closure)
 /// because tvOS's #Preview expands to a ViewBuilder closure that
 /// rejects the explicit `return` this setup needs.
 @MainActor
-private func gameRoomListScreenPreview() -> some View {
+private func gameRoomListScreenPreview(showBuddyPanel: Bool = false) -> some View {
     let delegate = ScreenPreviewDelegate()
     let viewModel = GameRoomListViewModel(delegate: delegate)
+    if showBuddyPanel {
+        viewModel.buddies = [
+            "alsey", "boomer", "trico", "mage", "armor",
+            "grub", "aduka", "kalsiddon", "jd", "bigfoot", "raon",
+        ]
+        viewModel.setBuddyPanelVisible(true)
+    }
     viewModel.rooms = [
         RoomListResponse.Room(id: 1, name: "Rookie zone", map: .metropolis, settings: 0, playerCount: 2, capacity: ._2_2, isPlaying: false, isLocked: false),
         RoomListResponse.Room(id: 2, name: "Avatar ON come in", map: .miramoTown, settings: 0, playerCount: 8, capacity: ._4_4, isPlaying: false, isLocked: false),
