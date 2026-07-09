@@ -57,6 +57,7 @@ struct LoginView: View {
         ZStack {
             background
             form
+                .padding()
                 .scrollContentBackground(.hidden)
                 .frame(maxWidth: 440, maxHeight: 320)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
