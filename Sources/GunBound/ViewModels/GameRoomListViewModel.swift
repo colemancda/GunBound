@@ -385,6 +385,12 @@ public final class GameRoomListViewModel: ScreenViewModel {
             guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
             handleButton(buttons[index].action)
 
+        case .scroll(_, let y, let steps):
+            // Wheel over the room grid (the band above the mid-bar filter
+            // buttons at y 246) turns one page per gesture, like Prev/Next.
+            guard y < 246, steps != 0 else { return }
+            step(page: steps > 0 ? 1 : -1)
+
         case .activate, .text, .key:
             break
         }

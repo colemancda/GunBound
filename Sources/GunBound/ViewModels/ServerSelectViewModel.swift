@@ -257,6 +257,13 @@ public final class ServerSelectViewModel: ScreenViewModel {
                 connect()
             }
 
+        case .scroll(let x, let y, let steps):
+            // Wheel over the WORLD LIST panel steps the scroll window, same
+            // as the scrollbar arrows.
+            guard !state.isLoading, !state.isConnecting,
+                  panelRect.contains(x: x, y: y) else { return }
+            setScrollOffset(scrollOffset + steps)
+
         case .text, .key:
             break
         }
