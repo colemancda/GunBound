@@ -261,6 +261,28 @@ public final class InBattleScreen: GameScreen {
             renderer.draw(dotTexture, in: Rect(x: 250, y: 574, width: width, height: 12), tint: (255, UInt8(220 - viewModel.power * 160), 80))
         }
 
+        // The battle chat overlay: the rotating history drawn over the
+        // scene (the original's software-blit HUD pass), color-coded by
+        // the per-line message type.
+        for (row, line) in viewModel.chatLines.enumerated() {
+            let y = 76 + Float(row) * 14
+            let colors = LobbyChatWidget.colors(for: line.type)
+            var x: Float = 12
+            if !line.sender.isEmpty {
+                font.draw(line.sender, x: x, y: y, tint: colors.name, using: renderer)
+                x += font.width(of: line.sender) + 8
+            }
+            font.draw(line.message, x: x, y: y, tint: colors.message, using: renderer)
+        }
+
+        // The chat composer bar while typing (Enter sends).
+        if let draft = viewModel.chatDraft {
+            if let dotTexture {
+                renderer.draw(dotTexture, in: Rect(x: 8, y: 550, width: 500, height: 18), tint: (15, 15, 15))
+            }
+            font.draw("> \(draft)_", x: 14, y: 553, tint: (255, 255, 255), using: renderer)
+        }
+
         // The movement gauge (bottom-left) while free to walk — drains as
         // the turn's walking budget is spent.
         if let dotTexture, viewModel.isMyTurn, viewModel.phase == .aiming {
