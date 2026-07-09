@@ -41,6 +41,12 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// The shared error dialog's panel chrome and OK-button artwork.
     public let errorBackImageName = "error_back.img"
     public let errorConfirmImageName = "b_error_confirm.img"
+    /// The shared buddy panel's chrome and its Add / Del / close-X buttons
+    /// (the same `BuildBuddyPanel` singleton every screen shows).
+    public let buddyBackImageName = "buddy_back.img"
+    public let buddyAddImageName = "b_buddy_plus.img"
+    public let buddyDelImageName = "b_buddy_del.img"
+    public let buddyCloseImageName = "b_buddy_exit.img"
     public let musicName: String? = "channel.mp3"
     public let loopMusic = true
 
@@ -67,6 +73,23 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public var panelRect: Rect = .zero
 
     public private(set) var hoveredIndex: Int?
+
+    /// Whether the shared buddy-list panel is open — the BUDDY button
+    /// toggles it, matching the singleton `BuildBuddyPanel` shown across
+    /// screens. `buddies` stays empty until a buddy-list protocol path
+    /// exists; settable for tests/previews.
+    public private(set) var isBuddyPanelVisible = false
+    public var buddies: [String] = []
+
+    /// Closes the buddy panel (its close-X button).
+    public func dismissBuddyPanel() {
+        setBuddyPanelVisible(false)
+    }
+
+    /// Shows or hides the buddy panel — also used by previews/tests.
+    public func setBuddyPanelVisible(_ visible: Bool) {
+        isBuddyPanelVisible = visible
+    }
 
     /// The screen's lifecycle state: `.loading` while the world list is
     /// being fetched (input disabled), `.loaded` once rows are shown,
@@ -231,6 +254,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
                     connect()
                 case "b_server_exitgame.img":
                     delegate.requestQuit()
+                case "b_server_buddygame.img":
+                    // The screen's Buddy button (id 1, action 0x3e9) —
+                    // toggles the shared buddy panel, as the same id does in
+                    // the lobby and Avatar Store dispatchers.
+                    setBuddyPanelVisible(!isBuddyPanelVisible)
                 case "b_server_all.img":
                     reload()
                 default:
