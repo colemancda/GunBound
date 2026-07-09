@@ -16,6 +16,11 @@ import GunBoundFile
 public final class InBattleScreen: GameScreen {
     private let viewModel: InBattleViewModel
     private var terrainTexture: ClientTexture?
+    /// The stage frame's pixels, kept so blast holes can be punched into
+    /// them and the texture rebuilt (real terrain destruction).
+    private var terrainFrame: ImgFile.Frame?
+    /// How many of the model's craters are already carved into the frame.
+    private var carvedCraters = 0
     /// Each mobile's `.epa` animation table — the named frame runs
     /// (`normal`, `move`, `fire1`, `shock`, `dead`, wounded variants) that
     /// map poses onto the 455-frame `tankN.img` sheets.
@@ -39,7 +44,13 @@ public final class InBattleScreen: GameScreen {
         let renderer = context.renderer
         let assets = context.assets
 
-        terrainTexture = renderer.texture(named: viewModel.map.stageImageName, assets: assets)
+        terrainFrame = try? assets.imageFrame(named: viewModel.map.stageImageName, at: 0)
+        carvedCraters = 0
+        if let terrainFrame {
+            terrainTexture = renderer.texture(from: terrainFrame)
+        } else {
+            terrainTexture = renderer.texture(named: viewModel.map.stageImageName, assets: assets)
+        }
         let (worldWidth, worldHeight) = renderer.size(of: terrainTexture)
         viewModel.setWorldSize(width: worldWidth, height: worldHeight)
 
@@ -68,6 +79,8 @@ public final class InBattleScreen: GameScreen {
     public func onExit() {
         viewModel.onExit()
         terrainTexture = nil
+        terrainFrame = nil
+        carvedCraters = 0
         mobileAnimations = [:]
         frameCache = [:]
         assets = nil
@@ -126,6 +139,11 @@ public final class InBattleScreen: GameScreen {
     public func render(_ renderer: ClientRenderer) throws {
         renderer.clear()
 
+        // Carve any newly-blasted craters into the stage frame and rebuild
+        // its texture — real holes in the terrain art, matching the
+        // collision holes the model already tracks.
+        carvePendingCraters(renderer)
+
         // The stage world, offset by the camera (world → screen is
         // `world − cam + halfView`; drawing the full map at the transformed
         // origin is equivalent).
@@ -133,22 +151,6 @@ public final class InBattleScreen: GameScreen {
             let (width, height) = renderer.size(of: terrainTexture)
             let origin = viewModel.screenPosition(x: 0, y: 0)
             renderer.draw(terrainTexture, in: Rect(x: origin.x, y: origin.y, width: width, height: height), tint: nil)
-        }
-
-        // Blast craters: the collision holes drawn as dark discs over the
-        // terrain art (the sky behind the stage draws black, so a black disc
-        // reads as a hole — an honest interim until the renderer can carve
-        // the stage texture itself).
-        if let dotTexture {
-            for crater in viewModel.craters {
-                let position = viewModel.screenPosition(x: crater.x, y: crater.y)
-                renderer.draw(
-                    dotTexture,
-                    in: Rect(x: position.x - crater.radius, y: position.y - crater.radius,
-                             width: crater.radius * 2, height: crater.radius * 2),
-                    tint: (1, 1, 1)
-                )
-            }
         }
 
         guard let font else { return }
@@ -339,6 +341,66 @@ public final class InBattleScreen: GameScreen {
             renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120, height: 8), tint: (30, 30, 30))
             renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120 * ratio, height: 8), tint: (120, 200, 255))
         }
+    }
+
+    // MARK: - Terrain destruction
+
+    /// Punches the model's newly-carved craters through the stage frame's
+    /// pixels — a transparent hole ringed by a scorched rim — and rebuilds
+    /// the terrain texture.
+    private func carvePendingCraters(_ renderer: ClientRenderer) {
+        guard let frame = terrainFrame, viewModel.craters.count > carvedCraters else { return }
+        let width = Int(frame.width)
+        let height = Int(frame.height)
+        let hole = ImgFile.Pixel(argb4444: 0)
+        let rimWidth = 3
+        var pixels = frame.pixels
+        for crater in viewModel.craters[carvedCraters...] {
+            let centerX = Int(crater.x)
+            let centerY = Int(crater.y)
+            let radius = Int(crater.radius)
+            let outer = radius + rimWidth
+            for dy in -outer...outer {
+                let y = centerY + dy
+                guard y >= 0, y < height else { continue }
+                for dx in -outer...outer {
+                    let x = centerX + dx
+                    guard x >= 0, x < width else { continue }
+                    let distanceSquared = dx * dx + dy * dy
+                    let index = y * width + x
+                    if distanceSquared <= radius * radius {
+                        pixels[index] = hole
+                    } else if distanceSquared <= outer * outer {
+                        // Scorch the rim (skip already-transparent sky).
+                        let pixel = pixels[index]
+                        guard pixel.alpha > 0 else { continue }
+                        pixels[index] = ImgFile.Pixel(
+                            red: pixel.red / 3,
+                            green: pixel.green / 3,
+                            blue: pixel.blue / 3,
+                            alpha: pixel.alpha
+                        )
+                    }
+                }
+            }
+        }
+        let carved = ImgFile.Frame(
+            transparencyType: frame.transparencyType,
+            width: frame.width,
+            height: frame.height,
+            xCenter: frame.xCenter,
+            yCenter: frame.yCenter,
+            flippedX: frame.flippedX,
+            flippedY: frame.flippedY,
+            unknown1: frame.unknown1,
+            unknown2: frame.unknown2,
+            pixels: pixels
+        )
+        terrainFrame = carved
+        if let rebuilt = renderer.texture(from: carved) {
+            terrainTexture = rebuilt
+        }
+        carvedCraters = viewModel.craters.count
     }
 
     // MARK: - Mobile animation
