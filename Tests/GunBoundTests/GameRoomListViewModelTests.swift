@@ -138,16 +138,31 @@ struct GameRoomListViewModelTests {
         #expect(delegate.requestedTransitions == [.serverSelect])
     }
 
-    @Test func createButtonTransitionsToReadyRoom() {
-        let (viewModel, delegate) = makeViewModel()
-        click(.createRoom, in: viewModel)
-        #expect(delegate.requestedTransitions == [.readyRoom])
-    }
-
     @Test func avatarButtonTransitionsToAvatarShop() {
         let (viewModel, delegate) = makeViewModel()
         click(.avatar, in: viewModel)
         #expect(delegate.requestedTransitions == [.avatarShop])
+    }
+
+    @Test func createButtonOpensTheCreateDialog() {
+        let (viewModel, delegate) = makeViewModel()
+        #expect(!viewModel.isCreateRoomDialogVisible)
+        click(.createRoom, in: viewModel)
+        #expect(viewModel.isCreateRoomDialogVisible)
+        #expect(delegate.requestedTransitions.isEmpty)  // no longer jumps to Ready Room
+        viewModel.dismissDialogs()
+        #expect(!viewModel.isCreateRoomDialogVisible)
+    }
+
+    @Test func directGoButtonOpensTheNumberDialog() {
+        let (viewModel, _) = makeViewModel()
+        click(.directGo, in: viewModel)
+        #expect(viewModel.isEnterNumberDialogVisible)
+        #expect(!viewModel.isCreateRoomDialogVisible)
+        // Opening one dialog closes the other.
+        click(.createRoom, in: viewModel)
+        #expect(viewModel.isCreateRoomDialogVisible)
+        #expect(!viewModel.isEnterNumberDialogVisible)
     }
 
     @Test func buddyButtonTogglesThePanel() {

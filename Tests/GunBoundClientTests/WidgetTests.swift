@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import GunBound
 @testable import GunBoundClient
+import GunBoundProtocol
 
 @Suite @MainActor
 struct WidgetTests {
@@ -220,6 +221,63 @@ struct WidgetTests {
         #expect(panel.scrollBar.contentCount == 20)
         // 20 buddies, 11 visible → 9 scroll steps.
         #expect(panel.scrollBar.maxPosition == 20 - BuddyPanelWidget.visibleRows)
+    }
+
+    @Test func createRoomDialogSubmitCarriesFields() {
+        let dialog = CreateRoomDialogWidget(frame: Rect(x: 200, y: 150, width: 300, height: 220), font: nil)
+        var submitted: (name: String, password: String, capacity: RoomCapacity)?
+        dialog.onSubmit = { submitted = ($0, $1, $2) }
+
+        dialog.nameField.focus()
+        _ = dialog.nameField.dispatch(.text("my room"))
+        dialog.passwordField.focus()
+        _ = dialog.passwordField.dispatch(.text("1234"))
+        dialog.okButton.onClick?()
+
+        #expect(submitted?.name == "my room")
+        #expect(submitted?.password == "1234")
+    }
+
+    @Test func createRoomDialogCapacityCycles() {
+        let dialog = CreateRoomDialogWidget(frame: .zero, font: nil)
+        #expect(dialog.capacity == ._4_4)
+        dialog.cycleCapacity()
+        #expect(dialog.capacity == ._1_1)   // wraps past the end
+        dialog.cycleCapacity()
+        #expect(dialog.capacity == ._2_2)
+    }
+
+    @Test func createRoomDialogFieldsAreMutuallyExclusive() {
+        let dialog = CreateRoomDialogWidget(frame: Rect(x: 0, y: 0, width: 300, height: 220), font: nil)
+        dialog.nameField.focus()
+        #expect(dialog.nameField.isFocused)
+        dialog.passwordField.focus()
+        #expect(dialog.passwordField.isFocused)
+        #expect(!dialog.nameField.isFocused)   // focusing password blurred name
+    }
+
+    @Test func enterNumberDialogSubmitsValidNumbersOnly() {
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 250, y: 200, width: 300, height: 180), font: nil)
+        var joined: Int?
+        dialog.onSubmit = { joined = $0 }
+
+        dialog.numberField.focus()
+        _ = dialog.numberField.dispatch(.text("42"))
+        dialog.okButton.onClick?()
+        #expect(joined == 42)
+
+        // Out of range → no submit.
+        joined = nil
+        dialog.numberField.setText("0")
+        dialog.okButton.onClick?()
+        #expect(joined == nil)
+    }
+
+    @Test func enterNumberDialogRejectsNonDigits() {
+        let dialog = EnterRoomNumberDialogWidget(frame: .zero, font: nil)
+        dialog.numberField.focus()
+        _ = dialog.numberField.dispatch(.text("1a2b"))
+        #expect(dialog.numberField.text == "12")
     }
 
     @Test func hiddenDialogLetsInputThroughToSiblings() {
