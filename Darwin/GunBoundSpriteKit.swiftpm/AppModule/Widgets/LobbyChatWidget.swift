@@ -20,10 +20,11 @@ import GunBoundClient
             background: renderer.texture(named: "gamelist_chat.img", assets: assets)
         )
         panel.messages = [
-            "alsey: anyone up for a match?",
-            "boomer: rookie zone is open",
-            "trico: gg last round",
-            "mage: brb",
+            ChatLine(sender: "alsey", message: "anyone up for a match?"),
+            ChatLine(sender: "boomer", message: "rookie zone is open"),
+            ChatLine(message: "Room 3 has started playing.", type: .notice),
+            ChatLine(sender: "trico", message: "gg last round"),
+            ChatLine(sender: "admin", message: "be nice in chat", type: .init(rawValue: 3)),
         ]
         panel.onSend = { print("[preview] chat send: \($0)") }
         panel.inputField.focus()
