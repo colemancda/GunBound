@@ -38,6 +38,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public let backgroundImageName = "server_back.img"
     public let panelImageName = "server_list.img"
     public let waitImageName = "waitmessage.img"
+    /// The shared error dialog's panel chrome and OK-button artwork.
+    public let errorBackImageName = "error_back.img"
+    public let errorConfirmImageName = "b_error_confirm.img"
     public let musicName: String? = "channel.mp3"
     public let loopMusic = true
 
@@ -193,6 +196,15 @@ public final class ServerSelectViewModel: ScreenViewModel {
         task = nil  // let a later re-entry start a fresh reload
     }
 
+    /// Dismisses the error dialog (its OK button) — clears `.error` back to
+    /// `.loaded` so the world list is interactive again, matching the
+    /// original's dialog closing without re-fetching.
+    public func dismissError() {
+        if state.error != nil {
+            state = .loaded
+        }
+    }
+
     public func update(deltaTime: Double) {}
 
     public func handle(_ event: ScreenInputEvent) {
@@ -230,7 +242,16 @@ public final class ServerSelectViewModel: ScreenViewModel {
             }
 
         case .activate:
-            break
+            // Enter/return — mirrors the decomp keydown handler, which
+            // connects to the current selection, defaulting to the first
+            // online server when nothing is selected yet.
+            guard !state.isLoading, !state.isConnecting else { return }
+            if selectedIndex == nil {
+                selectedIndex = availableServers.firstIndex(where: \.isEnabled)
+            }
+            if selectedIndex != nil {
+                connect()
+            }
         }
     }
     

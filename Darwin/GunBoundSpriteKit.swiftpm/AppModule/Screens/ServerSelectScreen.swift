@@ -74,6 +74,106 @@ let mockServers = [
         capacity: 100,
         isEnabled: true
     ),
+    ServerDirectoryResponse.Server(
+        id: 5,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 6,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 7,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 8,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 9,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 10,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 11,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 12,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 13,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
+    ServerDirectoryResponse.Server(
+        id: 14,
+        name: "Loopback Server",
+        descriptionText: "localhost\\nPort 8370",
+        address: IPv4Address(127, 0, 0, 1),
+        port: 8370,
+        utilization: 0,
+        capacity: 100,
+        isEnabled: true
+    ),
 ]
 
 struct MockDirectoryFetcher: ServerDirectoryFetching {
