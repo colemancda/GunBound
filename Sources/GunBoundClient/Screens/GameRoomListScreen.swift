@@ -27,6 +27,7 @@ public final class GameRoomListScreen: GameScreen {
     /// Widget tree — currently just the shared buddy panel, hidden until the
     /// BUDDY button toggles `viewModel.isBuddyPanelVisible`.
     private var rootWidget = Widget()
+    private var channelPanel: ChannelUserListWidget?
     private var buddyPanel: BuddyPanelWidget?
     private var createRoomDialog: CreateRoomDialogWidget?
     private var enterNumberDialog: EnterRoomNumberDialogWidget?
@@ -55,6 +56,17 @@ public final class GameRoomListScreen: GameScreen {
         // (`State03_GameRoomList_CreateButtons`); just load the artwork.
         buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
 
+        rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
+
+        // The CHANNEL user-list panel — always-visible lobby chrome at the
+        // decomp rect, fed from the join-channel roster + 0x200E pushes.
+        let channelPanel = ChannelUserListWidget(
+            font: textFont,
+            background: renderer.texture(named: viewModel.channelBackImageName, assets: assets)
+        )
+        rootWidget.add(channelPanel)
+        self.channelPanel = channelPanel
+
         // The shared buddy panel — built once, hidden until BUDDY toggles it.
         let buddyBack = renderer.texture(named: viewModel.buddyBackImageName, assets: assets)
         let (panelWidth, panelHeight) = renderer.size(of: buddyBack)
@@ -71,7 +83,6 @@ public final class GameRoomListScreen: GameScreen {
         )
         buddyPanel.isHidden = true
         buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
-        rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
         rootWidget.add(buddyPanel)
         self.buddyPanel = buddyPanel
 
@@ -123,6 +134,7 @@ public final class GameRoomListScreen: GameScreen {
         font = nil
         textFont = nil
         rootWidget = Widget()
+        channelPanel = nil
         buddyPanel = nil
         createRoomDialog = nil
         enterNumberDialog = nil
@@ -139,7 +151,8 @@ public final class GameRoomListScreen: GameScreen {
 
     public func update(deltaTime: Double) {
         viewModel.update(deltaTime: deltaTime)
-        // Mirror the view model's buddy-panel toggle onto the widget.
+        // Mirror the view model's live rosters/toggles onto the widgets.
+        channelPanel?.users = viewModel.channelUsers
         if let buddyPanel {
             buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
             buddyPanel.buddies = viewModel.buddies
