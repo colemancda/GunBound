@@ -1,6 +1,7 @@
 import Foundation
 import GunBound
 import GunBoundProtocol
+import GunBoundFile
 
 /// View for the In-Battle screen (state 11) — the playable slice: the stage
 /// terrain through the camera, mobiles grounded on the `.lnd` surface, and
@@ -15,9 +16,14 @@ import GunBoundProtocol
 public final class InBattleScreen: GameScreen {
     private let viewModel: InBattleViewModel
     private var terrainTexture: ClientTexture?
-    /// Idle sprites keyed by mobile (one `tankN.img` sheet frame 0 per
-    /// distinct mobile in the match).
-    private var mobileTextures: [Mobile: ClientTexture] = [:]
+    /// Each mobile's `.epa` animation table — the named frame runs
+    /// (`normal`, `move`, `fire1`, `shock`, `dead`, wounded variants) that
+    /// map poses onto the 455-frame `tankN.img` sheets.
+    private var mobileAnimations: [Mobile: EpaFile] = [:]
+    /// Lazily-built textures keyed `"<image>#<frame>"` (the renderers
+    /// don't cache; the decoded sheet behind them does).
+    private var frameCache: [String: ClientTexture] = [:]
+    private var assets: AssetLibrary?
     /// A small round dot (`load_back.img` frame 2) reused for the aim arc,
     /// the projectile, and (scaled, additive) the explosion flash.
     private var dotTexture: ClientTexture?
@@ -42,8 +48,9 @@ public final class InBattleScreen: GameScreen {
             viewModel.setTerrain(mask)
         }
 
+        self.assets = assets
         for mobile in Set(viewModel.players.map(\.mobile)) {
-            mobileTextures[mobile] = renderer.texture(named: mobile.tankImageName, assets: assets)
+            mobileAnimations[mobile] = try? assets.animationTable(named: mobile.tankAnimationName)
         }
         dotTexture = renderer.texture(named: "load_back.img", frame: 2, assets: assets)
         font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
@@ -61,7 +68,9 @@ public final class InBattleScreen: GameScreen {
     public func onExit() {
         viewModel.onExit()
         terrainTexture = nil
-        mobileTextures = [:]
+        mobileAnimations = [:]
+        frameCache = [:]
+        assets = nil
         dotTexture = nil
         font = nil
         audio?.stop()
@@ -114,13 +123,12 @@ public final class InBattleScreen: GameScreen {
             guard position.x > -60, position.x < 860, position.y > -60, position.y < 660 else { continue }
             let teamColor: (r: UInt8, g: UInt8, b: UInt8) = player.team == .a ? (255, 200, 120) : (140, 200, 255)
 
-            if let sprite = mobileTextures[player.mobile] {
+            if let sprite = mobileSprite(for: player, renderer: renderer) {
                 let (width, height) = renderer.size(of: sprite)
-                let tint: (r: UInt8, g: UInt8, b: UInt8)? = player.isAlive ? nil : (90, 90, 90)
                 renderer.draw(
                     sprite,
                     in: Rect(x: position.x - width / 2, y: position.y - height, width: width, height: height),
-                    tint: tint
+                    tint: nil
                 )
             }
             let tagWidth = font.width(of: player.name)
@@ -260,5 +268,52 @@ public final class InBattleScreen: GameScreen {
             renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120, height: 8), tint: (30, 30, 30))
             renderer.draw(dotTexture, in: Rect(x: 12, y: 578, width: 120 * ratio, height: 8), tint: (120, 200, 255))
         }
+    }
+
+    // MARK: - Mobile animation
+
+    /// The sheet frame for a player's current pose: the pose (plus the
+    /// half-HP wounded variants) picks the `.epa` run, the battle clock
+    /// picks the frame within it. Falls back to frame 0 (the idle pose)
+    /// when the table or run is missing.
+    private func mobileSprite(for player: InBattleViewModel.BattlePlayer, renderer: ClientRenderer) -> ClientTexture? {
+        guard let assets else { return nil }
+        let imageName = player.mobile.tankImageName
+        var frame = 0
+        if let table = mobileAnimations[player.mobile] {
+            let wounded = player.hp <= InBattleViewModel.maxHP / 2
+            let run: String
+            let looping: Bool
+            switch player.pose {
+            case .normal: run = wounded ? "wnormal" : "normal"; looping = true
+            case .move: run = wounded ? "wmove" : "move"; looping = true
+            case .fire: run = "fire1"; looping = false
+            case .shock: run = "shock"; looping = false
+            case .dead: run = "dead"; looping = false
+            }
+            if let animation = table.animation(named: run) ?? table.animation(named: "normal") {
+                frame = frameIndex(in: animation, age: viewModel.clock - player.poseStarted, looping: looping)
+            }
+        }
+        let key = "\(imageName)#\(frame)"
+        if let cached = frameCache[key] { return cached }
+        let texture = renderer.texture(named: imageName, frame: frame, assets: assets)
+        if let texture { frameCache[key] = texture }
+        return texture
+    }
+
+    /// Plays a run at ~15 ticks/s honoring the per-frame durations —
+    /// looping runs wrap, one-shots hold their last frame (dead keeps
+    /// its final white-flag frame up).
+    private func frameIndex(in animation: EpaFile.Animation, age: Double, looping: Bool) -> Int {
+        let total = max(1, animation.durations.reduce(0, +))
+        var tick = max(0, Int(age * 15))
+        tick = looping ? tick % total : min(tick, total - 1)
+        var elapsed = 0
+        for (offset, duration) in animation.durations.enumerated() {
+            elapsed += duration
+            if tick < elapsed { return animation.frames[offset] }
+        }
+        return animation.frames.last ?? 0
     }
 }
