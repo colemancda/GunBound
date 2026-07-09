@@ -118,13 +118,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		6E0D60802FFEFD9D00BF6558 /* avatar.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = avatar.xfs; sourceTree = "<group>"; };
-		6E0D60812FFEFD9D00BF6558 /* characterdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = characterdata.dat; sourceTree = "<group>"; };
-		6E0D60822FFEFD9D00BF6558 /* graphics.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = graphics.xfs; sourceTree = "<group>"; };
-		6E0D60832FFEFD9D00BF6558 /* itemdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = itemdata.dat; sourceTree = "<group>"; };
-		6E0D60842FFEFD9D00BF6558 /* sound.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = sound.xfs; sourceTree = "<group>"; };
-		6E0D60852FFEFD9D00BF6558 /* specialdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = specialdata.dat; sourceTree = "<group>"; };
-		6E0D60862FFEFD9D00BF6558 /* stage.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = stage.dat; sourceTree = "<group>"; };
+		6E0D60802FFEFD9D00BF6558 /* avatar.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; name = avatar.xfs; path = orig/avatar.xfs; sourceTree = "<group>"; };
+		6E0D60812FFEFD9D00BF6558 /* characterdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = characterdata.dat; path = orig/characterdata.dat; sourceTree = "<group>"; };
+		6E0D60822FFEFD9D00BF6558 /* graphics.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; name = graphics.xfs; path = orig/graphics.xfs; sourceTree = "<group>"; };
+		6E0D60832FFEFD9D00BF6558 /* itemdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = itemdata.dat; path = orig/itemdata.dat; sourceTree = "<group>"; };
+		6E0D60842FFEFD9D00BF6558 /* sound.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; name = sound.xfs; path = orig/sound.xfs; sourceTree = "<group>"; };
+		6E0D60852FFEFD9D00BF6558 /* specialdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = specialdata.dat; path = orig/specialdata.dat; sourceTree = "<group>"; };
+		6E0D60862FFEFD9D00BF6558 /* stage.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = stage.dat; path = orig/stage.dat; sourceTree = "<group>"; };
 		D00000000000000000000101 /* SpriteKitRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitRenderer.swift; sourceTree = "<group>"; };
 		D00000000000000000000102 /* SpriteKitAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitAudioPlayer.swift; sourceTree = "<group>"; };
 		D00000000000000000000103 /* GameScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
