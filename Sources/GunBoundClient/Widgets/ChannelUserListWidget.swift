@@ -50,10 +50,14 @@ public final class ChannelUserListWidget: Widget {
         self.font = font
         self.backgroundTexture = background
         self.textTint = textTint
-        // Decomp: CreateScrollListWidget(mgr, 0xb3, 0x3f, 0x12, 0x9a, 7).
+        // Decomp: CreateScrollListWidget(mgr, 0xb3, 0x3f, 0x12, 0x9a, 7) —
+        // the 18×154 track; the chrome's round knobs render *outside* it
+        // (measured from gamelist_channel.img: y 33–60 above, 219–246 below),
+        // so the arrow hit-zones sit on the knobs, not the track ends.
         scrollBar = ScrollBarWidget(
             track: Rect(x: frame.x + 179, y: frame.y + 63, width: 18, height: 154),
-            arrowSize: 18
+            upArrow: Rect(x: frame.x + 174, y: frame.y + 33, width: 28, height: 28),
+            downArrow: Rect(x: frame.x + 174, y: frame.y + 219, width: 28, height: 28)
         )
         scrollBar.pageSize = Self.visibleRows
         super.init(frame: frame)

@@ -79,9 +79,13 @@ public final class BuddyPanelWidget: Widget {
             frame: Rect(x: frame.x + 56, y: frame.y + frame.height - 28, width: 42, height: 22),
             texture: delTexture
         )
+        // The chrome's round knobs render outside the track (measured from
+        // buddy_back.img: y 44–63 above, 234–253 below); the arrow hit-zones
+        // sit on the knobs.
         scrollBar = ScrollBarWidget(
             track: Rect(x: frame.x + frame.width - 26, y: frame.y + 34, width: 22, height: frame.height - 66),
-            arrowSize: 20
+            upArrow: Rect(x: frame.x + 184, y: frame.y + 44, width: 24, height: 20),
+            downArrow: Rect(x: frame.x + 184, y: frame.y + 234, width: 24, height: 20)
         )
         scrollBar.pageSize = Self.visibleRows
 

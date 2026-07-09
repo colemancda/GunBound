@@ -67,6 +67,11 @@ public final class LobbyChatWidget: Widget {
     ///     decomp's (26,235) 484×12).
     ///   - scrollTrack: the scrollbar track, panel-relative (lobby default
     ///     (526,63) 18×154; the Ready Room's is (455,51) 18×69).
+    ///   - scrollKnobs: panel-relative hit-zones for the baked knob art,
+    ///     which renders *outside* the track (lobby default measured from
+    ///     gamelist_chat.img: y 33–60 above, 219–246 below). Pass `nil` for
+    ///     chrome without distinct knobs (the Ready Room well) to fall back
+    ///     to zones at the track ends.
     ///   - visibleRows: the scrollbar page size (lobby 13, Ready Room 9).
     public init(
         frame: Rect = LobbyChatWidget.defaultFrame,
@@ -74,6 +79,10 @@ public final class LobbyChatWidget: Widget {
         background: ClientTexture? = nil,
         inputFrame: Rect = Rect(x: 26, y: 235, width: 484, height: 12),
         scrollTrack: Rect = Rect(x: 526, y: 63, width: 18, height: 154),
+        scrollKnobs: (up: Rect, down: Rect)? = (
+            up: Rect(x: 521, y: 33, width: 28, height: 28),
+            down: Rect(x: 521, y: 219, width: 28, height: 28)
+        ),
         visibleRows: Int = LobbyChatWidget.defaultVisibleRows
     ) {
         self.font = font
@@ -87,10 +96,16 @@ public final class LobbyChatWidget: Widget {
         inputField.maxLength = 80
         inputField.placeholder = ""
         // Lobby decomp: CreateScrollListWidget(mgr, 0x20e, 0x3f, 0x12, 0x9a, 0xd).
-        scrollBar = ScrollBarWidget(
-            track: Rect(x: frame.x + scrollTrack.x, y: frame.y + scrollTrack.y, width: scrollTrack.width, height: scrollTrack.height),
-            arrowSize: 18
-        )
+        let track = Rect(x: frame.x + scrollTrack.x, y: frame.y + scrollTrack.y, width: scrollTrack.width, height: scrollTrack.height)
+        if let knobs = scrollKnobs {
+            scrollBar = ScrollBarWidget(
+                track: track,
+                upArrow: Rect(x: frame.x + knobs.up.x, y: frame.y + knobs.up.y, width: knobs.up.width, height: knobs.up.height),
+                downArrow: Rect(x: frame.x + knobs.down.x, y: frame.y + knobs.down.y, width: knobs.down.width, height: knobs.down.height)
+            )
+        } else {
+            scrollBar = ScrollBarWidget(track: track, arrowSize: 18)
+        }
         scrollBar.pageSize = visibleRows
 
         super.init(frame: frame)

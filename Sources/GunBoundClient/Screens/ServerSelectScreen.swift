@@ -70,9 +70,13 @@ public final class ServerSelectScreen: GameScreen {
         // the track's ends — eyeballed positions, not decomp-recorded); the
         // widget supplies the missing interactivity.
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
+        // Track eyeballed; the knob hit-zones are measured from
+        // server_list.img's baked round knobs (art y 43–66 / 458–481, +13
+        // panel offset).
         let scrollBar = ScrollBarWidget(
-            track: Rect(x: 522, y: 48, width: 32, height: 480),
-            arrowSize: 32
+            track: Rect(x: 522, y: 80, width: 32, height: 390),
+            upArrow: Rect(x: 524, y: 56, width: 28, height: 24),
+            downArrow: Rect(x: 524, y: 471, width: 28, height: 24)
         )
         scrollBar.pageSize = ServerSelectViewModel.maxVisibleRows / ServerSelectViewModel.rowColumns
         scrollBar.onScroll = { [weak viewModel = self.viewModel] position in

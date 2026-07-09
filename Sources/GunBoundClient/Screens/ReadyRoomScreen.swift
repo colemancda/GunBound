@@ -65,6 +65,7 @@ public final class ReadyRoomScreen: GameScreen {
             background: nil,  // the chat well is baked into ready_back.img
             inputFrame: Rect(x: 12, y: 140, width: 420, height: 12),
             scrollTrack: Rect(x: 455, y: 51, width: 18, height: 69),
+            scrollKnobs: nil,  // the ready_back well has no distinct knob art
             visibleRows: 9
         )
         chatPanel.onSend = { [weak viewModel = self.viewModel] line in
