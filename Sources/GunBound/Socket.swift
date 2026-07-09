@@ -109,12 +109,10 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
     // MARK: - Initialization
 
     deinit {
-        // TODO: Fix crash
-        /*
+        nonisolated(unsafe) let socket = self.socket
         Task(priority: .high) {
             await socket.close()
         }
-         */
     }
 
     internal init(
@@ -154,10 +152,7 @@ public final class GunBoundSocketIPv4TCP: GunBoundSocketTCP, @unchecked Sendable
             // dependent) failing with "Socket is already connected" even
             // though the connection had, in fact, succeeded.
         }
-        return await Self(
-            fileDescriptor: fileDescriptor,
-            address: localAddress
-        )
+        return Self(socket: socket, address: localAddress)
     }
 
     public static func server(
