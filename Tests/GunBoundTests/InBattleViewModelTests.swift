@@ -393,6 +393,47 @@ struct InBattleViewModelTests {
         #expect(viewModel.players[0].pose == .dead)
     }
 
+    /// Typing opens the chat composer; while it's open Enter sends the
+    /// line instead of charging, and offline the line echoes locally.
+    @Test func chatComposerCapturesEnter() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+        #expect(viewModel.phase == .aiming)
+
+        viewModel.handle(.text("g"))
+        viewModel.handle(.text("l"))
+        #expect(viewModel.chatDraft == "gl")
+
+        // Backspace edits; Enter sends without starting a charge.
+        viewModel.handle(.key(.backspace))
+        viewModel.handle(.text("g"))
+        viewModel.handle(.activate)
+        #expect(viewModel.phase == .aiming)  // not .charging
+        #expect(viewModel.chatDraft == nil)
+        #expect(viewModel.chatLines.last?.message == "gg")
+        #expect(viewModel.chatLines.last?.sender == "admin")
+
+        // With the composer closed, Enter charges again.
+        viewModel.handle(.activate)
+        #expect(viewModel.phase == .charging)
+    }
+
+    /// Chat pushes append color-typed lines and the history rotates at the
+    /// decomp's 8-line cap; client prints arrive as notices.
+    @Test func chatHistoryRotatesAtEightLines() {
+        let (viewModel, _) = makeViewModel()
+        for index in 0..<10 {
+            viewModel.apply(.chatReceived(ChannelChatBroadcast(position: 1, username: "guest", message: "line \(index)")))
+        }
+        #expect(viewModel.chatLines.count == InBattleViewModel.maxChatLines)
+        #expect(viewModel.chatLines.first?.message == "line 2")
+
+        viewModel.apply(.clientPrint(ClientPrintNotification(message: "server says hi")))
+        #expect(viewModel.chatLines.last?.type == .notice)
+        #expect(viewModel.chatLines.last?.sender.isEmpty == true)
+    }
+
     /// Without battle data the screen still enters safely (offline path).
     @Test func offlineEntryIsSafe() {
         let (viewModel, _) = makeViewModel(battle: false)
