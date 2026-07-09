@@ -131,6 +131,22 @@ public final class InBattleScreen: GameScreen {
                 tint: player.isAlive ? teamColor : (110, 110, 110),
                 using: renderer
             )
+            // HP bar between the name tag and the mobile: a dark backing
+            // with a fill that drains and shifts green → red.
+            if let dotTexture, player.isAlive {
+                let barWidth: Float = 40
+                let ratio = Float(player.hp) / Float(InBattleViewModel.maxHP)
+                renderer.draw(
+                    dotTexture,
+                    in: Rect(x: position.x - barWidth / 2, y: position.y - 46, width: barWidth, height: 4),
+                    tint: (30, 30, 30)
+                )
+                renderer.draw(
+                    dotTexture,
+                    in: Rect(x: position.x - barWidth / 2, y: position.y - 46, width: barWidth * ratio, height: 4),
+                    tint: (UInt8(220 - ratio * 140), UInt8(80 + ratio * 140), 80)
+                )
+            }
         }
 
         // Aim arc: a dotted preview of the shot's opening trajectory while
@@ -155,6 +171,28 @@ public final class InBattleScreen: GameScreen {
                 let position = viewModel.screenPosition(x: x, y: y)
                 let alphaFade = UInt8(200 - step * 15)
                 renderer.draw(dotTexture, in: Rect(x: position.x - 3, y: position.y - 3, width: 6, height: 6), tint: (alphaFade, alphaFade, 120))
+            }
+        }
+
+        // The acting remote player's relayed aim (the live angle+power
+        // broadcast): a short arc from their mobile in enemy red.
+        if let dotTexture,
+           !viewModel.isMyTurn,
+           let aim = viewModel.remoteAim,
+           let shooter = viewModel.currentTurnPlayer {
+            let radians = aim.angle * .pi / 180
+            let speed = max(0.35, aim.power) * InBattleViewModel.maxShotSpeed
+            var y = shooter.y - 24
+            var x = shooter.x
+            var vy = -sin(radians) * speed
+            for step in 0..<6 {
+                let t: Float = 0.06
+                vy += InBattleViewModel.gravity * t
+                x += cos(radians) * speed * aim.direction * t
+                y += vy * t
+                let position = viewModel.screenPosition(x: x, y: y)
+                let alphaFade = UInt8(200 - step * 20)
+                renderer.draw(dotTexture, in: Rect(x: position.x - 3, y: position.y - 3, width: 6, height: 6), tint: (alphaFade, 90, 90))
             }
         }
 
@@ -191,6 +229,16 @@ public final class InBattleScreen: GameScreen {
         let windArrow = viewModel.wind >= 0 ? ">" : "<"
         let windBar = String(repeating: windArrow, count: max(1, min(5, windStrength)))
         font.draw("WIND \(windBar) \(windStrength)", x: 360, y: 8, tint: (160, 220, 255), using: renderer)
+
+        // Hit feed: the ledger's most recent entries, top-right (the
+        // damage-log UI fed by the original's 0x8404 records).
+        let feed = viewModel.damageLedger.suffix(3)
+        for (row, event) in feed.enumerated() {
+            let target = viewModel.players.first { $0.slot == event.targetSlot }?.name ?? "slot \(event.targetSlot)"
+            let line = event.cause == .fallOut ? "\(target) fell out" : "\(target) -\(event.value)"
+            let lineWidth = font.width(of: line)
+            font.draw(line, x: 788 - lineWidth, y: 28 + Float(row) * 14, tint: (255, 160, 140), using: renderer)
+        }
 
         if viewModel.isMyTurn, viewModel.phase == .aiming || viewModel.phase == .charging {
             font.draw("Angle \(Int(viewModel.aimAngle))", x: 12, y: 40, using: renderer)
