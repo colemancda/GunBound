@@ -67,6 +67,12 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public let buddyAddImageName = "b_buddy_plus.img"
     public let buddyDelImageName = "b_buddy_del.img"
     public let buddyCloseImageName = "b_buddy_exit.img"
+    /// The Create Room / Enter-Room-By-Number dialog chrome and their shared
+    /// OK (`yes`) / Cancel (`no`) buttons.
+    public let createBackImageName = "gamelist_create.img"
+    public let directGoBackImageName = "gamelist_directgo.img"
+    public let dialogOKImageName = "b_gamelist_yes.img"
+    public let dialogCancelImageName = "b_gamelist_no.img"
 
     // MARK: Room-card grid geometry (see the type-level doc comment)
     public static let maxVisibleRooms = 6
@@ -130,6 +136,11 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// (`b_gamelist_buddy`, id 1) toggles it, matching the decomp's
     /// `BuildBuddyPanel` (a singleton that's shown/hidden, not rebuilt).
     public private(set) var isBuddyPanelVisible = false
+
+    /// Which modal dialog (if any) is open — CREATE opens the Create Room
+    /// dialog, DIRECT-GO the enter-room-by-number dialog.
+    public private(set) var isCreateRoomDialogVisible = false
+    public private(set) var isEnterNumberDialogVisible = false
 
     /// The player's buddies. No `0x1010`-family buddy-list packet is wired up
     /// yet, so this stays empty (the panel opens showing an empty list) until
@@ -251,7 +262,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
             guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
             handleButton(buttons[index].action)
 
-        case .activate:
+        case .activate, .text, .key:
             break
         }
     }
@@ -263,10 +274,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
         case .avatar:
             delegate.requestTransition(to: .avatarShop)
         case .createRoom:
-            // The original opens a Create Room dialog (name/password) and
-            // sends 0x2120; without that dialog we go straight to the Ready
-            // Room as a stand-in for "made a room and entered it".
-            delegate.requestTransition(to: .readyRoom)
+            // Open the Create Room dialog (name/password/capacity → 0x2120).
+            isCreateRoomDialogVisible = true
+            isEnterNumberDialogVisible = false
+        case .directGo:
+            // Open the enter-room-by-number dialog (→ 0x2110 by number).
+            isEnterNumberDialogVisible = true
+            isCreateRoomDialogVisible = false
         case .joinSelected:
             joinSelectedRoom()
         case .viewAll:
@@ -277,11 +291,65 @@ public final class GameRoomListViewModel: ScreenViewModel {
             // Toggle the shared buddy-list panel (BuildBuddyPanel is shown or
             // hidden, not rebuilt each click).
             setBuddyPanelVisible(!isBuddyPanelVisible)
-        case .ranking, .pagePrev, .pageNext, .findFriend, .directGo:
-            // Page nav, find-friend, and the enter-by-number dialog aren't
-            // wired up (single-page broker, no dialogs); `ranking` has no
-            // handler in the original build either.
+        case .ranking, .pagePrev, .pageNext, .findFriend:
+            // Page nav and find-friend aren't wired up (single-page broker);
+            // `ranking` has no handler in the original build either.
             print("[GunBound] room-list action not implemented: \(action)")
+        }
+    }
+
+    /// Dismisses whichever room dialog is open (Cancel).
+    public func dismissDialogs() {
+        isCreateRoomDialogVisible = false
+        isEnterNumberDialogVisible = false
+    }
+
+    /// Creates a room (`0x2120`) and, on success, joins it (`0x2110` by the
+    /// returned id) so the client enters its Ready Room — the decomp's
+    /// create-then-enter flow.
+    public func createRoom(name: String, password: String, capacity: RoomCapacity) {
+        guard !isJoiningRoom, let client = delegate.client else { return }
+        isCreateRoomDialogVisible = false
+        isJoiningRoom = true
+        let roomPassword = RoomPassword(rawValue: password) ?? RoomPassword()
+        Task {
+            defer { isJoiningRoom = false }
+            do {
+                let created = try await client.createRoom(name: name, password: roomPassword, capacity: capacity)
+                let response = try await client.joinRoom(created.room, password: roomPassword)
+                if response.isSuccess {
+                    print("[GunBound] created + joined room \(created.room)")
+                    delegate.session.currentRoom = response
+                    delegate.requestTransition(to: .readyRoom)
+                } else {
+                    print("[GunBound] created room \(created.room) but join was rejected")
+                }
+            } catch {
+                print("[GunBound] couldn't create room: \(error)")
+            }
+        }
+    }
+
+    /// Joins a room by its typed number (`0x2110`), entering its Ready Room on
+    /// success.
+    public func joinRoomByNumber(_ number: Int) {
+        guard !isJoiningRoom, let client = delegate.client else { return }
+        isEnterNumberDialogVisible = false
+        isJoiningRoom = true
+        let room = RoomID(rawValue: UInt16(clamping: number))
+        Task {
+            defer { isJoiningRoom = false }
+            do {
+                let response = try await client.joinRoom(room)
+                if response.isSuccess {
+                    delegate.session.currentRoom = response
+                    delegate.requestTransition(to: .readyRoom)
+                } else {
+                    print("[GunBound] join-by-number rejected for room \(room)")
+                }
+            } catch {
+                print("[GunBound] couldn't join room \(room): \(error)")
+            }
         }
     }
 
