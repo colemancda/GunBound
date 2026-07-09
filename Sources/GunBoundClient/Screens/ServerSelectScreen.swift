@@ -38,6 +38,11 @@ public final class ServerSelectScreen: GameScreen {
     /// server_list.img frames 5–9: the five population-gauge levels.
     private var gaugeTextures: [ClientTexture?] = []
     private var textFont: LoadedFont?
+    /// Widget tree root — currently just the panel's scrollbar (invisible
+    /// arrow hit-zones over the knobs baked into the panel chrome), stepping
+    /// the world-list scroll window when more than 12 servers are fetched.
+    private var rootWidget = Widget()
+    private var scrollBar: ScrollBarWidget?
 
     public init(viewModel: ServerSelectViewModel) {
         self.viewModel = viewModel
@@ -57,6 +62,21 @@ public final class ServerSelectScreen: GameScreen {
         panelTexture = renderer.texture(named: viewModel.panelImageName, assets: assets)
         let (panelWidth, panelHeight) = renderer.size(of: panelTexture)
         viewModel.panelRect = Rect(x: 11, y: 13, width: panelWidth, height: panelHeight)
+
+        // The panel's scroll track (arrow knobs are baked into the chrome at
+        // the track's ends — eyeballed positions, not decomp-recorded); the
+        // widget supplies the missing interactivity.
+        rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
+        let scrollBar = ScrollBarWidget(
+            track: Rect(x: 522, y: 48, width: 32, height: 480),
+            arrowSize: 32
+        )
+        scrollBar.pageSize = ServerSelectViewModel.maxVisibleRows / ServerSelectViewModel.rowColumns
+        scrollBar.onScroll = { [weak viewModel = self.viewModel] position in
+            viewModel?.setScrollOffset(position)
+        }
+        rootWidget.add(scrollBar)
+        self.scrollBar = scrollBar
 
         // Row-state backgrounds and gauge levels live as frames of the same
         // sheet. Frame mapping confirmed by extracting the frames: 1 = base
@@ -89,17 +109,24 @@ public final class ServerSelectScreen: GameScreen {
         rowSelectedTexture = nil
         gaugeTextures = []
         textFont = nil
+        rootWidget = Widget()
+        scrollBar = nil
         audio?.stop()
         audio = nil
     }
 
     public func handleInput(_ event: ScreenInputEvent) {
+        if rootWidget.dispatch(event) {
+            return
+        }
         viewModel.handle(event)
     }
 
     public func update(deltaTime: Double) {
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
+        scrollBar?.contentCount = viewModel.lineCount
+        rootWidget.update(deltaTime: deltaTime)
         // Advance the wait-message animation while busy; restart it from
         // frame 0 the next time it appears.
         if viewModel.state.isLoading || viewModel.state.isConnecting {
@@ -125,7 +152,7 @@ public final class ServerSelectScreen: GameScreen {
 
             // Row background by state.
             let background: ClientTexture?
-            if index == viewModel.selectedIndex {
+            if viewModel.absoluteIndex(forVisibleSlot: index) == viewModel.selectedIndex {
                 background = rowSelectedTexture ?? rowBaseTexture
             } else if !server.isEnabled {
                 background = rowOfflineTexture ?? rowBaseTexture
@@ -170,6 +197,8 @@ public final class ServerSelectScreen: GameScreen {
             let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
             renderer.draw(texture, in: button.rect, tint: tint)
         }
+        rootWidget.draw(renderer)
+
         // Animated "please wait" overlay — shown while fetching the world
         // list as well as while a connect attempt is in flight, cycling
         // waitmessage.img's four frames.
