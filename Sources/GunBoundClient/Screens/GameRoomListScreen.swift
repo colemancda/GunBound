@@ -22,6 +22,10 @@ public final class GameRoomListScreen: GameScreen {
     private var statusTextures: [GameRoomListViewModel.RoomStatus: ClientTexture] = [:]
     private var font: LoadedFont?
     private var textFont: LoadedFont?
+    /// Widget tree — currently just the shared buddy panel, hidden until the
+    /// BUDDY button toggles `viewModel.isBuddyPanelVisible`.
+    private var rootWidget = Widget()
+    private var buddyPanel: BuddyPanelWidget?
 
     public init(viewModel: GameRoomListViewModel) {
         self.viewModel = viewModel
@@ -68,6 +72,26 @@ public final class GameRoomListScreen: GameScreen {
             x += width + gap
             rowHeight = max(rowHeight, height)
         }
+
+        // The shared buddy panel — built once, hidden until BUDDY toggles it.
+        let buddyBack = renderer.texture(named: viewModel.buddyBackImageName, assets: assets)
+        let (panelWidth, panelHeight) = renderer.size(of: buddyBack)
+        let panelFrame = panelWidth > 0
+            ? Rect(x: 568, y: 11, width: panelWidth, height: panelHeight)
+            : BuddyPanelWidget.defaultFrame
+        let buddyPanel = BuddyPanelWidget(
+            frame: panelFrame,
+            font: textFont,
+            background: buddyBack,
+            addTexture: renderer.texture(named: viewModel.buddyAddImageName, assets: assets),
+            delTexture: renderer.texture(named: viewModel.buddyDelImageName, assets: assets),
+            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets)
+        )
+        buddyPanel.isHidden = true
+        buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
+        rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
+        rootWidget.add(buddyPanel)
+        self.buddyPanel = buddyPanel
     }
 
     public func onExit() {
@@ -79,14 +103,27 @@ public final class GameRoomListScreen: GameScreen {
         statusTextures = [:]
         font = nil
         textFont = nil
+        rootWidget = Widget()
+        buddyPanel = nil
     }
 
     public func handleInput(_ event: ScreenInputEvent) {
+        // The buddy panel (when shown) gets first crack and swallows clicks
+        // that land on it; otherwise input falls through to the view model.
+        if rootWidget.dispatch(event) {
+            return
+        }
         viewModel.handle(event)
     }
 
     public func update(deltaTime: Double) {
         viewModel.update(deltaTime: deltaTime)
+        // Mirror the view model's buddy-panel toggle onto the widget.
+        if let buddyPanel {
+            buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
+            buddyPanel.buddies = viewModel.buddies
+        }
+        rootWidget.update(deltaTime: deltaTime)
     }
 
     public func render(_ renderer: ClientRenderer) throws {
@@ -130,5 +167,8 @@ public final class GameRoomListScreen: GameScreen {
             let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredButtonIndex ? (200, 200, 255) : nil
             renderer.draw(texture, in: button.rect, tint: tint)
         }
+
+        // The buddy panel draws on top of everything when shown.
+        rootWidget.draw(renderer)
     }
 }
