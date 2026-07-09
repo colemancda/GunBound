@@ -287,8 +287,9 @@ struct WidgetTests {
         #expect(panel.scrollBar.contentCount == 10)
         // 10 users over 7 visible rows → 3 scroll steps.
         #expect(panel.scrollBar.maxPosition == 3)
-        // Down arrow (track bottom, decomp rect 179,63 18×154 → y 423..441).
-        _ = panel.dispatch(.pointerDown(x: 572 + 179 + 9, y: 287 + 63 + 154 - 5))
+        // Down knob (the baked circle below the track — measured at
+        // panel-relative (174, 219) 28×28).
+        _ = panel.dispatch(.pointerDown(x: 572 + 174 + 14, y: 287 + 219 + 14))
         #expect(panel.scrollBar.position == 1)
         // Clicks on the panel body fall through (not modal chrome).
         #expect(!panel.dispatch(.pointerDown(x: 600, y: 400)))
