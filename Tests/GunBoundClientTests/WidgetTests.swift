@@ -315,19 +315,37 @@ struct WidgetTests {
 
     @Test func lobbyChatFollowsTheTailUnlessScrolledUp() {
         let panel = LobbyChatWidget(font: nil)
-        panel.messages = (1...20).map { "line \($0)" }
+        panel.messages = (1...20).map { ChatLine(message: "line \($0)") }
         // 20 lines over 13 rows → tail position 7, followed automatically.
         #expect(panel.scrollBar.position == 7)
 
         // Player scrolls up to read history; new lines stop yanking the view.
         panel.scrollBar.setPosition(2)
-        panel.messages.append("line 21")
+        panel.messages.append(ChatLine(message: "line 21"))
         #expect(panel.scrollBar.position == 2)
 
         // Back at the tail, following resumes.
         panel.scrollBar.setPosition(panel.scrollBar.maxPosition)
-        panel.messages.append("line 22")
+        panel.messages.append(ChatLine(message: "line 22"))
         #expect(panel.scrollBar.position == panel.scrollBar.maxPosition)
+    }
+
+    /// The color table matches the decompiled renderer's switch: normal chat
+    /// is white on white, the type-2 notice draws its message in RGB565
+    /// 0xffe0 (pure yellow), and unknown types fall back to normal.
+    @Test func chatColorsFollowTheDecompTable() {
+        let normal = LobbyChatWidget.colors(for: .normal)
+        #expect(normal.name == (255, 255, 255))
+        #expect(normal.message == (255, 255, 255))
+
+        let notice = LobbyChatWidget.colors(for: .notice)
+        #expect(notice.message == (255, 255, 0))   // 0xffe0 → yellow
+
+        let type3 = LobbyChatWidget.colors(for: .init(rawValue: 3))
+        #expect(type3.name == (255, 0, 0))         // 0xf800 → red
+
+        let unknown = LobbyChatWidget.colors(for: .init(rawValue: 0x40))
+        #expect(unknown.message == (255, 255, 255))
     }
 
     @Test func hiddenDialogLetsInputThroughToSiblings() {
