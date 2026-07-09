@@ -71,9 +71,22 @@ public final class GameRoomListViewModel: ScreenViewModel {
     // MARK: Room-card grid geometry (see the type-level doc comment)
     public static let maxVisibleRooms = 6
     public static let cardSize = (width: Float(257), height: Float(58))
-    static let columnX: [Float] = [24, 324]
+    static let columnX: [Float] = [24, 324]   // decomp Xc: 0x18 / 0x144
     static let gridTop: Float = 290
-    static let rowStride: Float = 60
+    static let rowStride: Float = 60           // decomp Yr pitch: 0x3c
+
+    // Card-relative icon anchors, from `RenderRoomCard` (`0x42a220`): each
+    // element's blit origin minus the card background's own origin
+    // `(Xc, Yr+0x3a)`. All icons live as extra frames of `gamelist_back.img`
+    // (frames 7–9 status, 10–13 game-mode label, 15 padlock). Frame 14 (small
+    // icon) and the flag icons (frames from per-room byte flags) have no field
+    // in `RoomListResponse.Room`, so they're not drawn.
+    public static let statusIconOffset = (x: Float(0x13), y: Float(0x55 - 0x3a))  // (19, 27)
+    public static let modeIconOffset = (x: Float(0xb1), y: Float(0x5b - 0x3a))    // (177, 33)
+    public static let lockIconOffsetY = Float(0x52 - 0x3a)                        // 24
+    /// The padlock sits 6px further left in the right column (decomp's
+    /// `0xea - 6` for `slot/3 != 0`).
+    public static func lockIconX(rightColumn: Bool) -> Float { rightColumn ? Float(0xea - 6) : Float(0xea) }
 
     /// The confirmed bottom-bar button set (`b_gamelist_*` images, decomp
     /// `buttonId`s). Exact on-screen positions aren't decomp-confirmed, so
@@ -182,6 +195,44 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public func status(of room: RoomListResponse.Room) -> RoomStatus {
         if room.isPlaying { return .playing }
         return room.playerCount >= room.capacity.rawValue ? .full : .waiting
+    }
+
+    /// The visible slot the player's own joined room occupies, if it's on this
+    /// page — the decomp's `this+4`, which shifts a card to its joined frame.
+    public var joinedRoomIndex: Int? {
+        guard let joined = delegate.session.currentRoom else { return nil }
+        return visibleRooms.firstIndex { $0.id == joined.room }
+    }
+
+    /// The card-background frame for a visible slot (`RenderRoomCard`): base
+    /// `1` (left column) / `4` (right column), `+2` when it's the joined room
+    /// (`this+4`), else `+1` when it's the highlighted/hovered room (`this+8`)
+    /// → frames 1–6 of `gamelist_back.img`.
+    public func cardFrame(forVisibleSlot slot: Int) -> Int {
+        var frame = slot / 3 == 0 ? 1 : 4
+        if joinedRoomIndex == slot {
+            frame += 2
+        } else if selectedRoomIndex == slot || hoveredRoomIndex == slot {
+            frame += 1
+        }
+        return frame
+    }
+
+    /// The status-icon frame: PLAY `7` / FULL `8` / WAIT `9`.
+    public func statusFrame(of room: RoomListResponse.Room) -> Int {
+        switch status(of: room) {
+        case .playing: return 7
+        case .full: return 8
+        case .waiting: return 9
+        }
+    }
+
+    /// The game-mode label frame (SOLO … JEWEL), `10 + (settings bits 18–19)`,
+    /// mirroring `RenderRoomCard`'s `(info >> 0x12 & 3) + 10`. The exact
+    /// `settings` bit layout isn't confirmed against ours, so this may need a
+    /// tweak once the mode encoding is pinned down; it defaults to SOLO (10).
+    public func modeFrame(of room: RoomListResponse.Room) -> Int {
+        10 + Int((room.settings >> 18) & 3)
     }
 
     // MARK: - Input
