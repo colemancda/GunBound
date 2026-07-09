@@ -42,9 +42,17 @@ final class GameScene: SKScene {
         self.context = context
 
         do {
-            stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
+            let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
                 makeGameScreen(for: mode, delegate: context)
             }
+            // macOS has an OS cursor to replace with the game's own
+            // `cursor.img` pointer; iOS/tvOS are touch-driven, so leave the
+            // software cursor off there.
+            #if os(macOS)
+            NSCursor.hide()
+            stateMachine.cursor.isVisible = true
+            #endif
+            self.stateMachine = stateMachine
         } catch {
             print("[GunBoundSpriteKit] failed to start state machine: \(error)")
         }
