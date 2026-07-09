@@ -86,11 +86,29 @@
 		D0000000000000000000C0E /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
 		D0000000000000000000C0F /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
 		D00000000000000000000230 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
-		D00000000000000000000231 /* WidgetGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000131 /* WidgetGallery.swift */; };
 		D00000000000000000000330 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
-		D00000000000000000000331 /* WidgetGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000131 /* WidgetGallery.swift */; };
 		D0000000000000000000C30 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
-		D0000000000000000000C31 /* WidgetGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000131 /* WidgetGallery.swift */; };
+		D000000000000000000002321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D000000000000000000003321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D0000000000000000000C2321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D000000000000000000002331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D000000000000000000003331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D0000000000000000000C2331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D000000000000000000002341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D000000000000000000003341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D0000000000000000000C2341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D000000000000000000002351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D000000000000000000003351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D0000000000000000000C2351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D000000000000000000002361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D000000000000000000003361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D0000000000000000000C2361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D000000000000000000002371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D000000000000000000003371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D0000000000000000000C2371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D000000000000000000002381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D000000000000000000003381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D0000000000000000000C2381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -120,7 +138,13 @@
 		D00000000000000000000118 /* LoadingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000130 /* WidgetPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetPreview.swift; sourceTree = "<group>"; };
-		D00000000000000000000131 /* WidgetGallery.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetGallery.swift; sourceTree = "<group>"; };
+		D00000000000000000000132 /* ButtonWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ButtonWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000133 /* ScrollBarWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScrollBarWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000134 /* TextFieldWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextFieldWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000135 /* DialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DialogWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000136 /* BuddyPanelWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuddyPanelWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000137 /* CreateRoomDialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreateRoomDialogWidget.swift; sourceTree = "<group>"; };
+		D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EnterRoomNumberDialogWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000120 /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		D00000000000000000000121 /* GameSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameSceneView.swift; sourceTree = "<group>"; };
 		D00000000000000000000122 /* GunBoundSpriteKitApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GunBoundSpriteKitApp.swift; sourceTree = "<group>"; };
@@ -245,7 +269,13 @@
 			isa = PBXGroup;
 			children = (
 				D00000000000000000000130 /* WidgetPreview.swift */,
-				D00000000000000000000131 /* WidgetGallery.swift */,
+				D00000000000000000000132 /* ButtonWidget.swift */,
+				D00000000000000000000133 /* ScrollBarWidget.swift */,
+				D00000000000000000000134 /* TextFieldWidget.swift */,
+				D00000000000000000000135 /* DialogWidget.swift */,
+				D00000000000000000000136 /* BuddyPanelWidget.swift */,
+				D00000000000000000000137 /* CreateRoomDialogWidget.swift */,
+				D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */,
 			);
 			path = Widgets;
 			sourceTree = "<group>";
@@ -420,7 +450,13 @@
 				D00000000000000000000218 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000219 /* InBattleScreen.swift in Sources */,
 				D00000000000000000000230 /* WidgetPreview.swift in Sources */,
-				D00000000000000000000231 /* WidgetGallery.swift in Sources */,
+				D000000000000000000002321 /* ButtonWidget.swift in Sources */,
+				D000000000000000000002331 /* ScrollBarWidget.swift in Sources */,
+				D000000000000000000002341 /* TextFieldWidget.swift in Sources */,
+				D000000000000000000002351 /* DialogWidget.swift in Sources */,
+				D000000000000000000002361 /* BuddyPanelWidget.swift in Sources */,
+				D000000000000000000002371 /* CreateRoomDialogWidget.swift in Sources */,
+				D000000000000000000002381 /* EnterRoomNumberDialogWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -444,7 +480,13 @@
 				D00000000000000000000318 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000319 /* InBattleScreen.swift in Sources */,
 				D00000000000000000000330 /* WidgetPreview.swift in Sources */,
-				D00000000000000000000331 /* WidgetGallery.swift in Sources */,
+				D000000000000000000003321 /* ButtonWidget.swift in Sources */,
+				D000000000000000000003331 /* ScrollBarWidget.swift in Sources */,
+				D000000000000000000003341 /* TextFieldWidget.swift in Sources */,
+				D000000000000000000003351 /* DialogWidget.swift in Sources */,
+				D000000000000000000003361 /* BuddyPanelWidget.swift in Sources */,
+				D000000000000000000003371 /* CreateRoomDialogWidget.swift in Sources */,
+				D000000000000000000003381 /* EnterRoomNumberDialogWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -468,7 +510,13 @@
 				D0000000000000000000C0E /* LoadingScreen.swift in Sources */,
 				D0000000000000000000C0F /* InBattleScreen.swift in Sources */,
 				D0000000000000000000C30 /* WidgetPreview.swift in Sources */,
-				D0000000000000000000C31 /* WidgetGallery.swift in Sources */,
+				D0000000000000000000C2321 /* ButtonWidget.swift in Sources */,
+				D0000000000000000000C2331 /* ScrollBarWidget.swift in Sources */,
+				D0000000000000000000C2341 /* TextFieldWidget.swift in Sources */,
+				D0000000000000000000C2351 /* DialogWidget.swift in Sources */,
+				D0000000000000000000C2361 /* BuddyPanelWidget.swift in Sources */,
+				D0000000000000000000C2371 /* CreateRoomDialogWidget.swift in Sources */,
+				D0000000000000000000C2381 /* EnterRoomNumberDialogWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
