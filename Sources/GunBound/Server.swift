@@ -1134,6 +1134,17 @@ internal extension GunBoundServer {
             )
             // cache current room
             self.state.room = room.id
+            // notify everyone in the channel (creator included) that the
+            // room list changed (0x3105) — live lobbies refresh on this push
+            let notification = RoomUpdateNotification()
+            Task {
+                for (_, connection) in await self.server.storage.connections {
+                    guard await connection.state.channel == channel else {
+                        continue
+                    }
+                    await connection.send(notification)
+                }
+            }
             // return new room ID and motd
             return CreateRoomResponse(
                 room: room.id,
