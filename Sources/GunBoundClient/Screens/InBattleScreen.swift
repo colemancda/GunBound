@@ -84,6 +84,43 @@ public final class InBattleScreen: GameScreen {
     public func update(deltaTime: Double) {
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
+        playPendingSounds()
+    }
+
+    /// Plays the model's queued cues against `sound.xfs`. Effect coverage
+    /// is per-mobile and spotty, so each cue walks a candidate chain and
+    /// plays the first name that loads.
+    private func playPendingSounds() {
+        guard let audio, let assets else { return }
+        for cue in viewModel.drainSounds() {
+            let candidates: [String]
+            switch cue {
+            case .fire(let mobile, let weapon):
+                let n = mobile.sheetNumber
+                switch weapon {
+                case .shot1: candidates = ["\(n)1fire.xes", "\(n)2fire.xes"]
+                case .shot2: candidates = ["\(n)2fire.xes", "\(n)1fire.xes"]
+                case .special: candidates = ["\(n)s1fire.xes", "\(n)2fire.xes", "\(n)1fire.xes"]
+                }
+            case .blast(let mobile, let weapon):
+                let n = mobile.sheetNumber
+                switch weapon {
+                case .shot1: candidates = ["\(n)1blast.xes", "\(n)2blast.xes", "bombblast.xes"]
+                case .shot2: candidates = ["\(n)2blast.xes", "\(n)1blast.xes", "bombblast.xes"]
+                case .special: candidates = ["\(n)s1blast.xes", "\(n)2blast.xes", "\(n)1blast.xes", "bombblast.xes"]
+                }
+            case .walk(let mobile):
+                let n = mobile.sheetNumber
+                candidates = ["\(n)move.xes", "\(n)nmove.xes"]
+            case .turnStart:
+                candidates = ["turn.xes"]
+            case .turnWarning:
+                candidates = ["turnwa.xes"]
+            }
+            for name in candidates where audio.playEffect(named: name, assets: assets) {
+                break
+            }
+        }
     }
 
     public func render(_ renderer: ClientRenderer) throws {
