@@ -88,6 +88,9 @@
 		D00000000000000000000230 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
 		D00000000000000000000330 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
 		D0000000000000000000C30 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D0000000000000000000023A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
+		D0000000000000000000033A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
+		D0000000000000000000C23A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
 		D000000000000000000002391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
 		D000000000000000000003391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
 		D0000000000000000000C2391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
@@ -141,6 +144,7 @@
 		D00000000000000000000118 /* LoadingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000130 /* WidgetPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetPreview.swift; sourceTree = "<group>"; };
+		D0000000000000000000013A /* LobbyChatWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LobbyChatWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000139 /* ChannelUserListWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChannelUserListWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000132 /* ButtonWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ButtonWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000133 /* ScrollBarWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScrollBarWidget.swift; sourceTree = "<group>"; };
@@ -273,6 +277,7 @@
 			isa = PBXGroup;
 			children = (
 				D00000000000000000000130 /* WidgetPreview.swift */,
+				D0000000000000000000013A /* LobbyChatWidget.swift */,
 				D00000000000000000000139 /* ChannelUserListWidget.swift */,
 				D00000000000000000000132 /* ButtonWidget.swift */,
 				D00000000000000000000133 /* ScrollBarWidget.swift */,
@@ -455,6 +460,7 @@
 				D00000000000000000000218 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000219 /* InBattleScreen.swift in Sources */,
 				D00000000000000000000230 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000023A1 /* LobbyChatWidget.swift in Sources */,
 				D000000000000000000002391 /* ChannelUserListWidget.swift in Sources */,
 				D000000000000000000002321 /* ButtonWidget.swift in Sources */,
 				D000000000000000000002331 /* ScrollBarWidget.swift in Sources */,
@@ -486,6 +492,7 @@
 				D00000000000000000000318 /* LoadingScreen.swift in Sources */,
 				D00000000000000000000319 /* InBattleScreen.swift in Sources */,
 				D00000000000000000000330 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000033A1 /* LobbyChatWidget.swift in Sources */,
 				D000000000000000000003391 /* ChannelUserListWidget.swift in Sources */,
 				D000000000000000000003321 /* ButtonWidget.swift in Sources */,
 				D000000000000000000003331 /* ScrollBarWidget.swift in Sources */,
@@ -517,6 +524,7 @@
 				D0000000000000000000C0E /* LoadingScreen.swift in Sources */,
 				D0000000000000000000C0F /* InBattleScreen.swift in Sources */,
 				D0000000000000000000C30 /* WidgetPreview.swift in Sources */,
+				D0000000000000000000C23A1 /* LobbyChatWidget.swift in Sources */,
 				D0000000000000000000C2391 /* ChannelUserListWidget.swift in Sources */,
 				D0000000000000000000C2321 /* ButtonWidget.swift in Sources */,
 				D0000000000000000000C2331 /* ScrollBarWidget.swift in Sources */,
