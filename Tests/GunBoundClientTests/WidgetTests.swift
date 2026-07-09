@@ -280,6 +280,20 @@ struct WidgetTests {
         #expect(dialog.numberField.text == "12")
     }
 
+    @Test func channelUserListScrollsItsRoster() {
+        let panel = ChannelUserListWidget(font: nil)
+        #expect(panel.frame == Rect(x: 572, y: 287, width: 209, height: 259))
+        panel.users = (0..<10).map { "user\($0)" }
+        #expect(panel.scrollBar.contentCount == 10)
+        // 10 users over 7 visible rows → 3 scroll steps.
+        #expect(panel.scrollBar.maxPosition == 3)
+        // Down arrow (track bottom, decomp rect 179,63 18×154 → y 423..441).
+        _ = panel.dispatch(.pointerDown(x: 572 + 179 + 9, y: 287 + 63 + 154 - 5))
+        #expect(panel.scrollBar.position == 1)
+        // Clicks on the panel body fall through (not modal chrome).
+        #expect(!panel.dispatch(.pointerDown(x: 600, y: 400)))
+    }
+
     @Test func hiddenDialogLetsInputThroughToSiblings() {
         // A hidden dialog must not shadow the widgets behind it.
         let root = ProbeWidget(name: "root")

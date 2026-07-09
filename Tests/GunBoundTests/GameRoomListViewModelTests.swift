@@ -205,6 +205,74 @@ struct GameRoomListViewModelTests {
         #expect(!viewModel.isBuddyPanelVisible)
     }
 
+    /// Prev/Next page a 6-card window over the filtered list, clamped at both
+    /// ends; changing the filter re-paginates from page 0.
+    @Test func pagingWindowsTheRoomList() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.rooms = (1...14).map { room(id: RoomID(rawValue: UInt16($0))) }
+
+        #expect(viewModel.pageCount == 3)
+        #expect(viewModel.visibleRooms.map(\.id.rawValue) == [1, 2, 3, 4, 5, 6])
+
+        click(.pageNext, in: viewModel)
+        #expect(viewModel.page == 1)
+        #expect(viewModel.visibleRooms.map(\.id.rawValue) == [7, 8, 9, 10, 11, 12])
+
+        click(.pageNext, in: viewModel)
+        #expect(viewModel.visibleRooms.map(\.id.rawValue) == [13, 14])
+        click(.pageNext, in: viewModel)  // clamped at the last page
+        #expect(viewModel.page == 2)
+
+        click(.pagePrev, in: viewModel)
+        click(.pagePrev, in: viewModel)
+        click(.pagePrev, in: viewModel)  // clamped at the first page
+        #expect(viewModel.page == 0)
+
+        // Selection clears when the page turns (slots show different rooms).
+        let rect = viewModel.roomRect(at: 0)
+        viewModel.handle(.pointerDown(x: rect.x + 5, y: rect.y + 5))
+        #expect(viewModel.selectedRoomIndex == 0)
+        click(.pageNext, in: viewModel)
+        #expect(viewModel.selectedRoomIndex == nil)
+
+        // Filter change resets to page 0.
+        click(.waitingOnly, in: viewModel)
+        #expect(viewModel.page == 0)
+    }
+
+    /// A `0x200E` push appends the new user to the CHANNEL roster; room
+    /// pushes are handled (they trigger a refresh, a no-op without a live
+    /// connection) and raw pushes are ignored.
+    @Test func pushesUpdateTheChannelRoster() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.channelUsers = ["alsey"]
+
+        viewModel.apply(.userJoinedChannel(JoinChannelNotification(
+            channelPosition: 1, username: "boomer", avatarEquipped: 0, guild: "", rankCurrent: 20, rankSeason: 20
+        )))
+        #expect(viewModel.channelUsers == ["alsey", "boomer"])
+
+        viewModel.apply(.roomUpdated(RoomUpdateNotification()))
+        viewModel.apply(.raw(Packet(opcode: .roomUpdateNotification)))
+        #expect(viewModel.channelUsers == ["alsey", "boomer"])  // unchanged
+    }
+
+    /// Entering the lobby seeds the CHANNEL roster from the join-channel
+    /// response stored in the session.
+    @Test func onEnterSeedsChannelUsersFromSession() {
+        let (viewModel, delegate) = makeViewModel()
+        delegate.session.channel = JoinChannelResponse(
+            status: 0, channel: 1, maxPosition: 2,
+            users: [
+                JoinChannelResponse.ChannelUser(id: 0, username: "alsey", avatarEquipped: 0, guild: "", rankCurrent: 20, rankSeason: 20),
+                JoinChannelResponse.ChannelUser(id: 1, username: "trico", avatarEquipped: 0, guild: "", rankCurrent: 19, rankSeason: 19),
+            ]
+        )
+        viewModel.onEnter()
+        #expect(viewModel.channelUsers == ["alsey", "trico"])
+        viewModel.onExit()
+    }
+
     @Test func waitingFilterHidesInProgressRooms() {
         let (viewModel, _) = makeViewModel()
         viewModel.rooms = [
