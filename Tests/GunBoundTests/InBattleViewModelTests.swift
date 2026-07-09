@@ -88,6 +88,7 @@ struct InBattleViewModelTests {
     @Test func terrainSnapsSpawnsToTheSurface() {
         struct FlatFloor: BattleTerrain {
             // Solid ground from y 1000 down, everywhere.
+            func isSolid(x: Int, y: Int) -> Bool { y >= 1000 }
             func surfaceLevel(atX x: Int, near y: Int) -> Int? { 1000 }
         }
         let (viewModel, _) = makeViewModel()
@@ -97,6 +98,74 @@ struct InBattleViewModelTests {
         #expect(viewModel.players[0].y == 1000)
         #expect(viewModel.players[1].y == 1000)
         #expect(viewModel.camera.y == 1000)  // re-centered on the grounded mobile
+    }
+
+    private struct FlatWorld: BattleTerrain {
+        let floor: Int
+        func isSolid(x: Int, y: Int) -> Bool { y >= floor }
+        func surfaceLevel(atX x: Int, near y: Int) -> Int? { floor }
+    }
+
+    /// The full local fire loop: aim, charge, fire, flight, terrain impact,
+    /// splash damage, and the turn advancing to the next living player.
+    /// Offline (no client) every turn is locally controllable.
+    @Test func fireLoopResolvesAndAdvancesTheTurn() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Offline → "guest" (turn 0) is locally controllable.
+        #expect(viewModel.isMyTurn)
+        #expect(viewModel.phase == .aiming)
+        #expect(viewModel.currentTurnPlayer?.name == "guest")
+
+        // Aim: ◀ raises, ▶ lowers, clamped.
+        viewModel.handle(.key(.left))
+        #expect(viewModel.aimAngle == 47)
+        for _ in 0..<40 { viewModel.handle(.key(.right)) }
+        #expect(viewModel.aimAngle == InBattleViewModel.aimRange.lowerBound)
+
+        // Charge, then fire on the second press.
+        viewModel.handle(.activate)
+        #expect(viewModel.phase == .charging)
+        viewModel.update(deltaTime: 0.5)
+        #expect(viewModel.power > 0)
+        viewModel.handle(.activate)
+        #expect(viewModel.phase == .projectileInFlight)
+        #expect(viewModel.projectile != nil)
+
+        // Run the sim until impact + resolution (bounded frames).
+        var frames = 0
+        while viewModel.phase == .projectileInFlight, frames < 2000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        #expect(viewModel.phase == .impact)
+        // The explosion plays out, then the turn passes to "admin" (turn 1).
+        while viewModel.phase == .impact {
+            viewModel.update(deltaTime: 0.1)
+        }
+        #expect(viewModel.currentTurnPlayer?.name == "admin")
+        #expect(viewModel.phase == .aiming)  // offline: also locally controllable
+    }
+
+    /// A relayed shot (the tunnel's fire tag) launches the remote shooter's
+    /// projectile locally with the same deterministic sim.
+    @Test func tunneledFireLaunchesTheRemoteShot() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Slot 1 ("guest") fires at 45°, 80 power, to the right.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x01, 45, 80, 1]
+        )))
+        #expect(viewModel.phase == .projectileInFlight)
+        #expect(viewModel.projectile != nil)
+        // Launched from the shooter's position (x 1200).
+        #expect(abs((viewModel.projectile?.x ?? 0) - 1200) < 30)
+        #expect((viewModel.projectile?.vx ?? 0) > 0)
     }
 
     /// Without battle data the screen still enters safely (offline path).
