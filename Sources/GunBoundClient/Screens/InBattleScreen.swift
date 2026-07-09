@@ -34,6 +34,11 @@ public final class InBattleScreen: GameScreen {
         let (worldWidth, worldHeight) = renderer.size(of: terrainTexture)
         viewModel.setWorldSize(width: worldWidth, height: worldHeight)
 
+        // The stage's collision mask grounds each mobile at its spawn column.
+        if let mask = try? assets.terrainMask(named: viewModel.map.stageLandName) {
+            viewModel.setTerrain(mask)
+        }
+
         for mobile in Set(viewModel.players.map(\.mobile)) {
             mobileTextures[mobile] = renderer.texture(named: mobile.tankImageName, assets: assets)
         }

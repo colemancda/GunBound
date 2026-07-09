@@ -1,5 +1,14 @@
 import GunBoundProtocol
 
+/// The terrain queries the battle needs — implemented by the client layer's
+/// `.lnd` mask parser (the per-pixel stage collision map). A protocol here
+/// because the `GunBound` module doesn't depend on the file-format library.
+public protocol BattleTerrain: Sendable {
+    /// The terrain-surface y at column `x` nearest `y` (up out of ground,
+    /// or down onto it); `nil` off the map.
+    func surfaceLevel(atX x: Int, near y: Int) -> Int?
+}
+
 /// Logic for the In-Battle screen (state 11) — the first real slice of the
 /// battle: the static scene. Consumes the `0x3432` start data stored in
 /// `session.battle` (map + per-player spawns/tanks/turn order), drives a
@@ -21,9 +30,10 @@ public final class InBattleViewModel: ScreenViewModel {
         public let name: String
         public let team: Team
         public let mobile: Mobile
-        /// Spawn position in stage-world coordinates.
+        /// Spawn position in stage-world coordinates (`y` snaps to the
+        /// terrain surface once the mask is loaded).
         public let x: Float
-        public let y: Float
+        public var y: Float
         public let turnOrder: Int
         public var isAlive = true
 
@@ -94,6 +104,27 @@ public final class InBattleViewModel: ScreenViewModel {
         guard width > 0, height > 0 else { return }
         worldSize = (width, height)
         clampCamera()
+    }
+
+    /// The stage's terrain mask, once the screen has loaded the `.lnd` —
+    /// snapping every mobile onto the terrain surface at its spawn column
+    /// (the server's spawn points are approximate; the original grounds
+    /// mobiles against the mask).
+    public private(set) var terrain: (any BattleTerrain)?
+
+    public func setTerrain(_ terrain: any BattleTerrain) {
+        self.terrain = terrain
+        for index in players.indices {
+            let player = players[index]
+            if let surface = terrain.surfaceLevel(atX: Int(player.x), near: Int(player.y)) {
+                players[index].y = Float(surface)
+            }
+        }
+        // Re-center on our own (now grounded) mobile.
+        if let own = players.first(where: { $0.name == delegate.network.username }) ?? players.first {
+            camera = (own.x, own.y)
+            clampCamera()
+        }
     }
 
     /// The player whose turn it is (lowest turn order among the living) —

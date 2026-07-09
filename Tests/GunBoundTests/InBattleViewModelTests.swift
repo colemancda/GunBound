@@ -83,6 +83,22 @@ struct InBattleViewModelTests {
         #expect(delegate.session.battle == nil)
     }
 
+    /// Loading the terrain mask snaps every mobile onto the surface at its
+    /// spawn column and re-centers the camera on the grounded own mobile.
+    @Test func terrainSnapsSpawnsToTheSurface() {
+        struct FlatFloor: BattleTerrain {
+            // Solid ground from y 1000 down, everywhere.
+            func surfaceLevel(atX x: Int, near y: Int) -> Int? { 1000 }
+        }
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.players[0].y == 900)
+
+        viewModel.setTerrain(FlatFloor())
+        #expect(viewModel.players[0].y == 1000)
+        #expect(viewModel.players[1].y == 1000)
+        #expect(viewModel.camera.y == 1000)  // re-centered on the grounded mobile
+    }
+
     /// Without battle data the screen still enters safely (offline path).
     @Test func offlineEntryIsSafe() {
         let (viewModel, _) = makeViewModel(battle: false)
