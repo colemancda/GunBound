@@ -35,6 +35,8 @@ func translate(_ event: SDLEvent) -> ScreenInputEvent? {
             return nil
         }
     default:
+        // No `.scroll` translation yet: the SDL wrapper's `SDLEvent` doesn't
+        // expose SDL's mouse-wheel event; wire it here once the wrapper does.
         return nil
     }
 }
