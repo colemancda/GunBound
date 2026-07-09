@@ -73,6 +73,8 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public let directGoBackImageName = "gamelist_directgo.img"
     public let dialogOKImageName = "b_gamelist_yes.img"
     public let dialogCancelImageName = "b_gamelist_no.img"
+    /// The CHANNEL user-list panel's chrome.
+    public let channelBackImageName = "gamelist_channel.img"
 
     // MARK: Room-card grid geometry (see the type-level doc comment)
     public static let maxVisibleRooms = 6
@@ -150,6 +152,22 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// that protocol path exists — settable so tests/previews can populate it.
     public var buddies: [String] = []
 
+    /// Channel members shown in the CHANNEL panel — seeded from the join-
+    /// channel roster (`0x2001`) and grown by `0x200E` pushes as users join.
+    /// Settable so tests/previews can populate it directly.
+    public var channelUsers: [String] = []
+
+    /// The visible page of the room list, in 6-card pages over the fetched
+    /// list (Prev/Next buttons). The original re-requests each page from the
+    /// server (`0x2100` + page index); our broker returns the whole list in
+    /// one reply, so paging is a local window — same UI behaviour, no wire
+    /// round-trip.
+    public private(set) var page = 0
+
+    /// Task iterating the connection's push stream while this screen is
+    /// active.
+    private var pushTask: Task<Void, Never>?
+
     private let delegate: ViewModelDelegate
 
     public init(delegate: ViewModelDelegate) {
@@ -161,7 +179,14 @@ public final class GameRoomListViewModel: ScreenViewModel {
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
         filter = .all
+        page = 0
         isJoiningRoom = false
+        // Seed the CHANNEL panel from the join-channel roster, then keep it
+        // (and the room grid) live from the connection's push stream.
+        if let channel = delegate.session.channel {
+            channelUsers = channel.users.map { String(describing: $0.username) }
+        }
+        startObservingPushes()
         loadRooms()
     }
 
@@ -169,17 +194,68 @@ public final class GameRoomListViewModel: ScreenViewModel {
         hoveredButtonIndex = nil
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
+        pushTask?.cancel()
+        pushTask = nil
     }
 
     public func update(deltaTime: Double) {}
 
+    // MARK: - Server pushes
+
+    /// Forwards the connection's unsolicited notifications into `apply(_:)`
+    /// while this screen is active.
+    private func startObservingPushes() {
+        guard pushTask == nil, let client = delegate.client else { return }
+        pushTask = Task { [weak self] in
+            for await push in await client.pushes {
+                guard let self, !Task.isCancelled else { return }
+                self.apply(push)
+            }
+        }
+    }
+
+    /// Applies one server push to the lobby's state — split out from the
+    /// stream loop so tests can drive it directly.
+    public func apply(_ push: ServerPush) {
+        switch push {
+        case .roomUpdated, .roomPlayerLeft:
+            // A room changed somewhere in the channel; re-request the list
+            // (the wire notification carries no per-room fields to patch).
+            loadRooms()
+        case .userJoinedChannel(let notification):
+            channelUsers.append(String(describing: notification.username))
+        case .raw:
+            break
+        }
+    }
+
     // MARK: - Room grid
 
-    /// The rooms actually shown on the current page: the filter applied,
-    /// then capped to the six on-screen cards.
+    /// Rooms passing the View All / Waiting filter — the list Prev/Next
+    /// pages over.
+    private var filteredRooms: [RoomListResponse.Room] {
+        filter == .waitingOnly ? rooms.filter { !$0.isPlaying } : rooms
+    }
+
+    /// Total 6-card pages the filtered list occupies (at least 1).
+    public var pageCount: Int {
+        max(1, (filteredRooms.count + Self.maxVisibleRooms - 1) / Self.maxVisibleRooms)
+    }
+
+    /// The rooms actually shown: the filter applied, then the current page's
+    /// window of six cards.
     public var visibleRooms: [RoomListResponse.Room] {
-        let filtered = filter == .waitingOnly ? rooms.filter { !$0.isPlaying } : rooms
-        return Array(filtered.prefix(Self.maxVisibleRooms))
+        Array(filteredRooms.dropFirst(page * Self.maxVisibleRooms).prefix(Self.maxVisibleRooms))
+    }
+
+    /// Steps the visible page (the Prev / Next buttons), clamped to the
+    /// filtered list's page count. Selection clears because card slots now
+    /// show different rooms.
+    public func step(page delta: Int) {
+        let newPage = min(max(0, page + delta), pageCount - 1)
+        guard newPage != page else { return }
+        page = newPage
+        selectedRoomIndex = nil
     }
 
     /// Number of room cards currently visible.
@@ -285,9 +361,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
             // Toggle the shared buddy-list panel (BuildBuddyPanel is shown or
             // hidden, not rebuilt each click).
             setBuddyPanelVisible(!isBuddyPanelVisible)
-        case .ranking, .pagePrev, .pageNext, .findFriend:
-            // Page nav and find-friend aren't wired up (single-page broker);
-            // `ranking` has no handler in the original build either.
+        case .pagePrev:
+            step(page: -1)
+        case .pageNext:
+            step(page: 1)
+        case .ranking, .findFriend:
+            // Find-friend needs buddy data that isn't wired up; `ranking` has
+            // no handler in the original build either.
             print("[GunBound] room-list action not implemented: \(action)")
         }
     }
@@ -361,21 +441,26 @@ public final class GameRoomListViewModel: ScreenViewModel {
     private func setFilter(_ newFilter: RoomFilter) {
         guard filter != newFilter else { return }
         filter = newFilter
+        page = 0                 // the filtered list re-paginates from the top
         selectedRoomIndex = nil  // indices shift when the visible set changes
     }
 
     // MARK: - Networking
 
     /// Requests the channel room list (opcode `0x2100`) — the lobby's
-    /// `OnEnter` behaviour. No-op (leaves the list empty) if there's no live
-    /// connection, e.g. when the lobby was reached without a real login.
+    /// `OnEnter` behaviour, also re-run whenever a room-update push arrives.
+    /// No-op (leaves the list empty) if there's no live connection, e.g. when
+    /// the lobby was reached without a real login, or while a fetch is
+    /// already in flight (a burst of pushes coalesces into one refresh).
     private func loadRooms() {
-        guard let client = delegate.client else { return }
+        guard !isLoadingRooms, let client = delegate.client else { return }
         isLoadingRooms = true
         Task {
             defer { isLoadingRooms = false }
             do {
                 self.rooms = try await client.fetchRoomList()
+                // The list may have shrunk below the current page.
+                self.page = min(self.page, self.pageCount - 1)
                 print("[GunBound] room list: \(self.rooms.count) room(s)")
             } catch {
                 print("[GunBound] couldn't fetch room list: \(error)")
