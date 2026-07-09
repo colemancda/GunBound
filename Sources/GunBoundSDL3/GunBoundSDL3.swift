@@ -93,6 +93,11 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
         makeGameScreen(for: mode, delegate: context)
     }
 
+    // Hide the OS cursor and draw the game's own `cursor.img` pointer instead
+    // (matching the original's `ShowCursor(0)` + software-blitted cursor).
+    SDL.isCursorVisible = false
+    stateMachine.cursor.isVisible = true
+
     var running = true
     var lastTicks = SDL.ticks
     while running {
