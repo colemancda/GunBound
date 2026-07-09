@@ -64,6 +64,49 @@ struct GameRoomListViewModelTests {
         #expect(viewModel.status(of: room(id: 3, players: 8, capacity: ._4_4, playing: false)) == .full)
     }
 
+    /// Status maps to the `gamelist_back.img` label frames: PLAY 7 / FULL 8 /
+    /// WAIT 9.
+    @Test func statusFrameMapsToLabelFrames() {
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.statusFrame(of: room(id: 1, playing: true)) == 7)
+        #expect(viewModel.statusFrame(of: room(id: 2, players: 8, capacity: ._4_4)) == 8)
+        #expect(viewModel.statusFrame(of: room(id: 3, players: 1)) == 9)
+    }
+
+    /// Card frame: left column base 1, right column base 4; +1 when
+    /// hovered/selected, +2 when it's the joined room (which wins over hover).
+    @Test func cardFrameByColumnStateAndJoined() {
+        let (viewModel, delegate) = makeViewModel()
+        viewModel.rooms = (1...6).map { room(id: RoomID(rawValue: UInt16($0))) }
+
+        #expect(viewModel.cardFrame(forVisibleSlot: 0) == 1)   // left, plain
+        #expect(viewModel.cardFrame(forVisibleSlot: 3) == 4)   // right, plain
+
+        // Hovering slot 0 → +1.
+        let r0 = viewModel.roomRect(at: 0)
+        viewModel.handle(.pointerMoved(x: r0.x + 2, y: r0.y + 2))
+        #expect(viewModel.cardFrame(forVisibleSlot: 0) == 2)
+
+        // The player's joined room (id 4 → slot 3) uses the joined frame (+2),
+        // which beats hover.
+        delegate.session.currentRoom = JoinRoomResponse(
+            room: 4, name: "Room 4", map: .random, settings: 0, capacity: ._4_4, players: []
+        )
+        #expect(viewModel.joinedRoomIndex == 3)
+        #expect(viewModel.cardFrame(forVisibleSlot: 3) == 6)   // 4 + 2
+    }
+
+    /// Game-mode label frame = 10 + settings bits 18–19 (SOLO…JEWEL).
+    @Test func modeFrameFromSettingsBits() {
+        let (viewModel, _) = makeViewModel()
+        func room(settings: UInt32) -> RoomListResponse.Room {
+            RoomListResponse.Room(id: 1, name: "R", map: .random, settings: settings, playerCount: 1, capacity: ._4_4, isPlaying: false, isLocked: false)
+        }
+        #expect(viewModel.modeFrame(of: room(settings: 0)) == 10)
+        #expect(viewModel.modeFrame(of: room(settings: 1 << 18)) == 11)
+        #expect(viewModel.modeFrame(of: room(settings: 3 << 18)) == 13)
+    }
+
     /// Clicks the (first) button with the given action after giving it a
     /// hit-test rect — buttons are identified by their confirmed action, not
     /// a positional index.
