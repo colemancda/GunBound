@@ -137,6 +137,48 @@ struct WidgetTests {
         #expect(scrolls == [1, 2, 1])
     }
 
+    /// Pressing the track (not the arrow bands) starts a drag: position
+    /// tracks the pointer's vertical movement scaled to the track's travel,
+    /// and releases on `pointerUp` from anywhere.
+    @Test func scrollBarThumbDragsWithThePointer() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 10
+        scrollBar.pageSize = 5  // maxPosition 5, travel 60 (100 - 2*20)
+
+        // A press in the middle of the track (clear of both 20px arrow
+        // bands) starts the drag; the arrows themselves are unaffected.
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 50)))
+        #expect(scrollBar.position == 0)
+
+        // Halfway down the travel (30px of 60) moves to half of maxPosition.
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 80)))
+        #expect(scrollBar.position == 3)
+
+        // Dragging past the track end clamps, not crashes.
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 500)))
+        #expect(scrollBar.position == 5)
+
+        // Release ends the drag — further moves are ignored.
+        #expect(scrollBar.dispatch(.pointerUp(x: 10, y: 500)))
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 50)) == false)
+        #expect(scrollBar.position == 5)
+    }
+
+    /// A press outside the widget's frame (or with nothing to scroll)
+    /// doesn't start a drag, and a stray pointerUp with no drag active is a
+    /// no-op rather than being falsely consumed.
+    @Test func scrollBarIgnoresDragOutsideItsBoundsOrWithNothingToScroll() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 10
+        scrollBar.pageSize = 5
+
+        #expect(scrollBar.dispatch(.pointerDown(x: 999, y: 999)) == false)
+        #expect(scrollBar.dispatch(.pointerUp(x: 10, y: 50)) == false)
+
+        scrollBar.pageSize = 10  // everything fits: maxPosition 0
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 50)) == false)
+    }
+
     @Test func scrollBarFiresTheDecompCommand() {
         let root = Widget()
         let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100))
