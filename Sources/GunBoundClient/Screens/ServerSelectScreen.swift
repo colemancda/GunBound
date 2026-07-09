@@ -26,7 +26,10 @@ public final class ServerSelectScreen: GameScreen {
     private var backgroundTexture: ClientTexture?
     private var panelTexture: ClientTexture?
     private var buttonTextures: [ClientTexture?] = []
-    private var waitTexture: ClientTexture?
+    /// `waitmessage.img`'s four animation frames, cycled while the world
+    /// list is loading or a connect attempt is in flight.
+    private var waitFrames: [ClientTexture?] = []
+    private var waitElapsed: Double = 0
     private var audio: ClientAudioPlayer?
     /// server_list.img frames 1–4: row background per state.
     private var rowBaseTexture: ClientTexture?
@@ -69,7 +72,9 @@ public final class ServerSelectScreen: GameScreen {
 
         buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
 
-        waitTexture = renderer.texture(named: viewModel.waitImageName, assets: assets)
+        let waitFrameCount = (try? assets.image(named: viewModel.waitImageName).count) ?? 1
+        waitFrames = (0..<waitFrameCount).map { renderer.texture(named: viewModel.waitImageName, frame: $0, assets: assets) }
+        waitElapsed = 0
     }
 
     public func onExit() {
@@ -77,7 +82,8 @@ public final class ServerSelectScreen: GameScreen {
         backgroundTexture = nil
         panelTexture = nil
         buttonTextures = []
-        waitTexture = nil
+        waitFrames = []
+        waitElapsed = 0
         rowBaseTexture = nil
         rowOfflineTexture = nil
         rowSelectedTexture = nil
@@ -94,6 +100,13 @@ public final class ServerSelectScreen: GameScreen {
     public func update(deltaTime: Double) {
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
+        // Advance the wait-message animation while busy; restart it from
+        // frame 0 the next time it appears.
+        if viewModel.state.isLoading || viewModel.state.isConnecting {
+            waitElapsed += deltaTime
+        } else {
+            waitElapsed = 0
+        }
     }
 
     public func render(_ renderer: ClientRenderer) throws {
@@ -157,10 +170,16 @@ public final class ServerSelectScreen: GameScreen {
             let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
             renderer.draw(texture, in: button.rect, tint: tint)
         }
-        if viewModel.state.isConnecting, let waitTexture {
-            let (width, height) = renderer.size(of: waitTexture)
-            let rect = Rect(x: (800 - width) / 2, y: (600 - height) / 2, width: width, height: height)
-            renderer.draw(waitTexture, in: rect, tint: nil)
+        // Animated "please wait" overlay — shown while fetching the world
+        // list as well as while a connect attempt is in flight, cycling
+        // waitmessage.img's four frames.
+        if viewModel.state.isLoading || viewModel.state.isConnecting, !waitFrames.isEmpty {
+            let frameIndex = Int(waitElapsed / 0.15) % waitFrames.count
+            if let frame = waitFrames[frameIndex] {
+                let (width, height) = renderer.size(of: frame)
+                let rect = Rect(x: (800 - width) / 2, y: (600 - height) / 2, width: width, height: height)
+                renderer.draw(frame, in: rect, tint: nil)
+            }
         }
     }
 }
