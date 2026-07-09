@@ -139,6 +139,23 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await request(JoinRoomRequest(room: room, password: password), response: JoinRoomResponse.self)
     }
 
+    /// Creates a room (outgoing opcode `0x2120`) and decodes the server's
+    /// `CreateRoomResponse` (`0x2121`), which carries the new room's ID. The
+    /// decompiled `SendCreateRoom` sends name + password (the player-limit and
+    /// mode selections aren't confirmed to go over this opcode); we send the
+    /// chosen `capacity`/`settings` too since our packet models them.
+    public func createRoom(
+        name: String,
+        password: RoomPassword = "",
+        capacity: RoomCapacity,
+        settings: UInt32 = 0
+    ) async throws -> CreateRoomResponse {
+        try await request(
+            CreateRoomRequest(name: name, settings: settings, password: password, capacity: capacity),
+            response: CreateRoomResponse.self
+        )
+    }
+
     /// Toggles the player's ready state in the Ready Room (opcode `0x3230` →
     /// `0x3231`). Not opcode-encrypted, so no session key is needed.
     public func setReady(_ isReady: Bool) async throws -> UserReadyResponse {
