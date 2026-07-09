@@ -43,6 +43,8 @@ public final class ServerSelectScreen: GameScreen {
     /// the world-list scroll window when more than 12 servers are fetched.
     private var rootWidget = Widget()
     private var scrollBar: ScrollBarWidget?
+    /// The shared buddy panel, hidden until the BUDDY button toggles it.
+    private var buddyPanel: BuddyPanelWidget?
     /// The shared error popup (`error_back.img` + `b_error_confirm`), hidden
     /// until `viewModel.state` goes to `.error`.
     private var errorDialog: DialogWidget?
@@ -103,6 +105,21 @@ public final class ServerSelectScreen: GameScreen {
         waitFrames = (0..<waitFrameCount).map { renderer.texture(named: viewModel.waitImageName, frame: $0, assets: assets) }
         waitElapsed = 0
 
+        // The shared buddy panel — hidden until the BUDDY button toggles it;
+        // added before the error dialog so the dialog stays topmost.
+        let buddyBack = renderer.texture(named: viewModel.buddyBackImageName, assets: assets)
+        let buddyPanel = BuddyPanelWidget(
+            font: textFont,
+            background: buddyBack,
+            addTexture: renderer.texture(named: viewModel.buddyAddImageName, assets: assets),
+            delTexture: renderer.texture(named: viewModel.buddyDelImageName, assets: assets),
+            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets)
+        )
+        buddyPanel.isHidden = true
+        buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
+        rootWidget.add(buddyPanel)
+        self.buddyPanel = buddyPanel
+
         // The shared error popup — added to the tree last so it sits topmost
         // and, once shown, its modal input handling shadows the scrollbar and
         // rows behind it.
@@ -146,6 +163,7 @@ public final class ServerSelectScreen: GameScreen {
         textFont = nil
         rootWidget = Widget()
         scrollBar = nil
+        buddyPanel = nil
         errorDialog = nil
         audio?.stop()
         audio = nil
@@ -162,6 +180,11 @@ public final class ServerSelectScreen: GameScreen {
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
         scrollBar?.contentCount = viewModel.lineCount
+        // Mirror the buddy-panel toggle and roster onto the widget.
+        if let buddyPanel {
+            buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
+            buddyPanel.buddies = viewModel.buddies
+        }
         // Surface the view model's error state through the shared popup; hide
         // it again once the state clears (its OK button calls `dismissError`).
         if let errorDialog {
