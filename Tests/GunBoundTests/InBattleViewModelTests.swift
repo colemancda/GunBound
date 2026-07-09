@@ -456,11 +456,15 @@ struct InBattleViewModelTests {
             payload: [0x01, 10, 5, 1, 127, 3]
         )))
         #expect(viewModel.players[1].pose == .fire(.special))
+        // The in-flight shot advertises its art identity to the view.
+        #expect(viewModel.activeShot?.mobile == .armor)
+        #expect(viewModel.activeShot?.weapon == .special)
         var frames = 0
         while viewModel.phase == .projectileInFlight || viewModel.phase == .impact, frames < 3000 {
             viewModel.update(deltaTime: 1.0 / 60)
             frames += 1
         }
+        #expect(viewModel.activeShot == nil)  // cleared with the turn
         let profile = InBattleViewModel.profile(for: .special)
         #expect(viewModel.craters.last?.radius == profile.craterRadius)
         let hit = InBattleViewModel.maxHP - viewModel.players[1].hp
