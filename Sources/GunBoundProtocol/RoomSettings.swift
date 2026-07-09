@@ -77,7 +77,10 @@ public extension RoomSettings {
     }
 
     /// The mode-label index (bits 18–19): 0 SOLO, 1 SCORE, 2 TAG, 3 JEWEL —
-    /// exactly what `RenderRoomCard` blits (`10 + index`).
+    /// exactly what `RenderRoomCard` blits (`10 + index`). The value order is
+    /// decomp-confirmed at the top end: `State11_InBattle_Render` draws the
+    /// `JewelTexture` layer only when the (checksum-guarded) in-battle mode
+    /// value equals **3**.
     var modeLabelIndex: Int {
         get { Int(field(Mask.modeLabel)) }
         set { setField(Mask.modeLabel, to: UInt32(newValue)) }
