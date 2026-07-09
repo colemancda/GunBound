@@ -74,11 +74,22 @@ final class GameScene: SKScene {
     /// Whether we've hidden the OS cursor (NSCursor.hide/unhide must stay
     /// balanced — they're a global counter).
     private var isOSCursorHidden = false
+    private var windowResignObserver: NSObjectProtocol?
 
     private func hideOSCursor() {
         guard !isOSCursorHidden else { return }
         isOSCursorHidden = true
         NSCursor.hide()
+        // `mouseExited` doesn't fire on cmd-tab/window deactivation while the
+        // pointer stays inside the view — restore the cursor whenever the
+        // window resigns key so it's never hidden over another app.
+        if windowResignObserver == nil, let window = view?.window {
+            windowResignObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResignKeyNotification, object: window, queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.unhideOSCursor() }
+            }
+        }
     }
 
     private func unhideOSCursor() {
@@ -89,6 +100,10 @@ final class GameScene: SKScene {
 
     override func willMove(from view: SKView) {
         unhideOSCursor()
+        if let observer = windowResignObserver {
+            NotificationCenter.default.removeObserver(observer)
+            windowResignObserver = nil
+        }
         super.willMove(from: view)
     }
     #endif
