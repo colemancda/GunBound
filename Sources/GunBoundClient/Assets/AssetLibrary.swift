@@ -142,4 +142,11 @@ public final class AssetLibrary {
     public func terrainMask(named name: String) throws -> LndFile {
         try LndFile.read(entryData(name, in: "graphics.xfs"))
     }
+
+    /// Loads and parses a sprite sheet's `.epa` animation table (e.g.
+    /// `tank1.epa`) from `graphics.xfs` — the named frame runs that drive
+    /// mobile poses.
+    public func animationTable(named name: String) throws -> EpaFile {
+        try EpaFile.read(entryData(name, in: "graphics.xfs"))
+    }
 }

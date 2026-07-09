@@ -58,6 +58,13 @@ public extension Mobile {
         default: return "tank\(Int(rawValue) + 1).img"
         }
     }
+
+    /// The sheet's paired `.epa` animation table (named frame runs:
+    /// `normal`, `move`, `fire1`, `shock`, `dead`, the `w`-prefixed
+    /// wounded variants, …).
+    var tankAnimationName: String {
+        String(tankImageName.dropLast(4)) + ".epa"
+    }
 }
 
 /// The `.lnd` mask satisfies the battle's terrain queries directly.
