@@ -14,11 +14,12 @@ public protocol BattleTerrain: Sendable {
 
 /// Logic for the In-Battle screen (state 11) — the playable slice: the
 /// static scene (spawns/camera from the `0x3432` start data, the original's
-/// edge-scrolled camera) plus the fire loop — aim with ◀/▶, charge and
-/// release with Enter, a parabolic projectile that collides with the `.lnd`
-/// terrain, splash damage, and turn cycling. Shots relay to the other
-/// players through the server tunnel (`0x4500`), and every client resolves
-/// the same deterministic simulation.
+/// edge-scrolled camera) plus the fire loop — walk with ◀/▶, aim with ▲/▼,
+/// charge and release with Enter (the original's control scheme), a
+/// parabolic projectile that collides with the `.lnd` terrain, splash
+/// damage, and turn cycling. Shots and moves relay to the other players
+/// through the server tunnel (`0x4500`), and every client resolves the
+/// same deterministic simulation.
 ///
 /// **Documented divergence**: the original client sends only angle+power and
 /// the *server* resolves the shot (the `0x8403` payload's eight
@@ -35,9 +36,10 @@ public final class InBattleViewModel: ScreenViewModel {
         public let name: String
         public let team: Team
         public let mobile: Mobile
-        /// Spawn position in stage-world coordinates (`y` snaps to the
-        /// terrain surface once the mask is loaded).
-        public let x: Float
+        /// Position in stage-world coordinates — the spawn from the start
+        /// notification, then updated by walking (`y` snaps to the terrain
+        /// surface once the mask is loaded).
+        public var x: Float
         public var y: Float
         public let turnOrder: Int
         /// Remaining hit points; the mobile dies at 0. `characterdata.dat`
@@ -77,7 +79,7 @@ public final class InBattleViewModel: ScreenViewModel {
     public enum TurnPhase: Equatable, Sendable {
         /// Another player's turn (or a remote shot resolving).
         case waiting
-        /// Our turn: ◀/▶ aim, Enter starts the charge.
+        /// Our turn: ◀/▶ walk, ▲/▼ aim, Enter starts the charge.
         case aiming
         /// Power charging; Enter (or a full gauge) fires.
         case charging
@@ -140,7 +142,9 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Every mobile's HP pool. `characterdata.dat` stores per-mobile
     /// Max HP/Shield values (the editor dialog's 최대체력/최대쉴드 fields);
     /// a uniform pool stands in until those records are decoded.
-    public static let maxHP = 1000
+    /// (`nonisolated`: it seeds `BattlePlayer.hp`'s default outside the
+    /// main actor.)
+    public nonisolated static let maxHP = 1000
     /// The blast's damage rings — the decomp's per-weapon inner/mid/outer
     /// (內/中/外) three-tier model, each radius with its own power. The
     /// outer ring is the splash radius; uniform values stand in until the
@@ -155,6 +159,14 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Wind range (horizontal acceleration, px/s²) — re-rolled every turn,
     /// carried in the fire payload so remote sims match the shooter's.
     public static let windRange: ClosedRange<Float> = -120...120
+    /// Walking: px per ◀/▶ key event (key repeat gives continuous motion),
+    /// the per-turn movement budget, and the biggest vertical rise one step
+    /// can climb. `characterdata.dat` stores per-mobile move distance
+    /// (이동 거리) and max incline (최대등판각) — uniform values stand in
+    /// until those records are decoded.
+    public static let walkStep: Float = 4
+    public static let moveBudgetPerTurn: Float = 120
+    public static let maxClimb: Float = 8
 
     // MARK: State
 
@@ -180,6 +192,8 @@ public final class InBattleViewModel: ScreenViewModel {
     /// The acting remote player's live aim (angle/power/direction), relayed
     /// as they adjust — the decomp's `0x8402`/`0x8406` aim broadcast.
     public private(set) var remoteAim: (angle: Float, power: Float, direction: Float)?
+    /// Movement budget left this turn (px of walking).
+    public private(set) var moveBudget: Float = InBattleViewModel.moveBudgetPerTurn
 
     /// Camera center, in stage-world coordinates, clamped to the world.
     public private(set) var camera: (x: Float, y: Float) = (400, 298)
@@ -218,6 +232,7 @@ public final class InBattleViewModel: ScreenViewModel {
         damageLedger = []
         remoteAim = nil
         shotAttacker = nil
+        moveBudget = Self.moveBudgetPerTurn
         wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
@@ -289,6 +304,7 @@ public final class InBattleViewModel: ScreenViewModel {
         phase = isMyTurn ? .aiming : .waiting
         power = 0
         remoteAim = nil
+        moveBudget = Self.moveBudgetPerTurn
         wind = Float.random(in: Self.windRange)
         // Snap the camera back to the new acting player.
         if let current = currentTurnPlayer {
@@ -357,6 +373,11 @@ public final class InBattleViewModel: ScreenViewModel {
     /// angle+power broadcast, sent as the acting player adjusts their aim
     /// so the other clients can render the barrel moving.
     static let aimTag: UInt8 = 0x02
+    /// The tunnel payload tag for a walk step:
+    /// `[0x03, xLo, xHi, yLo, yHi]` — the mover's absolute post-step
+    /// position (u16 LE each), the `0xc304` movement action's analogue.
+    /// Absolute so remote positions can't drift from missed steps.
+    static let moveTag: UInt8 = 0x03
 
     /// Applies one server push — split out so tests can drive it directly.
     public func apply(_ push: ServerPush) {
@@ -398,6 +419,15 @@ public final class InBattleViewModel: ScreenViewModel {
                 power: Float(forward.payload[2]) / 100,
                 direction: forward.payload[3] == 0 ? -1 : 1
             )
+        case Self.moveTag:
+            guard forward.payload.count >= 5,
+                  let index = players.firstIndex(where: { $0.slot == forward.sourceSlot })
+            else { return }
+            players[index].x = Float(UInt16(forward.payload[1]) | UInt16(forward.payload[2]) << 8)
+            players[index].y = Float(UInt16(forward.payload[3]) | UInt16(forward.payload[4]) << 8)
+            // Follow the walker (it's the acting player).
+            camera = (players[index].x, players[index].y)
+            clampCamera()
         default:
             break
         }
@@ -410,14 +440,23 @@ public final class InBattleViewModel: ScreenViewModel {
         case .pointerMoved(let x, let y):
             pointer = (x, y)
 
-        case .key(.left):
+        case .key(.up):
             guard isMyTurn, phase == .aiming || phase == .charging else { return }
             aimAngle = min(Self.aimRange.upperBound, aimAngle + Self.aimStep)
             relayAim()
-        case .key(.right):
+        case .key(.down):
             guard isMyTurn, phase == .aiming || phase == .charging else { return }
             aimAngle = max(Self.aimRange.lowerBound, aimAngle - Self.aimStep)
             relayAim()
+
+        // ◀/▶ walk the mobile (aiming only — the original locks movement
+        // once the charge starts).
+        case .key(.left):
+            guard isMyTurn, phase == .aiming else { return }
+            walk(-1)
+        case .key(.right):
+            guard isMyTurn, phase == .aiming else { return }
+            walk(1)
 
         case .activate:
             switch phase {
@@ -480,6 +519,60 @@ public final class InBattleViewModel: ScreenViewModel {
             fireDirection > 0 ? 1 : 0,
         ]
         let targets = players.filter { $0.slot != shooter.slot }.map(\.slot)
+        Task {
+            for slot in targets {
+                try? await client.sendTunnel(to: slot, payload: payload)
+            }
+        }
+    }
+
+    /// One walk step (±1 direction): moves the acting mobile along the
+    /// terrain surface, spending the turn's movement budget. A rise steeper
+    /// than the climb limit is a wall; a drop lands on the ground below
+    /// (craters included); a bottomless column blocks the step.
+    private func walk(_ direction: Float) {
+        guard moveBudget >= Self.walkStep,
+              let shooter = currentTurnPlayer,
+              let index = players.firstIndex(where: { $0.slot == shooter.slot })
+        else { return }
+        let newX = min(max(0, shooter.x + direction * Self.walkStep), worldSize.width)
+        guard newX != shooter.x, let newY = walkDestinationY(atX: newX, from: shooter.y) else { return }
+        players[index].x = newX
+        players[index].y = newY
+        moveBudget -= Self.walkStep
+        camera = (newX, newY)
+        clampCamera()
+        relayMove(players[index])
+    }
+
+    /// Where a step to column `x` puts the mobile's feet, starting from
+    /// height `y`; `nil` when the step is blocked (a wall above the climb
+    /// limit, or a column blown through to the void).
+    private func walkDestinationY(atX x: Float, from y: Float) -> Float? {
+        guard terrain != nil else { return y }  // no mask yet: walk flat
+        let top = y - Self.maxClimb
+        guard !isSolidGround(x: x, y: top) else { return nil }  // wall
+        var scan = top + 1
+        while scan <= y + Self.maxClimb {
+            if isSolidGround(x: x, y: scan) { return scan }
+            scan += 1
+        }
+        // No footing within the climb window — fall to the ground below.
+        return groundLevel(atX: x, below: y + Self.maxClimb)
+    }
+
+    /// Broadcasts the walker's post-step position (the `0xc304` movement
+    /// action's analogue) so the other clients place the mobile exactly.
+    private func relayMove(_ player: BattlePlayer) {
+        guard let client = delegate.client else { return }
+        let x = UInt16(min(max(0, player.x.rounded()), 65535))
+        let y = UInt16(min(max(0, player.y.rounded()), 65535))
+        let payload: [UInt8] = [
+            Self.moveTag,
+            UInt8(x & 0xff), UInt8(x >> 8),
+            UInt8(y & 0xff), UInt8(y >> 8),
+        ]
+        let targets = players.filter { $0.slot != player.slot }.map(\.slot)
         Task {
             for slot in targets {
                 try? await client.sendTunnel(to: slot, payload: payload)
