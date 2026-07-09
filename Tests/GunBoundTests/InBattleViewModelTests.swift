@@ -489,6 +489,45 @@ struct InBattleViewModelTests {
         #expect(viewModel.chatLines.last?.message == "Time over!")
     }
 
+    /// The model queues sound cues for the view: fire and blast carry the
+    /// shooter's mobile+weapon, walking is throttled, the ten-second mark
+    /// warns once, and expiry hands the next player their turn cue.
+    @Test func soundCuesQueueForTheView() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+        #expect(viewModel.drainSounds().isEmpty)
+
+        // Two quick steps → one throttled walk cue ("guest" rides Armor).
+        viewModel.handle(.key(.right))
+        viewModel.handle(.key(.right))
+        #expect(viewModel.drainSounds() == [.walk(.armor)])
+
+        // Crossing the ten-second mark warns exactly once.
+        viewModel.update(deltaTime: 55)
+        #expect(viewModel.drainSounds() == [.turnWarning])
+
+        // Expiry: the turn passes, and (offline) the new turn is ours.
+        viewModel.update(deltaTime: 6)
+        #expect(viewModel.drainSounds() == [.turnStart])
+
+        // Fire and blast cues carry the shooter's mobile and weapon.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 1,
+            payload: [0x01, 10, 5, 1, 127, 2]
+        )))
+        var frames = 0
+        while viewModel.phase == .projectileInFlight || viewModel.phase == .impact, frames < 3000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        let cues = viewModel.drainSounds()
+        #expect(cues.contains(.fire(.armor, .shot2)))
+        #expect(cues.contains(.blast(.armor, .shot2)))
+        // Draining clears the queue.
+        #expect(viewModel.drainSounds().isEmpty)
+    }
+
     /// Without battle data the screen still enters safely (offline path).
     @Test func offlineEntryIsSafe() {
         let (viewModel, _) = makeViewModel(battle: false)
