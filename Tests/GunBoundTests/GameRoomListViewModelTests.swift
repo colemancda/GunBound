@@ -257,6 +257,20 @@ struct GameRoomListViewModelTests {
         #expect(viewModel.channelUsers == ["alsey", "boomer"])  // unchanged
     }
 
+    /// A `0x201F` broadcast appends a formatted chat line, capped to the most
+    /// recent `maxChatLines`.
+    @Test func chatBroadcastsAppendFormattedLines() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.apply(.chatReceived(ChannelChatBroadcast(position: 0, username: "alsey", message: "hello lobby")))
+        #expect(viewModel.chatMessages == ["alsey: hello lobby"])
+
+        for i in 0..<(GameRoomListViewModel.maxChatLines + 10) {
+            viewModel.apply(.chatReceived(ChannelChatBroadcast(position: 0, username: "bot", message: "\(i)")))
+        }
+        #expect(viewModel.chatMessages.count == GameRoomListViewModel.maxChatLines)
+        #expect(viewModel.chatMessages.last == "bot: \(GameRoomListViewModel.maxChatLines + 9)")
+    }
+
     /// Entering the lobby seeds the CHANNEL roster from the join-channel
     /// response stored in the session.
     @Test func onEnterSeedsChannelUsersFromSession() {

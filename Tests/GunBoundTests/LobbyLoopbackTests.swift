@@ -84,4 +84,37 @@ struct LobbyLoopbackTests {
         let after = try await client.fetchRoomList()
         #expect(after.contains { $0.id == created.room })
     }
+
+    /// Channel chat round-trip over real sockets: the encrypted `0x2010`
+    /// command goes out, the server broadcasts the (also encrypted) `0x201F`
+    /// back to the channel, and the pump decrypts + decodes it into a typed
+    /// push — AES exercised in both directions with the session key.
+    @Test func chatRoundTripsEncrypted() async throws {
+        let (server, port) = try await Self.startServer()
+        defer { withExtendedLifetime(server) {} }
+
+        let config = NetworkConfig(
+            username: "admin", password: "1234",
+            serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
+        )
+        let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(config)
+        defer { Task { await client.close() } }
+
+        let auth = try await client.authenticate(username: "admin", password: "1234")
+        #expect(auth.status == .success)
+        let channel = try await client.joinChannel()
+        #expect(channel.isSuccess)
+
+        try await client.send(ChannelChatCommand(message: "hello loopback"))
+
+        var received: ChannelChatBroadcast?
+        for await push in await client.pushes {
+            if case .chatReceived(let broadcast) = push {
+                received = broadcast
+                break
+            }
+        }
+        #expect(received?.message == "hello loopback")
+        #expect(received.map { String(describing: $0.username) } == "admin")
+    }
 }

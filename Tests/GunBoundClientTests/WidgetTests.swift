@@ -294,6 +294,42 @@ struct WidgetTests {
         #expect(!panel.dispatch(.pointerDown(x: 600, y: 400)))
     }
 
+    @Test func lobbyChatSubmitsAndClearsTheInput() {
+        let panel = LobbyChatWidget(font: nil)
+        #expect(panel.frame == Rect(x: 23, y: 287, width: 549, height: 259))
+        var sent: [String] = []
+        panel.onSend = { sent.append($0) }
+
+        panel.inputField.focus()
+        _ = panel.inputField.dispatch(.text("hello"))
+        _ = panel.dispatch(.activate)
+        #expect(sent == ["hello"])
+        #expect(panel.inputField.text.isEmpty)
+        #expect(panel.inputField.isFocused)  // keeps focus for the next line
+
+        // Blank lines don't send.
+        _ = panel.inputField.dispatch(.text("   "))
+        _ = panel.dispatch(.activate)
+        #expect(sent == ["hello"])
+    }
+
+    @Test func lobbyChatFollowsTheTailUnlessScrolledUp() {
+        let panel = LobbyChatWidget(font: nil)
+        panel.messages = (1...20).map { "line \($0)" }
+        // 20 lines over 13 rows → tail position 7, followed automatically.
+        #expect(panel.scrollBar.position == 7)
+
+        // Player scrolls up to read history; new lines stop yanking the view.
+        panel.scrollBar.setPosition(2)
+        panel.messages.append("line 21")
+        #expect(panel.scrollBar.position == 2)
+
+        // Back at the tail, following resumes.
+        panel.scrollBar.setPosition(panel.scrollBar.maxPosition)
+        panel.messages.append("line 22")
+        #expect(panel.scrollBar.position == panel.scrollBar.maxPosition)
+    }
+
     @Test func hiddenDialogLetsInputThroughToSiblings() {
         // A hidden dialog must not shadow the widgets behind it.
         let root = ProbeWidget(name: "root")
