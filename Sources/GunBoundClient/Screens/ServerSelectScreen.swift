@@ -161,7 +161,7 @@ public final class ServerSelectScreen: GameScreen {
         // the modal shade.
         errorDialog.dimTexture = renderer.texture(from: Self.solidPixel)
         errorDialog.isHidden = true
-        errorDialog.onConfirm = { [weak viewModel = self.viewModel] in viewModel?.dismissError() }
+        errorDialog.onConfirm = { [weak viewModel = self.viewModel] in viewModel?.confirmError() }
         rootWidget.add(errorDialog)
         self.errorDialog = errorDialog
     }
@@ -204,7 +204,7 @@ public final class ServerSelectScreen: GameScreen {
             buddyPanel.buddies = viewModel.buddies
         }
         // Surface the view model's error state through the shared popup; hide
-        // it again once the state clears (its OK button calls `dismissError`).
+        // it again once the state clears (its OK button quits, like EXIT).
         if let errorDialog {
             if let message = viewModel.state.error {
                 // Resolve the localized text (falling back to the built-in

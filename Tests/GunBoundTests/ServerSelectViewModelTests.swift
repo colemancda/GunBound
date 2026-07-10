@@ -299,6 +299,20 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.state.isConnecting)
     }
 
+    /// The error dialog's OK button quits the client — the same action as
+    /// the EXIT button — since the failed connection is already torn down.
+    @Test func errorDialogConfirmQuits() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(!delegate.quitRequested)
+        viewModel.confirmError()
+        #expect(delegate.quitRequested)
+    }
+
     /// Network errors map to the localized dialog the original would show —
     /// a request timeout is "access time expired" (id 201), everything else
     /// is "server access error" (id 200) — never the raw error text.

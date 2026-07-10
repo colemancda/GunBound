@@ -236,13 +236,13 @@ public final class ServerSelectViewModel: ScreenViewModel {
         task = nil  // let a later re-entry start a fresh reload
     }
 
-    /// Dismisses the error dialog (its OK button) — clears `.error` back to
-    /// `.loaded` so the world list is interactive again, matching the
-    /// original's dialog closing without re-fetching.
-    public func dismissError() {
-        if state.error != nil {
-            state = .loaded
-        }
+    /// The error dialog's OK button. On Server Select the errors are all
+    /// connection failures whose sockets are already torn down ("The
+    /// connection will close automatically."), so confirming exits the
+    /// client — the same action as the EXIT button — rather than returning
+    /// to a dead world list.
+    public func confirmError() {
+        delegate.requestQuit()
     }
 
     public func update(deltaTime: Double) {
