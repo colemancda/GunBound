@@ -101,9 +101,25 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public static let statusIconOffset = (x: Float(0x13), y: Float(0x55 - 0x3a))  // (19, 27)
     public static let modeIconOffset = (x: Float(0xb1), y: Float(0x5b - 0x3a))    // (177, 33)
     public static let lockIconOffsetY = Float(0x52 - 0x3a)                        // 24
-    /// The padlock sits 6px further left in the right column (decomp's
-    /// `0xea - 6` for `slot/3 != 0`).
-    public static func lockIconX(rightColumn: Bool) -> Float { rightColumn ? Float(0xea - 6) : Float(0xea) }
+    /// The padlock's card-relative x. The byte-matched `RenderRoomCard`
+    /// (decomp `src/cxx/State03_GameRoomList.cpp`) computes the right
+    /// column's as `0xea - 0xfa` — **−16**, i.e. 16px left of the right
+    /// card's band, hanging into the column gap (corrected from an earlier
+    /// `0xea − 6` misreading of the raw port).
+    public static func lockIconX(rightColumn: Bool) -> Float { rightColumn ? -16 : Float(0xea) }
+
+    /// The card's map thumbnail sheet (`gameliststage.img`, 11 thumbs per
+    /// bank, frame 0 the random "?"), blitted at this card-relative
+    /// offset. `RenderRoomCard` picks `(infoByte2 & 3)·11 + mapId`; the
+    /// bank bits' semantics aren't pinned down (the promoted source
+    /// guesses fullness), so bank 0 draws until they are.
+    public let stageThumbImageName = "gameliststage.img"
+    public static let stageThumbOffset = (x: Float(0x6a), y: Float(0x5b - 0x3a))  // (106, 33)
+
+    /// The map thumbnail's frame for a room (bank 0).
+    public func stageThumbFrame(of room: RoomListResponse.Room) -> Int {
+        Int(room.map.rawValue)
+    }
 
     /// The confirmed button set with verbatim rects from the decompiled
     /// `State03_GameRoomList_CreateButtons` (`0x42aba0`): six 107×45 main
