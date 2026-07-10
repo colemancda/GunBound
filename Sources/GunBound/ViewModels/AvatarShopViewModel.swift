@@ -37,6 +37,8 @@ public final class AvatarShopViewModel: ScreenViewModel {
 
     public var cancelRect: Rect = .zero
     public private(set) var hoveredIndex: Int?
+    /// The category tab currently held down — drives the `pressed` frame.
+    public private(set) var pressedIndex: Int?
     public private(set) var selectedCategory = 0
     public private(set) var selectedItemIndex: Int?
     public private(set) var isLoading = false
@@ -97,13 +99,17 @@ public final class AvatarShopViewModel: ScreenViewModel {
             if cancelRect.contains(x: x, y: y) {
                 delegate.requestTransition(to: .gameRoomList)
             } else if let index = categoryButtons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) {
+                pressedIndex = index
                 selectedCategory = index
                 print("[GunBound] avatar-shop category: \(categoryButtons[index].name)")
             } else if let itemIndex = (0..<items.count).first(where: { itemRect(at: $0).contains(x: x, y: y) }) {
                 selectedItemIndex = itemIndex
             }
 
-        case .pointerUp, .activate, .text, .key, .scroll:
+        case .pointerUp:
+            pressedIndex = nil
+
+        case .activate, .text, .key, .scroll:
             break
         }
     }
