@@ -5,7 +5,11 @@ import Testing
 @Suite @MainActor
 struct InBattleViewModelTests {
 
-    private func makeViewModel(battle: Bool = true, settings: UInt32 = 0) -> (InBattleViewModel, MockViewModelDelegate) {
+    private func makeViewModel(
+        battle: Bool = true,
+        settings: UInt32 = 0,
+        guestSecondary: Mobile = .random
+    ) -> (InBattleViewModel, MockViewModelDelegate) {
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let delegate = MockViewModelDelegate(network: network)
         if battle {
@@ -14,7 +18,7 @@ struct InBattleViewModelTests {
                 map: .metropolis,
                 players: [
                     StartGameNotification.Player(id: 0, username: "admin", team: .a, primaryTank: .boomer, secondaryTank: .random, xPosition: 600, yPosition: 900, turnOrder: 1),
-                    StartGameNotification.Player(id: 1, username: "guest", team: .b, primaryTank: .armor, secondaryTank: .random, xPosition: 1200, yPosition: 900, turnOrder: 0),
+                    StartGameNotification.Player(id: 1, username: "guest", team: .b, primaryTank: .armor, secondaryTank: guestSecondary, xPosition: 1200, yPosition: 900, turnOrder: 0),
                 ],
                 events: 0,
                 commandData: []
@@ -615,6 +619,55 @@ struct InBattleViewModelTests {
         #expect(viewModel.winner == .a)
         viewModel.update(deltaTime: InBattleViewModel.matchEndDelay + 0.1)
         #expect(delegate.requestedTransitions == [.gameRoomList])
+    }
+
+    /// Tag mode: the first knockout tags the secondary mobile in on the
+    /// spot with a fresh pool (no elimination, no wipe), and the second is
+    /// final — deciding the match by wipe like solo.
+    @Test func tagModeSwapsToTheSecondaryMobile() {
+        let tagSettings = UInt32(UInt16(bitPattern: GameMode.tag.rawValue)) << 16
+        let (viewModel, _) = makeViewModel(settings: tagSettings, guestSecondary: .bigFoot)
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+        #expect(viewModel.gameMode == .tag)
+        #expect(viewModel.teamLives == nil)  // no score pools in tag
+
+        // First knockout: the secondary takes over, alive with full HP.
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        #expect(viewModel.players[1].isAlive)
+        #expect(viewModel.players[1].mobile == .bigFoot)
+        #expect(viewModel.players[1].hp == InBattleViewModel.maxHP)
+        #expect(viewModel.players[1].hasTagged)
+        #expect(!viewModel.isMatchOver)
+        #expect(viewModel.chatLines.contains { $0.message.contains("tagged in") })
+
+        // Second knockout is final: the wipe decides the match.
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        #expect(!viewModel.players[1].isAlive)
+        // The wipe check runs at impact resolution — drive one through.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 0,
+            payload: [0x01, 10, 5, 1, 127, 1]
+        )))
+        var frames = 0
+        while !viewModel.isMatchOver, frames < 4000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        #expect(viewModel.isMatchOver)
+        #expect(viewModel.winner == .a)
+    }
+
+    /// A `.random` secondary keeps the primary mobile through the tag
+    /// (there's no synchronized roll to resolve it identically on every
+    /// client).
+    @Test func tagModeRandomSecondaryKeepsThePrimary() {
+        let tagSettings = UInt32(UInt16(bitPattern: GameMode.tag.rawValue)) << 16
+        let (viewModel, _) = makeViewModel(settings: tagSettings)
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        #expect(viewModel.players[1].isAlive)
+        #expect(viewModel.players[1].mobile == .armor)  // unchanged
+        #expect(viewModel.players[1].hasTagged)
     }
 
     /// Without battle data the screen still enters safely (offline path).
