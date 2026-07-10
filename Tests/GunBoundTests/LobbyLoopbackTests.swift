@@ -195,6 +195,36 @@ struct LobbyLoopbackTests {
         try await guest.returnToRoom()
     }
 
+    /// The periodic keepalive (`0x0000`): a client on a fast cadence rides
+    /// several intervals and the connection stays healthy — the server
+    /// accepts each heartbeat rather than dropping the session on an
+    /// unexpected packet.
+    @Test func keepAliveHeartbeatsFlowPeriodically() async throws {
+        let (server, port) = try await Self.startServer()
+        defer { withExtendedLifetime(server) {} }
+
+        let config = NetworkConfig(
+            username: "admin", password: "1234",
+            serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
+        )
+        let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(
+            config,
+            keepAliveInterval: .milliseconds(50)
+        )
+        defer { Task { await client.close() } }
+
+        let auth = try await client.authenticate(username: "admin", password: "1234")
+        #expect(auth.status == .success)
+
+        // Let a handful of heartbeats go out, then prove the session still
+        // works end to end (a dropped/errored connection would fail here).
+        try await Task.sleep(for: .milliseconds(400))
+        let channel = try await client.joinChannel()
+        #expect(channel.isSuccess)
+        try await Task.sleep(for: .milliseconds(200))
+        _ = try await client.fetchRoomList()
+    }
+
     /// The buddy list end to end (our own convention — see `BuddyEntry`'s
     /// type-level note): an empty roster fetches clean, adding a connected
     /// username reports it online in the refreshed push, and removing it
