@@ -101,6 +101,31 @@ public enum Opcode: UInt16, Sendable {
     /// Room Detail Response
     case roomDetailResponse = 0x2105
 
+    // MARK: - Buddy List
+    //
+    // The decomp confirms a buddy/friend feature exists (the
+    // `b_gamelist_friend` "Find Friend" button triggers `0x2101`, reusing
+    // the room-specific-list opcode above as a buddy-room-locator), but its
+    // exact record layout isn't pinned down — see `BuddyEntry`'s type-level
+    // note. These four opcodes are this project's own convention (an
+    // unused range) for a plain add/remove/list roster with online status.
+
+    /// Buddy List Request - fetch the requester's buddy roster.
+    case buddyListRequest = 0x2200
+
+    /// Buddy List Response - the roster, in reply to `buddyListRequest`.
+    case buddyListResponse = 0x2201
+
+    /// Buddy Add Command - add a username to the buddy list.
+    case buddyAddCommand = 0x2202
+
+    /// Buddy Remove Command - remove a username from the buddy list.
+    case buddyRemoveCommand = 0x2203
+
+    /// Buddy List Notification - the refreshed roster, pushed after
+    /// `buddyAddCommand`/`buddyRemoveCommand`.
+    case buddyListNotification = 0x2204
+
     // MARK: - Room Management
 
     /// Join Room Request - request to join a game room.
@@ -431,6 +456,11 @@ public extension Opcode {
         case .roomSpecificList: return .request
         case .roomDetailRequest: return .request
         case .roomDetailResponse: return .response
+        case .buddyListRequest: return .request
+        case .buddyListResponse: return .response
+        case .buddyAddCommand: return .command
+        case .buddyRemoveCommand: return .command
+        case .buddyListNotification: return .notification
         case .joinRoomRequest: return .request
         case .joinRoomResponse: return .response
         case .joinRoomNotification: return .notification
@@ -567,6 +597,7 @@ private extension Opcode {
         (.joinRoomRequest, .joinRoomResponse),
         (.roomListRequest, .roomListResponse),
         (.roomDetailRequest, .roomDetailResponse),
+        (.buddyListRequest, .buddyListResponse),
         (.createRoomRequest, .createRoomResponse),
         (.roomSelectTankRequest, .roomSelectTankResponse),
         (.roomSelectTeamRequest, .roomSelectTeamResponse),
