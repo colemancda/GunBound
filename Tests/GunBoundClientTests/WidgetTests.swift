@@ -137,22 +137,48 @@ struct WidgetTests {
         #expect(scrolls == [1, 2, 1])
     }
 
-    /// Pressing the track (not the arrow bands) starts a drag: position
-    /// tracks the pointer's vertical movement scaled to the track's travel,
-    /// and releases on `pointerUp` from anywhere.
-    @Test func scrollBarThumbDragsWithThePointer() {
+    /// The decomp's thumb formulas: the page's share of the track floored
+    /// at 10 and rounded down to a multiple of 5, spanning from
+    /// `pos·height/total`; an empty bar's thumb fills the track.
+    @Test func scrollBarThumbGeometryFollowsTheDecomp() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+
+        scrollBar.contentCount = 10
+        scrollBar.pageSize = 5
+        #expect(scrollBar.thumbHeight == 50)  // 5/10 of 100
+        #expect(scrollBar.thumbTop == 0)
+        scrollBar.setPosition(4)
+        #expect(scrollBar.thumbTop == 40)  // 4·100/10
+
+        // The 13.3px share rounds down to 10 (multiple of 5)...
+        scrollBar.contentCount = 30
+        scrollBar.pageSize = 4
+        #expect(scrollBar.thumbHeight == 10)
+        // ...and a 1px share floors at the 10px minimum.
+        scrollBar.contentCount = 100
+        scrollBar.pageSize = 1
+        #expect(scrollBar.thumbHeight == 10)
+
+        // No content: the thumb fills the whole track.
+        scrollBar.contentCount = 0
+        #expect(scrollBar.thumbHeight == 100)
+    }
+
+    /// A press on the thumb arms the drag with the decomp's grab offset —
+    /// the thumb tracks the pointer without jumping under it — and any
+    /// release disarms it.
+    @Test func scrollBarThumbDragsWithTheGrabOffset() {
         let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
         scrollBar.contentCount = 10
-        scrollBar.pageSize = 5  // maxPosition 5, travel 60 (100 - 2*20)
+        scrollBar.pageSize = 5  // maxPosition 5; thumb 50 tall at y 0
 
-        // A press in the middle of the track (clear of both 20px arrow
-        // bands) starts the drag; the arrows themselves are unaffected.
-        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 50)))
+        // Grab the thumb 25px into it.
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 25)))
         #expect(scrollBar.position == 0)
 
-        // Halfway down the travel (30px of 60) moves to half of maxPosition.
-        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 80)))
-        #expect(scrollBar.position == 3)
+        // Move down 20px: the thumb top lands at 20 → pos 20·10/100 = 2.
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 45)))
+        #expect(scrollBar.position == 2)
 
         // Dragging past the track end clamps, not crashes.
         #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 500)))
@@ -160,14 +186,60 @@ struct WidgetTests {
 
         // Release ends the drag — further moves are ignored.
         #expect(scrollBar.dispatch(.pointerUp(x: 10, y: 500)))
-        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 50)) == false)
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 25)) == false)
         #expect(scrollBar.position == 5)
     }
 
+    /// Holding the track (off the thumb) pages toward the pointer once per
+    /// frame — the decomp's held-track auto-scroll — stopping when the
+    /// thumb reaches the pointer.
+    @Test func scrollBarHeldTrackPagesTowardThePointer() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 20
+        scrollBar.pageSize = 5  // maxPosition 15; thumb 25 tall
+
+        // Hold the track below the thumb (thumb spans 0–25; y 60 is clear
+        // of the down arrow's 80–100 band).
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 60)))
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 5)  // paged down once
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 10)
+        // Thumb now spans 50–75, covering the held point: paging stops.
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 10)
+
+        _ = scrollBar.dispatch(.pointerUp(x: 10, y: 60))
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 10)
+    }
+
+    /// A held arrow auto-repeats its ±1 step every frame (the decomp's
+    /// armed-label re-fire), on top of the immediate step at the press.
+    @Test func scrollBarHeldArrowAutoRepeats() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 20
+        scrollBar.pageSize = 5
+
+        // Press the down arrow (its band is y 80–100): one step at the
+        // press, another per update while held.
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 90)))
+        #expect(scrollBar.position == 1)
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 2)
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 3)
+
+        // Release stops the repeat.
+        _ = scrollBar.dispatch(.pointerUp(x: 10, y: 90))
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 3)
+    }
+
     /// A press outside the widget's frame (or with nothing to scroll)
-    /// doesn't start a drag, and a stray pointerUp with no drag active is a
+    /// arms nothing, and a stray pointerUp with no press active is a
     /// no-op rather than being falsely consumed.
-    @Test func scrollBarIgnoresDragOutsideItsBoundsOrWithNothingToScroll() {
+    @Test func scrollBarIgnoresPressesOutsideItsBoundsOrWithNothingToScroll() {
         let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
         scrollBar.contentCount = 10
         scrollBar.pageSize = 5
