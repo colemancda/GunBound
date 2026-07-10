@@ -267,6 +267,70 @@ struct WidgetTests {
         #expect(panel.scrollBar.maxPosition == 20 - BuddyPanelWidget.visibleRows)
     }
 
+    /// Add opens the inline name field; typing a name and pressing Enter
+    /// fires `onAdd` and closes the field. An empty submit is a no-op.
+    @Test func buddyPanelAddFieldSubmitsNames() {
+        let panel = BuddyPanelWidget(font: nil)
+        var added: [String] = []
+        panel.onAdd = { added.append($0) }
+
+        #expect(panel.addField.isHidden)
+        panel.addButton.onClick?()
+        #expect(!panel.addField.isHidden)
+        #expect(panel.addField.isFocused)
+
+        _ = panel.addField.dispatch(.text("guest"))
+        _ = panel.addField.dispatch(.activate)
+        #expect(added == ["guest"])
+        #expect(panel.addField.isHidden)
+
+        // Reopened: an empty Enter closes without firing.
+        panel.addButton.onClick?()
+        _ = panel.addField.dispatch(.activate)
+        #expect(added == ["guest"])
+        #expect(panel.addField.isHidden)
+
+        // Add toggles: open, then a second click closes it.
+        panel.addButton.onClick?()
+        #expect(!panel.addField.isHidden)
+        panel.addButton.onClick?()
+        #expect(panel.addField.isHidden)
+    }
+
+    /// Clicking a roster row selects it (re-click deselects); Del fires
+    /// `onDelete` with the selected name; a roster change clears the
+    /// selection.
+    @Test func buddyPanelSelectionDrivesDelete() {
+        let panel = BuddyPanelWidget(font: nil)
+        panel.buddies = ["alpha", "beta", "gamma"]
+        var deleted: [String] = []
+        panel.onDelete = { deleted.append($0) }
+
+        // Del with nothing selected is a no-op.
+        panel.delButton.onClick?()
+        #expect(deleted.isEmpty)
+
+        // Click the second row (list origin is (frame.x+12, frame.y+36);
+        // rows pitch by the fallback line height 12 + 4).
+        let x = panel.frame.x + 20
+        let rowY = panel.frame.y + 36 + 16 + 2
+        #expect(panel.dispatch(.pointerDown(x: x, y: rowY)))
+        #expect(panel.selectedIndex == 1)
+
+        panel.delButton.onClick?()
+        #expect(deleted == ["beta"])
+
+        // The refreshed roster clears the stale selection.
+        panel.buddies = ["alpha", "gamma"]
+        #expect(panel.selectedIndex == nil)
+
+        // Re-click toggles the selection off.
+        #expect(panel.dispatch(.pointerDown(x: x, y: rowY)))
+        #expect(panel.selectedIndex == 1)
+        #expect(panel.dispatch(.pointerDown(x: x, y: rowY)))
+        #expect(panel.selectedIndex == nil)
+    }
+
     @Test func createRoomDialogSubmitCarriesFields() {
         let dialog = CreateRoomDialogWidget(frame: Rect(x: 200, y: 150, width: 300, height: 220), font: nil)
         var submitted: (name: String, password: String, capacity: RoomCapacity)?
