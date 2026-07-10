@@ -86,7 +86,9 @@ public final class InBattleScreen: GameScreen {
         }
 
         self.assets = assets
-        for mobile in Set(viewModel.players.map(\.mobile)) {
+        // Primaries and Tag-mode secondaries alike — a mid-match tag swap
+        // must find its animation table already loaded.
+        for mobile in Set(viewModel.players.flatMap { [$0.mobile, $0.secondaryMobile] }) {
             mobileAnimations[mobile] = try? assets.animationTable(named: mobile.tankAnimationName)
         }
         dotTexture = renderer.texture(named: "load_back.img", frame: 2, assets: assets)
