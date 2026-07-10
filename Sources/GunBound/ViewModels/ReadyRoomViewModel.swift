@@ -139,6 +139,19 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         Array((delegate.session.currentRoom?.players ?? []).prefix(Self.maxPlayers))
     }
 
+    /// The room's player capacity — its raw value is the number of open
+    /// roster slots (the ones that show a team platform; the rest stay the
+    /// bare boxes baked into the background). Full 8 when the room isn't
+    /// known, so the offline walkthrough shows every slot.
+    public var capacity: RoomCapacity { delegate.session.currentRoom?.capacity ?? ._4_4 }
+
+    /// The default team for an open-but-empty roster slot — the left half of
+    /// each row seats team A, the right half team B (the original shows A
+    /// platforms left of the map panel and B platforms right of it).
+    public static func defaultTeam(forSlot index: Int) -> Team {
+        (index % rosterColumnX.count) < rosterColumnX.count / 2 ? .a : .b
+    }
+
     /// Whether this client is the room host (slot 0) — hosts get the Start
     /// button where guests get Ready, matching the original's same-slot swap.
     public var isHost: Bool {

@@ -68,6 +68,27 @@ struct ReadyRoomViewModelTests {
         #expect(ReadyRoomViewModel.pickerDisabledCell == 13)
     }
 
+    /// Open slots = the room capacity (all 8 with no room, for the offline
+    /// walkthrough); empty open slots default to A on the left half of each
+    /// row and B on the right half, matching the original's platform layout.
+    @Test func capacityAndDefaultTeams() {
+        let (viewModel, delegate) = makeViewModel()
+        #expect(viewModel.capacity == ._4_4)
+
+        delegate.session.currentRoom = JoinRoomResponse(
+            room: 1, name: "R", map: .random, settings: 0, capacity: ._2_2, players: []
+        )
+        #expect(viewModel.capacity == ._2_2)
+        #expect(viewModel.capacity.rawValue == 4)
+
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 0) == .a)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 1) == .a)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 2) == .b)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 3) == .b)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 4) == .a)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 7) == .b)
+    }
+
     @Test func exposesRoomFromSession() {
         let (viewModel, delegate) = makeViewModel()
         #expect(viewModel.roomName == "")
