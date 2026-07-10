@@ -140,12 +140,15 @@ public extension Room {
     }
 
     /// The winning team if the game has ended, `nil` while it is still in
-    /// progress: in score mode a team whose lives reach zero loses; in any
-    /// mode a team with no alive players loses.
+    /// progress. In score mode the shared life pools are the *only* end
+    /// condition — dead players respawn (the `0x4104` resurrect), so the
+    /// momentary wipe between a death and its resurrect must not end the
+    /// game. In every other mode a team with no alive players loses.
     var winningTeam: Team? {
         if gameMode == .score, let score = score {
             if score.a <= 0 { return .b }
             if score.b <= 0 { return .a }
+            return nil
         }
         let teamAAlive = players.contains { $0.team == .a && $0.status == .alive }
         let teamBAlive = players.contains { $0.team == .b && $0.status == .alive }
