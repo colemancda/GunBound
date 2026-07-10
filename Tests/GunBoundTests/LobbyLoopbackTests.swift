@@ -174,6 +174,25 @@ struct LobbyLoopbackTests {
             #expect(started != nil)
             #expect(started?.players.count == 2)
         }
+
+        // The guest's mobile dies (self-reported, the original's `0x4100`
+        // flow): the server broadcasts the death and — the guest being all
+        // of team B — ends the match, pushing the winner to both clients.
+        try await guest.reportDeath()
+        for client in [host, guest] {
+            var ended: GameEndNotification?
+            for await push in await client.pushes {
+                if case .gameEnded(let notification) = push {
+                    ended = notification
+                    break
+                }
+            }
+            #expect(ended?.winner == .a)
+        }
+
+        // Both players return to the room for the next round.
+        try await host.returnToRoom()
+        try await guest.returnToRoom()
     }
 
     /// The buddy list end to end (our own convention — see `BuddyEntry`'s
