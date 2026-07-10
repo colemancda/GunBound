@@ -43,6 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // GameScene's hover highlighting relies on `mouseMoved` events, which
         // windows don't deliver by default.
         window.acceptsMouseMovedEvents = true
+        // Let the View menu's Toggle Full Screen (⌘F) take the window into
+        // its own full-screen space.
+        window.collectionBehavior.insert(.fullScreenPrimary)
 
         window.contentView = NSHostingView(rootView: LoginView())
 
@@ -57,8 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Main menu
 
     /// Builds the menu bar in code (no storyboard/nib): the app menu with
-    /// Quit, and a Sound menu whose Mute item (⇧⌘M) toggles the persisted
-    /// mute preference and applies it to everything currently playing.
+    /// Quit, a View menu whose Toggle Full Screen item (⌘F) flips the game
+    /// window in and out of full screen, and a Sound menu whose Mute item
+    /// (⇧⌘M) toggles the persisted mute preference and applies it to
+    /// everything currently playing.
     private func buildMainMenu() {
         let mainMenu = NSMenu()
 
@@ -71,6 +76,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: "q"
         )
         appMenuItem.submenu = appMenu
+
+        // View menu: full-screen toggle on plain ⌘F (the game has no find
+        // field to claim it), dispatched down the responder chain so it
+        // always reaches the key window.
+        let viewMenuItem = NSMenuItem()
+        mainMenu.addItem(viewMenuItem)
+        let viewMenu = NSMenu(title: "View")
+        viewMenu.addItem(
+            withTitle: "Toggle Full Screen",
+            action: #selector(NSWindow.toggleFullScreen(_:)),
+            keyEquivalent: "f"
+        )
+        viewMenuItem.submenu = viewMenu
 
         let soundMenuItem = NSMenuItem()
         mainMenu.addItem(soundMenuItem)
