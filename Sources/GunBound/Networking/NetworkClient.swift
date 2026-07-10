@@ -241,6 +241,24 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await request(RoomListRequest(filter: filter), response: RoomListResponse.self).rooms
     }
 
+    /// Fetches the player's buddy roster (`0x2200` → `0x2201`, our own
+    /// convention — see `BuddyEntry`'s type-level note).
+    public func fetchBuddyList() async throws -> [BuddyEntry] {
+        try await request(BuddyListRequest(), response: BuddyListResponse.self).buddies
+    }
+
+    /// Adds a username to the buddy list (`0x2202`). Fire-and-forget: the
+    /// refreshed roster arrives as a `.buddyListUpdated` push (`0x2204`).
+    public func addBuddy(_ username: Username) async throws {
+        try await send(BuddyAddCommand(username: username))
+    }
+
+    /// Removes a username from the buddy list (`0x2203`). Fire-and-forget,
+    /// like `addBuddy`.
+    public func removeBuddy(_ username: Username) async throws {
+        try await send(BuddyRemoveCommand(username: username))
+    }
+
     /// Joins a room by ID (outgoing opcode `0x2110`) and decodes the server's
     /// `JoinRoomResponse` (`0x2111`). On success the lobby transitions into
     /// the room's Ready Room (state 9) — callers should check `isSuccess`.
