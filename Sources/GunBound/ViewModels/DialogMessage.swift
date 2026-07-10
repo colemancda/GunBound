@@ -43,25 +43,31 @@ public extension DialogMessage {
     /// reached (broker unreachable, connection refused). Fallback text is
     /// verbatim from the decomp's English `Language.txt`
     /// (GunBound-Decomp `docs/localized-strings.md`).
-    static let serverAccessError = DialogMessage(
-        localizedID: .serverAccessError,
-        fallback: "Server Access Error\n\nCan't access to server you required.\nPlease use other servers or try little later."
-    )
+    static var serverAccessError: DialogMessage {
+        DialogMessage(
+            localizedID: .serverAccessError,
+            fallback: "Server Access Error\n\nCan't access to server you required.\nPlease use other servers or try little later."
+        )
+    }
 
     /// id 201 — "Access time has expired": a network problem or the wait
     /// ran too long (our request timeout, a mid-attempt stall). Fallback is
     /// verbatim from the decomp's English `Language.txt`.
-    static let accessTimeExpired = DialogMessage(
-        localizedID: .accessTimeExpired,
-        fallback: "Access time has expired.\n\nEither the problem in network or waiting time were too long.\nThe connection will close automatically.\nPlease try little later."
-    )
+    static var accessTimeExpired: DialogMessage {
+        DialogMessage(
+            localizedID: .accessTimeExpired,
+            fallback: "Access time has expired.\n\nEither the problem in network or waiting time were too long.\nThe connection will close automatically.\nPlease try little later."
+        )
+    }
 
     /// id 205 — "Login error": the password was wrong. Fallback verbatim
     /// from the decomp's English `Language.txt`.
-    static let loginError = DialogMessage(
-        localizedID: .loginError,
-        fallback: "Login Error\n\nWrong password.\nPlease check your password."
-    )
+    static var loginError: DialogMessage {
+        DialogMessage(
+            localizedID: .loginError,
+            fallback: "Login Error\n\nWrong password.\nPlease check your password."
+        )
+    }
 }
 
 private extension String {
