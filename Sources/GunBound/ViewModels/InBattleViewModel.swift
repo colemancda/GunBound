@@ -88,7 +88,14 @@ public final class InBattleViewModel: ScreenViewModel {
         public let slot: UInt8
         public let name: String
         public let team: Team
-        public let mobile: Mobile
+        /// The mobile in play — the primary tank until a Tag-mode swap
+        /// brings in the secondary.
+        public var mobile: Mobile
+        /// Tag mode's backup mobile (the room's secondary tank pick).
+        public let secondaryMobile: Mobile
+        /// Whether the Tag-mode swap has been spent — the next death is
+        /// final.
+        public var hasTagged = false
         /// Position in stage-world coordinates — the spawn from the start
         /// notification, then updated by walking (`y` snaps to the terrain
         /// surface once the mask is loaded).
@@ -108,11 +115,12 @@ public final class InBattleViewModel: ScreenViewModel {
         public var pose: MobilePose = .normal
         public var poseStarted: Double = 0
 
-        public init(slot: UInt8, name: String, team: Team, mobile: Mobile, x: Float, y: Float, turnOrder: Int) {
+        public init(slot: UInt8, name: String, team: Team, mobile: Mobile, secondaryMobile: Mobile = .random, x: Float, y: Float, turnOrder: Int) {
             self.slot = slot
             self.name = name
             self.team = team
             self.mobile = mobile
+            self.secondaryMobile = secondaryMobile
             self.x = x
             self.y = y
             self.spawnX = x
@@ -360,6 +368,7 @@ public final class InBattleViewModel: ScreenViewModel {
                 name: String(describing: $0.username),
                 team: $0.team,
                 mobile: $0.primaryTank,
+                secondaryMobile: $0.secondaryTank,
                 x: Float($0.xPosition),
                 y: Float($0.yPosition),
                 turnOrder: Int($0.turnOrder)
@@ -1077,6 +1086,23 @@ public final class InBattleViewModel: ScreenViewModel {
     /// offline; the server's game-end push confirms it online).
     private func markDead(at index: Int) {
         guard players[index].isAlive else { return }
+        // Tag mode: the first knockout tags the secondary mobile in on the
+        // spot with a fresh pool — not a death, so nothing is reported and
+        // no wipe can trigger. The next knockout is final.
+        if gameMode == .tag, !players[index].hasTagged {
+            players[index].hasTagged = true
+            if players[index].secondaryMobile != .random {
+                players[index].mobile = players[index].secondaryMobile
+            }
+            players[index].hp = Self.maxHP
+            players[index].pose = .normal
+            players[index].poseStarted = clock
+            appendChat(ChatLine(
+                message: "\(players[index].name) tagged in \(players[index].mobile)",
+                type: .notice
+            ))
+            return
+        }
         players[index].hp = 0
         players[index].isAlive = false
         setPose(.dead, at: index)
@@ -1101,7 +1127,10 @@ public final class InBattleViewModel: ScreenViewModel {
     /// deterministic damage, so each one sees its own death locally). The
     /// server broadcasts the `0x4102` death and ends the match on a wipe.
     private func reportOwnDeath(_ player: BattlePlayer) {
-        guard let client = delegate.client,
+        // A Tag-mode swap isn't a death (the player is back alive) —
+        // reporting it would let the server end the game on a false wipe.
+        guard !player.isAlive,
+              let client = delegate.client,
               player.name == delegate.network.username else { return }
         Task {
             do {
