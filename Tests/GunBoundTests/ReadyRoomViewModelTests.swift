@@ -89,6 +89,27 @@ struct ReadyRoomViewModelTests {
         #expect(ReadyRoomViewModel.defaultTeam(forSlot: 7) == .b)
     }
 
+    /// The six option-value buttons: mode and capacity swap artwork with the
+    /// room settings; the undecoded groups show the fresh-room defaults.
+    @Test func optionButtonsFollowRoomSettings() {
+        let (viewModel, delegate) = makeViewModel()
+        var settings = RoomSettings(rawValue: 0)
+        settings.modeLabelIndex = 2  // TAG
+        delegate.session.currentRoom = JoinRoomResponse(
+            room: 1, name: "R", map: .random, settings: settings.rawValue, capacity: ._3_3, players: []
+        )
+
+        let buttons = viewModel.optionButtons
+        #expect(buttons.count == 6)
+        #expect(buttons[0].name == "b_ready_tag.img")
+        #expect(buttons[1].name == "b_ready_3vs3.img")
+        #expect(buttons[2].name == "b_ready_aside.img")
+        #expect(buttons[5].name == "b_ready_death72.img")
+        #expect(buttons[0].rect == Rect(x: 317, y: 228, width: 81, height: 24))
+        #expect(buttons[1].rect.x == 403)
+        #expect(buttons[4].rect == Rect(x: 317, y: 288, width: 81, height: 24))
+    }
+
     @Test func exposesRoomFromSession() {
         let (viewModel, delegate) = makeViewModel()
         #expect(viewModel.roomName == "")

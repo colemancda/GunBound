@@ -134,6 +134,53 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     /// The selected map for this room.
     public var map: GameMap { delegate.session.currentRoom?.map ?? .random }
 
+    /// The room's settings dword, typed.
+    public var settings: RoomSettings {
+        RoomSettings(rawValue: delegate.session.currentRoom?.settings ?? 0)
+    }
+
+    /// The top-right info box's text — channel number + server, like the
+    /// original's "1 OptiPlex 7020".
+    public var channelLabel: String {
+        let channel = delegate.session.channel.map { "\($0.channel)" } ?? "1"
+        return "\(channel) \(delegate.network.serverAddress)"
+    }
+
+    /// The map panel's dark title band, where the map name is centered
+    /// (directly above the thumbnail).
+    public static let mapTitleRect = Rect(x: 332, y: 52, width: 136, height: 13)
+
+    /// The six option-value buttons under the map panel (81×24, two columns
+    /// × three rows — screenshot-measured). Mode and capacity render live
+    /// (both decoded); the A SIDE / SSDEATH / ATTACK / DEATH72 slots belong
+    /// to the undecoded option groups A–D and show the fresh-room defaults
+    /// until their bitfield semantics are cracked.
+    public var optionButtons: [(name: String, rect: Rect)] {
+        let modeNames = ["b_ready_solo.img", "b_ready_score.img", "b_ready_tag.img", "b_ready_jewel.img"]
+        let capacityNames: [RoomCapacity: String] = [
+            ._1_1: "b_ready_1vs1.img",
+            ._2_2: "b_ready_2vs2.img",
+            ._3_3: "b_ready_3vs3.img",
+            ._4_4: "b_ready_4vs4.img",
+        ]
+        let names = [
+            modeNames[settings.modeLabelIndex & 3],
+            capacityNames[capacity] ?? "b_ready_2vs2.img",
+            "b_ready_aside.img",
+            "b_ready_ssdeath.img",
+            "b_ready_attackbomb.img",
+            "b_ready_death72.img",
+        ]
+        return names.enumerated().map { (index, name) in
+            (name, Rect(
+                x: index % 2 == 0 ? 317 : 403,
+                y: 228 + Float(index / 2) * 30,
+                width: 81,
+                height: 24
+            ))
+        }
+    }
+
     /// The roster from the join response (up to `maxPlayers`).
     public var players: [JoinRoomResponse.PlayerSession] {
         Array((delegate.session.currentRoom?.players ?? []).prefix(Self.maxPlayers))
