@@ -48,6 +48,9 @@ public final class ServerSelectScreen: GameScreen {
     /// The shared error popup (`error_back.img` + `b_error_confirm`), hidden
     /// until `viewModel.state` goes to `.error`.
     private var errorDialog: DialogWidget?
+    /// Kept so the error dialog can resolve a `DialogMessage`'s localized-id
+    /// text against `Language.txt` when it's shown.
+    private var assets: AssetLibrary?
 
     public init(viewModel: ServerSelectViewModel) {
         self.viewModel = viewModel
@@ -57,6 +60,7 @@ public final class ServerSelectScreen: GameScreen {
         viewModel.onEnter()
         let renderer = context.renderer
         let assets = context.assets
+        self.assets = assets
         backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
         if let musicName = viewModel.musicName {
             let audio = context.makeAudioPlayer()
@@ -165,6 +169,7 @@ public final class ServerSelectScreen: GameScreen {
         scrollBar = nil
         buddyPanel = nil
         errorDialog = nil
+        assets = nil
         audio?.stop()
         audio = nil
     }
@@ -189,7 +194,12 @@ public final class ServerSelectScreen: GameScreen {
         // it again once the state clears (its OK button calls `dismissError`).
         if let errorDialog {
             if let message = viewModel.state.error {
-                errorDialog.message = message
+                // Resolve the localized text (falling back to the built-in
+                // string), then split its title sentence from the body.
+                let text = assets?.localizedString(id: message.localizedID) ?? message.fallback
+                let (title, body) = DialogMessage.split(text)
+                errorDialog.title = title
+                errorDialog.message = body
                 errorDialog.isHidden = false
             } else {
                 errorDialog.isHidden = true
