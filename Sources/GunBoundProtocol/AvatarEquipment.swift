@@ -78,6 +78,15 @@ public struct AvatarEquipment: RawRepresentable, Equatable, Hashable, Sendable {
         Part(rawValue: UInt16(truncatingIfNeeded: rawValue >> (16 * category.wordIndex)))
     }
 
+    /// A copy with one slot's part code replaced — the Avatar Store's
+    /// try-on/equip behavior (its slot handlers push a previewed code into
+    /// the store context and re-run the compositor).
+    public func equipping(_ part: Part, in category: Category) -> AvatarEquipment {
+        let shift = 16 * category.wordIndex
+        let cleared = rawValue & ~(UInt64(0xffff) << shift)
+        return AvatarEquipment(rawValue: cleared | (UInt64(part.rawValue) << shift))
+    }
+
     /// The `graphics.xfs` sprite entry for a slot's worn part —
     /// `{gender}{category}{id:05}.img`, or the `…l.img` large (in-battle)
     /// variant. Flag sprites are gender-neutral and always drawn from the
