@@ -143,13 +143,14 @@ public final class GameRoomListScreen: GameScreen {
         rootWidget.add(createRoomDialog)
         self.createRoomDialog = createRoomDialog
 
-        // The DIRECT GO dialog sits at its runtime rect (459,33) — a gbview
-        // dump confirmed it's top-right, not centered — at the chrome's size.
+        // The DIRECT GO dialog opens at its runtime initial rect (243,202) —
+        // roughly centered — from a gbview dump. (It's draggable, so a later
+        // capture at (459,33) was just a dragged position.)
         let directBack = renderer.texture(named: viewModel.directGoBackImageName, assets: assets)
         let (directWidth, directHeight) = renderer.size(of: directBack)
         let directFrame = directWidth > 0
-            ? Rect(x: 459, y: 33, width: directWidth, height: directHeight)
-            : Rect(x: 459, y: 33, width: 314, height: 160)
+            ? Rect(x: 243, y: 202, width: directWidth, height: directHeight)
+            : Rect(x: 243, y: 202, width: 314, height: 160)
         let enterNumberDialog = EnterRoomNumberDialogWidget(
             frame: directFrame, font: textFont, background: directBack,
             okTexture: okTexture, cancelTexture: cancelTexture

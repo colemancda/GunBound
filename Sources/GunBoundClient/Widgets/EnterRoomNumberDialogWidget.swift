@@ -7,11 +7,12 @@ import GunBoundProtocol
 /// a **Password** field plus Ok/Cancel buttons. Submitting joins by number
 /// (`0x2110`, the typed value clamped 1…1000) with the optional password.
 ///
-/// Layout is runtime-confirmed from a `gbview` dump (panel id 1 at
-/// **(459,33) 314×160**): two `0x557c84` text fields at panel-relative
-/// (99,50)/(99,84) 180×12, and the two `0x557da0` label buttons — **Ok on the
-/// left** (id 1, (128,118)) and **Cancel on the right** (id 0, (213,118)),
-/// both 82×34. The screen positions the panel at (459,33).
+/// Layout is runtime-confirmed from `gbview` dumps (panel id 1, 314×160):
+/// two `0x557c84` text fields at panel-relative (99,50)/(99,84) 180×12, and
+/// the two `0x557da0` label buttons — **Ok on the left** (id 1, (128,118)) and
+/// **Cancel on the right** (id 0, (213,118)), both 82×34. The dialog opens at
+/// its initial rect **(243,202)** (roughly centered) and is **draggable** by
+/// its chrome (a movable panel — `m_pinned` clear in the decomp).
 @MainActor
 public final class EnterRoomNumberDialogWidget: Widget {
 
