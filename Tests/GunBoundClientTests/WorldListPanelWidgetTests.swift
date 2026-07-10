@@ -47,7 +47,9 @@ struct WorldListPanelWidgetTests {
             rowOfflineTexture: nil,
             gaugeTextures: [],
             viewAllSprite: ButtonSprite(name: "b_server_all.img", renderer: renderer, assets: assets),
-            friendsSprite: ButtonSprite(name: "b_server_friend.img", renderer: renderer, assets: assets)
+            friendsSprite: ButtonSprite(name: "b_server_friend.img", renderer: renderer, assets: assets),
+            scrollUpSprite: ButtonSprite(name: "b_scroll_up.img", renderer: renderer, assets: assets),
+            scrollDownSprite: ButtonSprite(name: "b_scroll_down.img", renderer: renderer, assets: assets)
         )
     }
 
