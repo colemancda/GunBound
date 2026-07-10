@@ -160,10 +160,6 @@ public final class GameRoomListViewModel: ScreenViewModel {
         }
     }
 
-    /// The frame index of a filter button's "active" (yellow) highlight —
-    /// the 5th frame (index 4) of the 5-frame toggle-button sheets.
-    public static let activeButtonFrame = 4
-
     /// Rooms from the most recent `0x2103` room-list response — the full
     /// fetched list (`visibleRooms` applies the filter and page cap for
     /// display). Settable so tests and SwiftUI previews can populate it
@@ -172,6 +168,9 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public var rooms: [RoomListResponse.Room] = []
 
     public private(set) var hoveredButtonIndex: Int?
+    /// The button currently held down (pointer pressed on it, not yet
+    /// released) — drives the `pressed` button frame.
+    public private(set) var pressedButtonIndex: Int?
     public private(set) var hoveredRoomIndex: Int?
     /// The highlighted room card (`this+8` in the decomp) — set by clicking a
     /// card, joined via the Join button.
@@ -233,6 +232,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
 
     public func onEnter() {
         hoveredButtonIndex = nil
+        pressedButtonIndex = nil
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
         filter = .all
@@ -250,6 +250,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
 
     public func onExit() {
         hoveredButtonIndex = nil
+        pressedButtonIndex = nil
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
         pushTask?.cancel()
@@ -464,6 +465,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
                 return
             }
             guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
+            pressedButtonIndex = index
             handleButton(buttons[index].action)
 
         case .scroll(_, let y, let steps):
@@ -472,7 +474,10 @@ public final class GameRoomListViewModel: ScreenViewModel {
             guard y < 246, steps != 0 else { return }
             step(page: steps > 0 ? 1 : -1)
 
-        case .pointerUp, .activate, .text, .key:
+        case .pointerUp:
+            pressedButtonIndex = nil
+
+        case .activate, .text, .key:
             break
         }
     }
