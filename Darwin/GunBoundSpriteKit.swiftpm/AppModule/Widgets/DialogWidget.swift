@@ -21,7 +21,12 @@ import GunBoundClient
         let (cw, ch) = renderer.size(of: confirm)
         let dialog = DialogWidget(
             frame: frame,
-            message: "Could not connect to the server. Please try again in a moment.",
+            //title: "Access time has expired.",
+            message: """
+                Either the problem in network or waiting time were too long.
+                The connection will close automatically.
+                Please try little later.
+                """,
             font: font,
             background: background,
             confirmFrame: Rect(x: frame.x + (frame.width - cw) / 2, y: frame.y + frame.height - ch - 12, width: cw, height: ch),
