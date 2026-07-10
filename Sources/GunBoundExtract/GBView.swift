@@ -92,6 +92,13 @@ extension GunBoundExtract {
             ("DirectGo password", "0x00557c84", [342, 286, 180, 12]),// id 1
             ("DirectGo Ok",     "0x00557da0", [371, 320, 82, 34]),   // id 1
             ("DirectGo Cancel", "0x00557da0", [456, 320, 82, 34]),   // id 0
+            // Buddy 1-on-1 chat window (CChatLogPanel, id 20001) — the "TO
+            // <name>" whisper window; not yet ported, geometry documented.
+            ("BuddyChat panel", "0x00557b94", [541, 272, 254, 291]),
+            ("BuddyChat close", "0x00557da0", [764, 279, 22, 20]),   // id 0
+            ("BuddyChat input", "0x00557c84", [560, 537, 211, 12]),
+            ("BuddyChat recipient", "0x00557f30", [628, 283, 145, 12]),
+            ("BuddyChat scroll", "0x00557e90", [768, 340, 18, 157]),
         ]
 
         private func runVerify(_ dump: GBViewDump) throws {
@@ -132,6 +139,11 @@ extension GunBoundExtract {
                 case ("0x00557c84", 1, "0x00557df0", _): rects["DirectGo password"] = r
                 case ("0x00557da0", 1, "0x00557df0", _): rects["DirectGo Ok"] = r
                 case ("0x00557da0", 0, "0x00557df0", _): rects["DirectGo Cancel"] = r
+                case ("0x00557b94", _, _, _): rects["BuddyChat panel"] = r
+                case ("0x00557da0", 0, "0x00557b94", _): rects["BuddyChat close"] = r
+                case ("0x00557c84", _, "0x00557b94", _): rects["BuddyChat input"] = r
+                case ("0x00557f30", _, "0x00557b94", _): rects["BuddyChat recipient"] = r
+                case ("0x00557e90", _, "0x00557b94", _): rects["BuddyChat scroll"] = r
                 default: break
                 }
                 for child in node.children { walk(child, parent: node, grand: parent) }
@@ -208,6 +220,7 @@ private enum GBViewLegend {
         case "0x00557da0": return "CLabel"
         case "0x00557e90": return "CScrollList"
         case "0x00557cac": return "CChannelUserListPanel"
+        case "0x00557b94": return "CChatLogPanel"
         case "0x00557ee0": return "CReadyRoomChatPanel"
         case "0x00557cd4": return "CLobbyChatPanel"
         case "0x00557eb8": return "CAvatarStorePanel"
