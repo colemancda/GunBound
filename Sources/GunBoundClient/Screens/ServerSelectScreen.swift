@@ -263,7 +263,13 @@ public final class ServerSelectScreen: GameScreen {
 
         for (index, button) in viewModel.buttons.enumerated() {
             guard let texture = buttonTextures[index] else { continue }
-            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
+            var tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
+            // The SERVER button stays dimmed until a row is selected — one
+            // click selects (enabling it), then the button or a
+            // double-click on the row connects.
+            if button.name == "b_server_choiceserver.img", !viewModel.isConnectEnabled {
+                tint = (110, 110, 110)
+            }
             renderer.draw(texture, in: button.rect, tint: tint)
         }
         rootWidget.draw(renderer)
