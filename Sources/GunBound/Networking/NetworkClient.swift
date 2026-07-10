@@ -55,16 +55,30 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     private var reassembly: [UInt8] = []
 
     private var readTask: Task<Void, Never>?
+    private var keepAliveTask: Task<Void, Never>?
     private var isFinished = false
 
-    private init(socket: Socket) {
+    /// How often the periodic keepalive (`0x0000`) goes out. The original
+    /// client participates in keepalive traffic too (the decomp confirms
+    /// the state-9 server ping `0x4410` acked with `0x3232`, and an
+    /// in-battle heartbeat); the reference emulators' convention — which
+    /// our packet and server handler follow — is a client-sent `0x0000`
+    /// every 30–60 seconds.
+    private let keepAliveInterval: Duration
+
+    private init(socket: Socket, keepAliveInterval: Duration) {
         self.socket = socket
+        self.keepAliveInterval = keepAliveInterval
         (self.pushes, self.pushContinuation) = AsyncStream.makeStream(of: ServerPush.self)
     }
 
     /// Opens a TCP connection to `config.serverAddress`:`config.serverPort`
-    /// and starts the read loop.
-    public static func connect(_ config: NetworkConfig) async throws -> NetworkClient<Socket> {
+    /// and starts the read loop and the periodic keepalive (injectable so
+    /// tests can shorten the cadence).
+    public static func connect(
+        _ config: NetworkConfig,
+        keepAliveInterval: Duration = .seconds(30)
+    ) async throws -> NetworkClient<Socket> {
         guard let destination = GunBoundAddress(address: config.serverAddress, port: config.serverPort) else {
             throw Error.invalidAddress(config.serverAddress)
         }
@@ -72,13 +86,15 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
             throw Error.invalidAddress("0.0.0.0")
         }
         let socket = try await Socket.client(address: local, destination: destination)
-        let client = NetworkClient(socket: socket)
+        let client = NetworkClient(socket: socket, keepAliveInterval: keepAliveInterval)
         await client.startReading()
+        await client.startKeepAlive()
         return client
     }
 
     public func close() async {
         readTask?.cancel()
+        keepAliveTask?.cancel()
         finish()
         await socket.close()
     }
@@ -88,6 +104,25 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     private func startReading() {
         guard readTask == nil else { return }
         readTask = Task { await self.readLoop() }
+    }
+
+    /// Sends the periodic keepalive for the connection's lifetime; a send
+    /// failure means the socket is gone, so the loop ends with it. Runs
+    /// from connect (the packet is valid pre-auth — it carries no body).
+    private func startKeepAlive() {
+        guard keepAliveTask == nil else { return }
+        let interval = keepAliveInterval
+        keepAliveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled, let self, await !self.isFinished else { return }
+                do {
+                    try await self.send(KeepAlive())
+                } catch {
+                    return
+                }
+            }
+        }
     }
 
     private func readLoop() async {
