@@ -113,7 +113,10 @@ public final class ServerSelectScreen: GameScreen {
             background: buddyBack,
             addTexture: renderer.texture(named: viewModel.buddyAddImageName, assets: assets),
             delTexture: renderer.texture(named: viewModel.buddyDelImageName, assets: assets),
-            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets)
+            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets),
+            dialogBackground: renderer.texture(named: "buddy2.img", assets: assets),
+            dialogAddTexture: renderer.texture(named: "b_buddy2_addfriend1.img", assets: assets),
+            dialogCloseTexture: renderer.texture(named: "b_buddy2_close.img", assets: assets)
         )
         buddyPanel.isHidden = true
         buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }

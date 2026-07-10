@@ -47,7 +47,7 @@ public final class BuddyPanelWidget: Widget {
 
     /// Called when the close-X is clicked (after the panel hides itself).
     public var onClose: (() -> Void)?
-    /// Called when a name typed into the Add field is submitted.
+    /// Called when a name submitted in the add-buddy dialog is confirmed.
     public var onAdd: ((String) -> Void)?
     /// Called when Del is clicked with a roster row selected, with that
     /// buddy's name.
@@ -57,10 +57,9 @@ public final class BuddyPanelWidget: Widget {
     /// when the roster changes out from under it.
     public private(set) var selectedIndex: Int?
 
-    /// The inline name-entry field the Add button toggles (the decomp
-    /// documents Add/Del only as label buttons with no captured entry
-    /// flow, so the inline field is this port's own convention).
-    public let addField: TextFieldWidget
+    /// The modal add-buddy dialog the Add button opens (the decomp's separate
+    /// `0x557e68` panel), hidden until then.
+    public let addBuddyDialog: AddBuddyDialogWidget
 
     /// The list band the roster is drawn into, inset inside the panel border
     /// (below the title bar, left of the scrollbar).
@@ -74,6 +73,10 @@ public final class BuddyPanelWidget: Widget {
         addTexture: ClientTexture? = nil,
         delTexture: ClientTexture? = nil,
         closeTexture: ClientTexture? = nil,
+        dialogBackground: ClientTexture? = nil,
+        dialogAddTexture: ClientTexture? = nil,
+        dialogCloseTexture: ClientTexture? = nil,
+        dialogMessage: String = AddBuddyDialogWidget.defaultMessage,
         textTint: (r: UInt8, g: UInt8, b: UInt8) = (255, 255, 255)
     ) {
         self.font = font
@@ -103,48 +106,38 @@ public final class BuddyPanelWidget: Widget {
         )
         scrollBar.pageSize = Self.visibleRows
 
-        // The Add field sits in the band between the roster and the
-        // Add/Del buttons, hidden until Add toggles it open.
-        addField = TextFieldWidget(
-            frame: Rect(x: frame.x + 12, y: frame.y + frame.height - 52, width: 160, height: 16),
+        // The modal add-buddy dialog (fixed rect (281,206)), hidden until Add.
+        addBuddyDialog = AddBuddyDialogWidget(
             font: font,
-            textTint: textTint
+            background: dialogBackground,
+            addTexture: dialogAddTexture,
+            closeTexture: dialogCloseTexture,
+            message: dialogMessage,
+            messageTint: textTint
         )
-        addField.placeholder = "buddy name"
-        addField.maxLength = 12  // Username's fixed wire length
-        addField.isHidden = true
+        addBuddyDialog.isHidden = true
 
         super.init(frame: frame)
         add(scrollBar)
-        add(addField)
         add(addButton)
         add(delButton)
         add(closeButton)
+        add(addBuddyDialog)  // added last → topmost, modal over the panel
 
         closeButton.onClick = { [weak self] in self?.close() }
-        addButton.onClick = { [weak self] in self?.toggleAddField() }
+        addButton.onClick = { [weak self] in self?.openAddDialog() }
         delButton.onClick = { [weak self] in self?.deleteSelected() }
-        addField.onSubmit = { [weak self] in self?.submitAddField() }
-    }
-
-    /// Add: opens (and focuses) the name field, or closes it if open.
-    private func toggleAddField() {
-        if addField.isHidden {
-            addField.setText("")
-            addField.isHidden = false
-            addField.focus()
-        } else {
-            addField.isHidden = true
-            addField.blur()
+        addBuddyDialog.onAdd = { [weak self] name in
+            self?.addBuddyDialog.isHidden = true
+            self?.onAdd?(name)
         }
+        addBuddyDialog.onClose = { [weak self] in self?.addBuddyDialog.isHidden = true }
     }
 
-    private func submitAddField() {
-        let name = addField.text.trimmingCharacters(in: .whitespaces)
-        addField.isHidden = true
-        addField.blur()
-        guard !name.isEmpty else { return }
-        onAdd?(name)
+    /// Add: opens the modal add-buddy dialog, cleared and focused.
+    private func openAddDialog() {
+        addBuddyDialog.isHidden = false
+        addBuddyDialog.reset()
     }
 
     /// Del: removes the highlighted roster row, if any.
@@ -153,10 +146,9 @@ public final class BuddyPanelWidget: Widget {
         onDelete?(buddies[index])
     }
 
-    /// Hides the panel (and its add field) and fires `onClose`.
+    /// Hides the panel (and its add dialog) and fires `onClose`.
     public func close() {
-        addField.isHidden = true
-        addField.blur()
+        addBuddyDialog.isHidden = true
         isHidden = true
         onClose?()
     }
