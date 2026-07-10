@@ -21,6 +21,30 @@ public final class ReadyRoomScreen: GameScreen {
     private var characterFrames: [Int: ClientTexture] = [:]
     private var buttonTextures: [ReadyRoomViewModel.ButtonAction: ClientTexture] = [:]
     private var startTexture: ClientTexture?
+    /// The item shelf's page-1 entries, resolved in `onEnter`: the icon
+    /// texture plus the `itemdata.dat` price.
+    private var shelfItems: [(texture: ClientTexture, price: UInt32)] = []
+    private var shelfArrowUp: ClientTexture?
+    private var shelfArrowDown: ClientTexture?
+
+    /// The shelf's first page, in the original's on-screen order (from a
+    /// live screenshot), each entry naming its `itemdata.dat` record and
+    /// its icon's sheet/frame. The icon sheets pair a color frame with a
+    /// gray disabled frame per item; the record→frame table
+    /// (`DAT_0056dc40`) is undecoded, so this mapping was matched visually
+    /// (shovel = Bunge shot, bandage = Energy up 1, winged fish = Dual…).
+    private static let shelfCatalog: [(record: Int, image: String, frame: Int)] = [
+        (0, "ready_itemshop2.img", 0),    // Dual (600)
+        (4, "ready_itemshop1.img", 4),    // Blood (0)
+        (6, "ready_itemshop2.img", 12),   // Energy up 2 (300)
+        (5, "ready_itemshop1.img", 12),   // Energy up 1 (100)
+        (2, "ready_itemshop2.img", 2),    // Dual+ (250)
+        (8, "ready_itemshop1.img", 28),   // Change Wind (150)
+        (7, "ready_itemshop2.img", 20),   // Team Teleport (50)
+        (11, "ready_itemshop1.img", 0),   // Bunge shot (50)
+        (9, "ready_itemshop1.img", 2),    // Power up (150)
+    ]
+
     /// Slot furniture from `ready_back.img`'s extra frames (screenshot-mapped):
     /// frame 1 = team A platform, 2 = team B platform, 3 = the idle pole,
     /// 6 = the green READY pole, 7 = the host's key icon.
@@ -75,6 +99,16 @@ public final class ReadyRoomScreen: GameScreen {
         poleTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 3, assets: assets)
         poleReadyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 6, assets: assets)
         keyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 7, assets: assets)
+
+        // The item shelf: icon + itemdata.dat price per slot.
+        let itemRecords = (try? assets.itemData()) ?? []
+        shelfItems = Self.shelfCatalog.compactMap { entry in
+            guard let texture = renderer.texture(named: entry.image, frame: entry.frame, assets: assets),
+                  itemRecords.indices.contains(entry.record) else { return nil }
+            return (texture, itemRecords[entry.record].price)
+        }
+        shelfArrowUp = renderer.texture(named: "b_ready_shopup.img", frame: 0, assets: assets)
+        shelfArrowDown = renderer.texture(named: "b_ready_shopdown.img", frame: 0, assets: assets)
 
         buttonTextures[.exit] = renderer.texture(named: viewModel.exitButtonImageName, assets: assets)
         buttonTextures[.buddy] = renderer.texture(named: viewModel.buddyButtonImageName, assets: assets)
@@ -143,6 +177,9 @@ public final class ReadyRoomScreen: GameScreen {
         poleTexture = nil
         poleReadyTexture = nil
         keyTexture = nil
+        shelfItems = []
+        shelfArrowUp = nil
+        shelfArrowDown = nil
         font = nil
         rootWidget = Widget()
         chatPanel = nil
@@ -190,6 +227,31 @@ public final class ReadyRoomScreen: GameScreen {
         let mapFrame = Int(viewModel.map.rawValue)
         if let thumb = mapThumbs[mapFrame] ?? mapThumbs[0] {
             renderer.draw(thumb, in: ReadyRoomViewModel.mapThumbRect, tint: nil)
+        }
+
+        // The item shelf: page 1 of the purchasable battle items in the
+        // decomp-exact 3×3 grid, each icon with its gold price under it.
+        for (index, item) in shelfItems.enumerated() where index < ReadyRoomViewModel.shelfCellCount {
+            let cell = ReadyRoomViewModel.shelfCellRect(at: index)
+            renderer.draw(item.texture, in: cell, tint: nil)
+            if let font, item.price > 0 {
+                let text = "\(item.price)"
+                font.draw(
+                    text,
+                    x: cell.x + cell.width - font.width(of: text),
+                    y: cell.y + cell.height - font.lineHeight + 2,
+                    tint: (255, 220, 80),
+                    using: renderer
+                )
+            }
+        }
+        if let shelfArrowUp {
+            let (w, h) = renderer.size(of: shelfArrowUp)
+            renderer.draw(shelfArrowUp, in: Rect(x: 763, y: 408, width: w, height: h), tint: nil)
+        }
+        if let shelfArrowDown {
+            let (w, h) = renderer.size(of: shelfArrowDown)
+            renderer.draw(shelfArrowDown, in: Rect(x: 763, y: 478, width: w, height: h), tint: nil)
         }
 
         // The six option-value buttons under the map (mode/capacity live,
