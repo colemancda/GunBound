@@ -27,6 +27,7 @@ public final class AssetLibrary {
     private var audioPathCache: [String: URL] = [:]
     private var languageCache: LanguageFile?
     private var avatarCatalogCache: [String: [AvatarInfoFile.Item]] = [:]
+    private var itemDataCache: [ItemDataFile.ItemRecord]?
 
     private lazy var audioCacheDirectory: URL = {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("GunBoundClientAudioCache", isDirectory: true)
@@ -138,6 +139,18 @@ public final class AssetLibrary {
         let data = try [UInt8](Data(contentsOf: url))
         let decoded = DatFile.decompress(data, decodedSize: DatFile.stageDataDecodedSize)
         return try StageDataFile.readRecords(decoded)
+    }
+
+    /// Decompresses and parses `itemdata.dat` (battle-item names/prices)
+    /// from the assets directory. Parsed once, then reused.
+    public func itemData() throws -> [ItemDataFile.ItemRecord] {
+        if let cached = itemDataCache { return cached }
+        let url = directory.appendingPathComponent("itemdata.dat")
+        let data = try [UInt8](Data(contentsOf: url))
+        let decoded = DatFile.decompress(data, decodedSize: DatFile.itemDataDecodedSize)
+        let records = try ItemDataFile.readRecords(decoded)
+        itemDataCache = records
+        return records
     }
 
     /// Loads and parses a stage's `.lnd` terrain/collision mask (e.g.
