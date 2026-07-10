@@ -11,19 +11,26 @@ import GunBoundClient
 @MainActor
 final class SDL3AudioPlayer: ClientAudioPlayer {
     private let mixer: SDLMixer
+    /// Shared across every player from the same backend so only one music
+    /// track ever plays — stops leftover music bleeding across screen changes.
+    private let coordinator: MusicCoordinator?
     private var audio: SDLAudio?
     private var track: SDLAudioTrack?
     private var shouldLoop = false
     /// One-shot sound effects still playing (pruned once finished).
     private var effects: [(audio: SDLAudio, track: SDLAudioTrack)] = []
 
-    init(mixer: SDLMixer) {
+    init(mixer: SDLMixer, coordinator: MusicCoordinator? = nil) {
         self.mixer = mixer
+        self.coordinator = coordinator
     }
 
     var isPlaying: Bool { track?.isPlaying ?? false }
 
     func play(named name: String, assets: AssetLibrary, loop: Bool) {
+        // Claim the single music slot, stopping any other screen's leftover
+        // track before this one starts.
+        coordinator?.takeMusic(self)
         shouldLoop = loop
         do {
             let path = try assets.musicPath(named: name)
@@ -62,6 +69,7 @@ final class SDL3AudioPlayer: ClientAudioPlayer {
             try? effect.track.stop()
         }
         effects = []
+        coordinator?.release(self)
     }
 
     func update(deltaTime: Double) {
