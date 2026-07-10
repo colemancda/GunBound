@@ -185,6 +185,35 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.gaugeRect(at: 0).x == 33 + 181)
     }
 
+    /// The View All / Friends panel toggle: View All is the default selection,
+    /// clicking Friends moves the selection, and a press-then-release doesn't
+    /// leave the toggle stuck (pressed is transient).
+    @Test func worldListFilterToggleSelection() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let viewModel = ServerSelectViewModel(delegate: MockViewModelDelegate(network: network), directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        // Load the list so the screen is interactive (clicks are ignored while
+        // the directory is still loading).
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        // View All is selected by default.
+        #expect(viewModel.isFilterSelected("b_server_all.img"))
+        #expect(!viewModel.isFilterSelected("b_server_friend.img"))
+
+        // Click Friends (rect x 430, y 504, 80×33).
+        viewModel.handle(.pointerDown(x: 435, y: 510))
+        #expect(viewModel.isFilterSelected("b_server_friend.img"))
+        #expect(!viewModel.isFilterSelected("b_server_all.img"))
+        // Releasing clears the transient pressed state.
+        viewModel.handle(.pointerUp(x: 435, y: 510))
+        #expect(viewModel.pressedIndex == nil)
+
+        // Click View All again (rect x 336, y 504, 81×33).
+        viewModel.handle(.pointerDown(x: 340, y: 510))
+        #expect(viewModel.isFilterSelected("b_server_all.img"))
+        #expect(!viewModel.isFilterSelected("b_server_friend.img"))
+    }
+
     /// Clicking a row selects it — but only online rows, mirroring
     /// `WorldListRowHitTest` (fullness is only checked at connect time).
     @Test func rowClickSelectsOnlineRowsOnly() async throws {
