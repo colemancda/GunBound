@@ -156,10 +156,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public private(set) var isCreateRoomDialogVisible = false
     public private(set) var isEnterNumberDialogVisible = false
 
-    /// The player's buddies. No `0x1010`-family buddy-list packet is wired up
-    /// yet, so this stays empty (the panel opens showing an empty list) until
-    /// that protocol path exists — settable so tests/previews can populate it.
+    /// The player's buddies, fetched on entry and refreshed by
+    /// `.buddyListUpdated` pushes (`0x2200`/`0x2204`, our own convention —
+    /// see `BuddyEntry`'s type-level note). Online names are marked so the
+    /// panel can style them once it draws more than plain text. Settable
+    /// so tests/previews can populate it directly.
     public var buddies: [String] = []
+    public private(set) var onlineBuddies: Set<String> = []
 
     /// Channel members shown in the CHANNEL panel — seeded from the join-
     /// channel roster (`0x2001`) and grown by `0x200E` pushes as users join.
@@ -209,6 +212,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
         }
         startObservingPushes()
         loadRooms()
+        loadBuddies()
     }
 
     public func onExit() {
@@ -253,10 +257,54 @@ public final class GameRoomListViewModel: ScreenViewModel {
             ))
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
+        case .buddyListUpdated(let notification):
+            applyBuddyList(notification.buddies)
         case .gameStarted, .userQuit, .hostMigrated, .tunnelReceived, .playerDied, .gameEnded:
             break  // only meaningful inside a room (Ready Room / In-Battle handle these)
         case .raw:
             break
+        }
+    }
+
+    private func applyBuddyList(_ entries: [BuddyEntry]) {
+        buddies = entries.map { String(describing: $0.username) }
+        onlineBuddies = Set(entries.filter(\.isOnline).map { String(describing: $0.username) })
+    }
+
+    /// Fetches the buddy roster (`0x2200` → `0x2201`).
+    private func loadBuddies() {
+        guard let client = delegate.client else { return }
+        Task {
+            do {
+                applyBuddyList(try await client.fetchBuddyList())
+            } catch {
+                print("[GunBound] couldn't fetch buddy list: \(error)")
+            }
+        }
+    }
+
+    /// Adds a username to the buddy list (the panel's Add button) — the
+    /// refreshed roster arrives as a `.buddyListUpdated` push.
+    public func addBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.addBuddy(username)
+            } catch {
+                print("[GunBound] couldn't add buddy: \(error)")
+            }
+        }
+    }
+
+    /// Removes a username from the buddy list (the panel's Del button).
+    public func removeBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.removeBuddy(username)
+            } catch {
+                print("[GunBound] couldn't remove buddy: \(error)")
+            }
         }
     }
 
