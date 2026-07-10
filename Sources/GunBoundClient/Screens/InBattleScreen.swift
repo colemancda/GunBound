@@ -312,6 +312,17 @@ public final class InBattleScreen: GameScreen {
             )
         }
 
+        // The match result banner, centered while the outcome lingers
+        // before returning to the room.
+        if viewModel.isMatchOver {
+            let banner = viewModel.winner.map { "TEAM \("\($0)".uppercased()) WINS!" } ?? "DRAW!"
+            let width = font.width(of: banner)
+            if let dotTexture {
+                renderer.draw(dotTexture, in: Rect(x: 400 - width / 2 - 16, y: 268, width: width + 32, height: 40), tint: (10, 10, 10))
+            }
+            font.draw(banner, x: 400 - width / 2, y: 282, tint: (255, 220, 120), using: renderer)
+        }
+
         // HUD: map, whose turn, and the aim/power readout.
         font.draw("\(viewModel.map)", x: 12, y: 8, using: renderer)
         if let turn = viewModel.currentTurnPlayer {
