@@ -307,6 +307,21 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await send(StartGameCommand())
     }
 
+    /// Reports the local player's own death (`0x4100` → `0x4103` ack) —
+    /// the server flips the slot dead, broadcasts the `0x4102` death
+    /// notification to the room, and ends the match (`0x4410`) when the
+    /// death wipes a team.
+    public func reportDeath() async throws {
+        _ = try await request(UserDeathRequest(), response: UserDeathResponse.self)
+    }
+
+    /// Returns to the room after a match (`0x3040` → `0x3041`) — sent once
+    /// the game-end result has been shown, before re-entering the Ready
+    /// Room.
+    public func returnToRoom() async throws {
+        _ = try await request(RoomReturnResultRequest(), response: RoomReturnResultResponse.self)
+    }
+
     /// Sends in-game traffic to another player through the server's tunnel
     /// relay (`0x4500`): the payload is delivered to whoever sits in `slot`
     /// as a `.tunnelReceived` push carrying this player's slot.
