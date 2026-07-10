@@ -64,13 +64,34 @@ public final class ServerSelectViewModel: ScreenViewModel {
         Button(name: "b_server_exitgame.img", rect: Rect(x: 40, y: 551, width: 107, height: 45)),
         Button(name: "b_server_buddygame.img", rect: Rect(x: 163, y: 551, width: 107, height: 45)),
         Button(name: "b_server_choiceserver.img", rect: Rect(x: 409, y: 551, width: 107, height: 45)),
-        Button(name: "b_server_all.img", rect: Rect(x: 336, y: 504, width: 81, height: 33)),
-        Button(name: "b_server_friend.img", rect: Rect(x: 430, y: 504, width: 80, height: 33)),
+        // View All / Friends tab widget rects — the runtime `gbview` dump
+        // reports both as 74×26 at (336,504)/(430,504), matching the decomp
+        // builder. (The `b_server_*.img` art is 81×33; the sprite is drawn
+        // into the smaller widget rect.)
+        Button(name: "b_server_all.img", rect: Rect(x: 336, y: 504, width: 74, height: 26)),
+        Button(name: "b_server_friend.img", rect: Rect(x: 430, y: 504, width: 74, height: 26)),
     ]
 
     /// Not decomp-confirmed — see the type-level doc comment. Set by the
     /// view once it knows `server_list.img`'s loaded size.
     public var panelRect: Rect = .zero
+
+    // MARK: Runtime state mapping
+    //
+    // A runtime memory dump of the live `State02` object (`gbview`) confirms
+    // this model and names the fields the decomp left as `m_unkXX`:
+    //
+    //   gbview field        →  here
+    //   m_viewMode          →  worldListFilter (0 = .all)
+    //   m_highlightedSlot   →  selectedIndex   (-1 = nil)
+    //   m_scrollOffset/A    →  scrollOffset
+    //   m_connecting        →  state == .connecting
+    //   m_connectingSlot    →  (the slot a connect is in flight for)
+    //   m_inputEnabled      →  isConnectEnabled (0 until a row is selected)
+    //   m_uiDirty           →  the "interactable" gate (row clicks apply only
+    //                          when set) — we gate on `state` instead
+    //   m_wantInitialList   →  reload()-on-enter
+    //   m_tickCounter       →  (a free-running frame counter; unmodelled)
 
     public private(set) var hoveredIndex: Int?
     /// The button currently held down — drives the `pressed` button frame.
