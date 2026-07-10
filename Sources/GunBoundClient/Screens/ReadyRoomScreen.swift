@@ -23,6 +23,7 @@ public final class ReadyRoomScreen: GameScreen {
     private var font: LoadedFont?
     private var rootWidget = Widget()
     private var chatPanel: LobbyChatWidget?
+    private var buddyPanel: BuddyPanelWidget?
     private var audio: ClientAudioPlayer?
 
     public init(viewModel: ReadyRoomViewModel) {
@@ -73,6 +74,28 @@ public final class ReadyRoomScreen: GameScreen {
         }
         rootWidget.add(chatPanel)
         self.chatPanel = chatPanel
+
+        // The shared buddy panel (the decomp's singleton, same as the
+        // lobby's) — hidden until the BUDDY button toggles it.
+        let buddyBack = renderer.texture(named: viewModel.buddyBackImageName, assets: assets)
+        let (panelWidth, panelHeight) = renderer.size(of: buddyBack)
+        let panelFrame = panelWidth > 0
+            ? Rect(x: 568, y: 11, width: panelWidth, height: panelHeight)
+            : BuddyPanelWidget.defaultFrame
+        let buddyPanel = BuddyPanelWidget(
+            frame: panelFrame,
+            font: font,
+            background: buddyBack,
+            addTexture: renderer.texture(named: viewModel.buddyAddImageName, assets: assets),
+            delTexture: renderer.texture(named: viewModel.buddyDelImageName, assets: assets),
+            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets)
+        )
+        buddyPanel.isHidden = true
+        buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
+        buddyPanel.onAdd = { [weak viewModel = self.viewModel] name in viewModel?.addBuddy(named: name) }
+        buddyPanel.onDelete = { [weak viewModel = self.viewModel] name in viewModel?.removeBuddy(named: name) }
+        rootWidget.add(buddyPanel)
+        self.buddyPanel = buddyPanel
     }
 
     public func onExit() {
@@ -85,6 +108,7 @@ public final class ReadyRoomScreen: GameScreen {
         font = nil
         rootWidget = Widget()
         chatPanel = nil
+        buddyPanel = nil
         audio?.stop()
         audio = nil
     }
@@ -106,6 +130,10 @@ public final class ReadyRoomScreen: GameScreen {
             if chatPanel.messages != viewModel.chatMessages {
                 chatPanel.messages = viewModel.chatMessages
             }
+        }
+        if let buddyPanel {
+            buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
+            buddyPanel.buddies = viewModel.buddies
         }
         rootWidget.update(deltaTime: deltaTime)
     }
