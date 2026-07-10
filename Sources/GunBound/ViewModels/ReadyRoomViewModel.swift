@@ -197,7 +197,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
             ))
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
-        case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .raw:
+        case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .buddyListUpdated, .raw:
             break
         case .userQuit, .hostMigrated, .tunnelReceived, .playerDied, .gameEnded:
             // Roster/battle updates for these pushes are not applied yet.

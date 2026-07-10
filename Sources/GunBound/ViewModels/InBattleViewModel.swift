@@ -521,7 +521,7 @@ public final class InBattleViewModel: ScreenViewModel {
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
         case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .gameStarted,
-             .hostMigrated, .raw:
+             .hostMigrated, .buddyListUpdated, .raw:
             break
         }
     }
