@@ -11,13 +11,23 @@ import GunBound
 /// the cursor — a sentinel modelled here by `isVisible`.
 ///
 /// The sheet holds **102 frames** — a multi-context pointer set (the arrow,
-/// edge-scroll direction arrows, a grab hand, mouse icons). Frames **0–7**
-/// are the normal arrow's idle **shine loop**. The decomp confirms the sheet
-/// is animated but the frame-selection/time-base lives in an unported blit
-/// (`g_cursorTexture`/`DAT_007a7674`), so which-frame/how-fast **isn't
-/// recovered** — the loop range and rate below are this port's own choice, a
-/// documented divergence. When `frames` is empty the cursor falls back to the
-/// single `texture`.
+/// edge-scroll direction arrows, a grab hand, mouse icons). In the art, frames
+/// **0–7** read as the normal arrow's idle **shine loop** (a highlight sweeping
+/// across the blue arrow), which this port animates.
+///
+/// **This animation is an intentional cosmetic divergence — the decomp does
+/// *not* confirm it.** `GameTick` blits the cursor as
+/// `BlitSpriteClipped(g_cursorFrame)`, and `g_cursorFrame` (`0x7a7674`) occurs
+/// exactly once in the whole binary (that read), lives in zero-init data, and
+/// is **never written — always `0`**. `FindSpriteFrame` is a stateless
+/// `(spriteSet, frameIndex)` lookup with no time-advance. So the only
+/// recoverable evidence is a **static frame-0 cursor**; whether the sheet ever
+/// cycles depends on register setup Ghidra doesn't recover and "can't be
+/// determined from the ported code" (the sole confirmed time-based cursor
+/// behaviour is the replay-mode blink, not this shine loop). The loop range
+/// and rate below are therefore this port's own choice. When `frames` is empty
+/// the cursor falls back to the single `texture` (i.e. the faithful frame-0
+/// draw).
 @MainActor
 public final class SoftwareCursor {
 
@@ -25,8 +35,9 @@ public final class SoftwareCursor {
     /// `ChangeGameState` via `FindPreloadedTextureByName("cursor")`.
     public static let sheetName = "cursor.img"
 
-    /// The normal arrow's idle-animation frame range in `cursor.img` (the
-    /// shine sweep). Not decomp-confirmed — see the type doc.
+    /// The frame range this port animates as the arrow's idle shine sweep.
+    /// A cosmetic divergence — the decomp draws frame 0 statically; see the
+    /// type doc.
     public static let arrowFrames = 0..<8
     /// Seconds each arrow frame holds (~12.5 fps; ~0.64s per loop).
     public static let frameDuration: Double = 0.08
