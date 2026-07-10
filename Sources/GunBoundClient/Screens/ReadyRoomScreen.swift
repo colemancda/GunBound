@@ -58,7 +58,10 @@ public final class ReadyRoomScreen: GameScreen {
         startTexture = renderer.texture(named: viewModel.startButtonImageName, assets: assets)
 
         // The room chat panel at the decomp rect (21,385) 480×160, scrollbar
-        // (455,51) 18×69 page 9; the input line along the panel's bottom.
+        // (455,51) 18×69 page 9; the input line along the panel's bottom. The
+        // scroll arrows sit *outside* the track — a gbview dump (panel 2000)
+        // reports them at (476,408)/(476,515), i.e. panel-relative (455,23)/
+        // (455,130) — not the track ends.
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
         let chatPanel = LobbyChatWidget(
             frame: Rect(x: 21, y: 385, width: 480, height: 160),
@@ -66,7 +69,10 @@ public final class ReadyRoomScreen: GameScreen {
             background: nil,  // the chat well is baked into ready_back.img
             inputFrame: Rect(x: 12, y: 140, width: 420, height: 12),
             scrollTrack: Rect(x: 455, y: 51, width: 18, height: 69),
-            scrollKnobs: nil,  // the ready_back well has no distinct knob art
+            scrollKnobs: (
+                up: Rect(x: 455, y: 23, width: 18, height: 18),
+                down: Rect(x: 455, y: 130, width: 18, height: 18)
+            ),
             visibleRows: 9
         )
         chatPanel.onSend = { [weak viewModel = self.viewModel] line in
