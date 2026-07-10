@@ -32,6 +32,9 @@ public final class ReadyRoomScreen: GameScreen {
     private var assets: AssetLibrary?
     private var mobileAnimations: [Mobile: EpaFile] = [:]
     private var frameCache: [String: ClientTexture] = [:]
+    /// Composited avatar outfits keyed by the wire's packed `avatarEquipped`
+    /// (`nil` cached too, so a missing part sprite isn't retried every frame).
+    private var avatarComposites: [UInt64: ClientTexture?] = [:]
     /// Drives the slot mobiles' idle animation.
     private var clock: Double = 0
 
@@ -131,6 +134,7 @@ public final class ReadyRoomScreen: GameScreen {
         assets = nil
         mobileAnimations = [:]
         frameCache = [:]
+        avatarComposites = [:]
         clock = 0
         audio?.stop()
         audio = nil
@@ -193,6 +197,12 @@ public final class ReadyRoomScreen: GameScreen {
                     let dw = w * scale, dh = h * scale
                     renderer.draw(sprite, in: Rect(x: rect.x + (rect.width - dw) / 2, y: rect.y + rect.height - dh - 12, width: dw, height: dh), tint: nil)
                 }
+                if let avatar = avatarSprite(equipped: player.avatarEquipped, renderer: renderer) {
+                    // The player's avatar character stands on the slot floor
+                    // beside the mobile, at natural size.
+                    let (aw, ah) = renderer.size(of: avatar)
+                    renderer.draw(avatar, in: Rect(x: rect.x + 18, y: rect.y + rect.height - ah - 12, width: aw, height: ah), tint: nil)
+                }
                 if viewModel.readyPlayers.contains(name) {
                     font.draw("READY", x: rect.x + 8, y: rect.y + rect.height - 18, tint: (120, 255, 120), using: renderer)
                 }
@@ -237,6 +247,27 @@ public final class ReadyRoomScreen: GameScreen {
                 }
             }
         }
+    }
+
+    /// The composited avatar for a packed `avatarEquipped` outfit — the four
+    /// part sprites (body/head/glasses/flag, frame 0) hotspot-aligned into a
+    /// single texture via `AvatarComposite`, the port of the original's
+    /// `LoadAvatarSprites`. Missing slots and part sprites are skipped; the
+    /// result (even a failure) is cached per outfit.
+    private func avatarSprite(equipped: UInt64, renderer: ClientRenderer) -> ClientTexture? {
+        if let cached = avatarComposites[equipped] { return cached }
+        var texture: ClientTexture?
+        if let assets {
+            var layers: [ImgFile.Frame] = []
+            for category in AvatarEquipment.Category.allCases {
+                guard let name = AvatarEquipment(rawValue: equipped).spriteName(category),
+                      let frame = try? assets.firstImageFrame(named: name) else { continue }
+                layers.append(frame)
+            }
+            texture = AvatarComposite.compose(layers).flatMap { renderer.texture(from: $0) }
+        }
+        avatarComposites[equipped] = texture
+        return texture
     }
 
     /// The current idle frame of a mobile's tank sprite — its `.epa` `normal`
