@@ -13,7 +13,7 @@ struct GunBoundExtract: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "GunBoundExtract",
         abstract: "Extracts and decodes entries from GunBound .xfs archives — a Swift replacement for the decomp repo's Python tools/lzhuf scripts.",
-        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self, Text.self],
+        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self, Text.self, GBView.self],
         defaultSubcommand: List.self
     )
 }
