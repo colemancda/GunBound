@@ -25,27 +25,20 @@ import GunBoundFile
 public final class ServerSelectScreen: GameScreen {
     private let viewModel: ServerSelectViewModel
     private var backgroundTexture: ClientTexture?
-    private var panelTexture: ClientTexture?
-    /// Per-button state artwork; the frame is chosen at draw time from each
-    /// button's `ButtonState`.
+    /// Per-button state artwork for the bottom-bar buttons; the frame is chosen
+    /// at draw time from each button's `ButtonState`.
     private var buttonSprites: [ButtonSprite] = []
     /// `waitmessage.img`'s four animation frames, cycled while the world
     /// list is loading or a connect attempt is in flight.
     private var waitFrames: [ClientTexture?] = []
     private var waitElapsed: Double = 0
     private var audio: ClientAudioPlayer?
-    /// server_list.img frames 1–4: row background per state.
-    private var rowBaseTexture: ClientTexture?
-    private var rowOfflineTexture: ClientTexture?
-    private var rowSelectedTexture: ClientTexture?
-    /// server_list.img frames 5–9: the five population-gauge levels.
-    private var gaugeTextures: [ClientTexture?] = []
     private var textFont: LoadedFont?
-    /// Widget tree root — currently just the panel's scrollbar (invisible
-    /// arrow hit-zones over the knobs baked into the panel chrome), stepping
-    /// the world-list scroll window when more than 12 servers are fetched.
+    /// Widget tree root, holding the WORLD LIST panel, the shared buddy panel,
+    /// and the modal error dialog (topmost).
     private var rootWidget = Widget()
-    private var scrollBar: ScrollBarWidget?
+    /// The WORLD LIST panel (rows + View All/Friends tabs + scrollbar).
+    private var worldListPanel: WorldListPanelWidget?
     /// The shared buddy panel, hidden until the BUDDY button toggles it.
     private var buddyPanel: BuddyPanelWidget?
     /// The shared error popup (`error_back.img` + `b_error_confirm`), hidden
@@ -78,42 +71,33 @@ public final class ServerSelectScreen: GameScreen {
             self.audio = audio
         }
 
-        panelTexture = renderer.texture(named: viewModel.panelImageName, assets: assets)
+        let panelTexture = renderer.texture(named: viewModel.panelImageName, assets: assets)
         let (panelWidth, panelHeight) = renderer.size(of: panelTexture)
         viewModel.panelRect = Rect(x: 11, y: 13, width: panelWidth, height: panelHeight)
 
-        // The panel's scroll track (arrow knobs are baked into the chrome at
-        // the track's ends — eyeballed positions, not decomp-recorded); the
-        // widget supplies the missing interactivity.
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
-        // Track eyeballed; the knob hit-zones are measured from
-        // server_list.img's baked round knobs (art y 43–66 / 458–481, +13
-        // panel offset).
-        let scrollBar = ScrollBarWidget(
-            track: Rect(x: 522, y: 80, width: 32, height: 390),
-            upArrow: Rect(x: 524, y: 56, width: 28, height: 24),
-            downArrow: Rect(x: 524, y: 471, width: 28, height: 24)
-        )
-        scrollBar.pageSize = ServerSelectViewModel.maxVisibleRows / ServerSelectViewModel.rowColumns
-        scrollBar.onScroll = { [weak viewModel = self.viewModel] position in
-            viewModel?.setScrollOffset(position)
-        }
-        rootWidget.add(scrollBar)
-        self.scrollBar = scrollBar
-
-        // Row-state backgrounds and gauge levels live as frames of the same
-        // sheet. Frame mapping confirmed by extracting the frames: 1 = base
-        // (dark title bar, matches the original's normal rows), 2 = the
-        // slightly-brighter connecting state, 3 = brightest (highlighted),
-        // 4 = gray (offline/disabled).
-        rowBaseTexture = renderer.texture(named: viewModel.panelImageName, frame: 1, assets: assets)
-        rowSelectedTexture = renderer.texture(named: viewModel.panelImageName, frame: 3, assets: assets)
-        rowOfflineTexture = renderer.texture(named: viewModel.panelImageName, frame: 4, assets: assets)
-        gaugeTextures = (5...9).map { renderer.texture(named: viewModel.panelImageName, frame: $0, assets: assets) }
 
         textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         buttonSprites = viewModel.buttons.map { ButtonSprite(name: $0.name, renderer: renderer, assets: assets) }
+
+        // The WORLD LIST panel (CWorldListPanel): rows + View All/Friends tabs
+        // + scrollbar, as one widget. Row-state backgrounds and gauge levels
+        // live as frames of server_list.img — 1 = base, 3 = highlighted,
+        // 4 = offline; 5–9 = the five population-gauge levels.
+        let worldListPanel = WorldListPanelWidget(
+            viewModel: viewModel,
+            font: textFont,
+            panelTexture: panelTexture,
+            rowBaseTexture: renderer.texture(named: viewModel.panelImageName, frame: 1, assets: assets),
+            rowSelectedTexture: renderer.texture(named: viewModel.panelImageName, frame: 3, assets: assets),
+            rowOfflineTexture: renderer.texture(named: viewModel.panelImageName, frame: 4, assets: assets),
+            gaugeTextures: (5...9).map { renderer.texture(named: viewModel.panelImageName, frame: $0, assets: assets) },
+            viewAllSprite: ButtonSprite(name: "b_server_all.img", renderer: renderer, assets: assets),
+            friendsSprite: ButtonSprite(name: "b_server_friend.img", renderer: renderer, assets: assets)
+        )
+        rootWidget.add(worldListPanel)
+        self.worldListPanel = worldListPanel
 
         let waitFrameCount = (try? assets.image(named: viewModel.waitImageName).count) ?? 1
         waitFrames = (0..<waitFrameCount).map { renderer.texture(named: viewModel.waitImageName, frame: $0, assets: assets) }
@@ -171,17 +155,12 @@ public final class ServerSelectScreen: GameScreen {
     public func onExit() {
         viewModel.onExit()
         backgroundTexture = nil
-        panelTexture = nil
         buttonSprites = []
         waitFrames = []
         waitElapsed = 0
-        rowBaseTexture = nil
-        rowOfflineTexture = nil
-        rowSelectedTexture = nil
-        gaugeTextures = []
         textFont = nil
         rootWidget = Widget()
-        scrollBar = nil
+        worldListPanel = nil
         buddyPanel = nil
         errorDialog = nil
         assets = nil
@@ -199,7 +178,6 @@ public final class ServerSelectScreen: GameScreen {
     public func update(deltaTime: Double) {
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
-        scrollBar?.contentCount = viewModel.lineCount
         // Mirror the buddy-panel toggle and roster onto the widget.
         if let buddyPanel {
             buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
@@ -231,60 +209,12 @@ public final class ServerSelectScreen: GameScreen {
     public func render(_ renderer: ClientRenderer) throws {
         renderer.clear()
         drawFullSize(backgroundTexture, using: renderer)
-        if let panelTexture {
-            renderer.draw(panelTexture, in: viewModel.panelRect, tint: nil)
-        }
 
-        // Pale cyan for descriptions — the decomp's flat RGB565 text color
-        // 0xb77f expanded to 8-bit channels.
-        let descriptionTint: (r: UInt8, g: UInt8, b: UInt8) = (181, 239, 255)
-
-        for (index, server) in viewModel.visibleServers.enumerated() {
-            let rect = viewModel.rowRect(at: index)
-
-            // Row background by state.
-            let background: ClientTexture?
-            if viewModel.absoluteIndex(forVisibleSlot: index) == viewModel.selectedIndex {
-                background = rowSelectedTexture ?? rowBaseTexture
-            } else if !server.isEnabled {
-                background = rowOfflineTexture ?? rowBaseTexture
-            } else {
-                background = rowBaseTexture
-            }
-            if let background {
-                renderer.draw(background, in: rect, tint: nil)
-            }
-
-            // Title bar (spans y+5…y+24 in the frame): the server number
-            // (the wire serverId + 1, white like the original) at x+10, the
-            // name at x+32, both vertically centered at y+8. Description
-            // lines fill the body band — the decomp's y+0x1e origin with a
-            // 14px line pitch — in the original's pale cyan.
-            if let textFont {
-                textFont.draw("\(server.id + 1)", x: rect.x + 10, y: rect.y + 8, using: renderer)
-                textFont.draw(server.name, x: rect.x + 32, y: rect.y + 8, using: renderer)
-                let descriptionLines = server.descriptionText
-                    .replacingOccurrences(of: "\\n", with: "\n")
-                    .split(separator: "\n", omittingEmptySubsequences: true)
-                    .prefix(2)
-                for (line, text) in descriptionLines.enumerated() {
-                    textFont.draw(
-                        String(text).trimmingCharacters(in: .whitespaces),
-                        x: rect.x + 12,
-                        y: rect.y + 30 + Float(line) * 14,
-                        tint: descriptionTint,
-                        using: renderer
-                    )
-                }
-            }
-
-            // Population gauge (F/E dial) beside the row.
-            if let gauge = gaugeTextures[viewModel.populationLevel(of: server)] {
-                renderer.draw(gauge, in: viewModel.gaugeRect(at: index), tint: nil)
-            }
-        }
-
+        // The bottom-bar buttons (Exit / Buddy / SERVER) — the WORLD LIST
+        // panel and its View All / Friends tabs are drawn by the panel widget
+        // (via `rootWidget`). Skip the tab buttons here; the panel owns them.
         for (index, button) in viewModel.buttons.enumerated() {
+            if button.name == "b_server_all.img" || button.name == "b_server_friend.img" { continue }
             // The SERVER button draws its `disabled` frame until a row is
             // selected — one click selects (enabling it), then the button or a
             // double-click on the row connects. Otherwise resolve
@@ -292,10 +222,6 @@ public final class ServerSelectScreen: GameScreen {
             let state: ButtonState
             if button.name == "b_server_choiceserver.img", !viewModel.isConnectEnabled {
                 state = .disabled
-            } else if viewModel.isFilterSelected(button.name) {
-                // View All / Friends are toggles: the current view stays on its
-                // `selected` (yellow) frame rather than flashing `pressed`.
-                state = .selected
             } else if index == viewModel.pressedIndex {
                 state = .pressed
             } else if index == viewModel.hoveredIndex {
