@@ -323,8 +323,15 @@ public final class InBattleScreen: GameScreen {
             font.draw(banner, x: 400 - width / 2, y: 282, tint: (255, 220, 120), using: renderer)
         }
 
-        // HUD: map, whose turn, and the aim/power readout.
-        font.draw("\(viewModel.map)", x: 12, y: 8, using: renderer)
+        // HUD: map + game mode, whose turn, and the aim/power readout.
+        font.draw("\(viewModel.map)  \(viewModel.gameMode)", x: 12, y: 8, using: renderer)
+
+        // Score mode's shared life pools, centered under the wind readout.
+        if let lives = viewModel.teamLives {
+            let text = "LIVES  A \(max(0, lives.a))  B \(max(0, lives.b))"
+            let width = font.width(of: text)
+            font.draw(text, x: 400 - width / 2, y: 40, tint: (255, 200, 120), using: renderer)
+        }
         if let turn = viewModel.currentTurnPlayer {
             let marker = viewModel.isMyTurn ? "YOUR TURN" : "Turn: \(turn.name)"
             font.draw(marker, x: 12, y: 24, tint: (255, 255, 160), using: renderer)
