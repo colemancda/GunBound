@@ -551,15 +551,16 @@ public final class GameRoomListViewModel: ScreenViewModel {
 
     /// Joins a room by its typed number (`0x2110`), entering its Ready Room on
     /// success.
-    public func joinRoomByNumber(_ number: Int) {
+    public func joinRoomByNumber(_ number: Int, password: String = "") {
         guard !isJoiningRoom, let client = delegate.client else { return }
         isEnterNumberDialogVisible = false
         isJoiningRoom = true
         let room = RoomID(rawValue: UInt16(clamping: number))
+        let roomPassword = RoomPassword(rawValue: password) ?? RoomPassword()
         Task {
             defer { isJoiningRoom = false }
             do {
-                let response = try await client.joinRoom(room)
+                let response = try await client.joinRoom(room, password: roomPassword)
                 if response.isSuccess {
                     delegate.session.currentRoom = response
                     delegate.requestTransition(to: .readyRoom)

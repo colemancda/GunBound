@@ -143,16 +143,22 @@ public final class GameRoomListScreen: GameScreen {
         rootWidget.add(createRoomDialog)
         self.createRoomDialog = createRoomDialog
 
-        let (directBack, directFrame) = centered(viewModel.directGoBackImageName)
+        // The DIRECT GO dialog sits at its runtime rect (459,33) — a gbview
+        // dump confirmed it's top-right, not centered — at the chrome's size.
+        let directBack = renderer.texture(named: viewModel.directGoBackImageName, assets: assets)
+        let (directWidth, directHeight) = renderer.size(of: directBack)
+        let directFrame = directWidth > 0
+            ? Rect(x: 459, y: 33, width: directWidth, height: directHeight)
+            : Rect(x: 459, y: 33, width: 314, height: 160)
         let enterNumberDialog = EnterRoomNumberDialogWidget(
             frame: directFrame, font: textFont, background: directBack,
             okTexture: okTexture, cancelTexture: cancelTexture
         )
         enterNumberDialog.isHidden = true
-        enterNumberDialog.onSubmit = { [weak viewModel = self.viewModel] number in
-            viewModel?.joinRoomByNumber(number)
+        enterNumberDialog.onSubmit = { [weak viewModel] number, password in
+            viewModel?.joinRoomByNumber(number, password: password)
         }
-        enterNumberDialog.onCancel = { [weak viewModel = self.viewModel] in viewModel?.dismissDialogs() }
+        enterNumberDialog.onCancel = { [weak viewModel] in viewModel?.dismissDialogs() }
         rootWidget.add(enterNumberDialog)
         self.enterNumberDialog = enterNumberDialog
     }

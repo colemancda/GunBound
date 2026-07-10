@@ -1,16 +1,17 @@
 import GunBound
 import GunBoundProtocol
 
-/// The "enter room by number" dialog — the port of the decomp's
-/// `BuildEnterRoomNumberDialog` (button `0xf`, `b_gamelist_directgo`; msg
-/// `0x2715`): a modal panel with a single numeric field and OK/Cancel buttons,
-/// sharing the Create Room dialog's OK/Cancel button class/size. Submitting
-/// joins by number (`SendJoinRoomByNumber` → `0x2110`, the typed value clamped
-/// 1…1000).
+/// The "enter room by number" (DIRECT GO) dialog — the port of the decomp's
+/// `BuildEnterRoomNumberDialog` (`0x557df0`, button `0xf`,
+/// `b_gamelist_directgo`; msg `0x2715`): a modal panel with a **Room No.** and
+/// a **Password** field plus Ok/Cancel buttons. Submitting joins by number
+/// (`0x2110`, the typed value clamped 1…1000) with the optional password.
 ///
-/// The decomp doesn't record the number field's exact offset, so it's placed
-/// centered in the panel body (OK/Cancel use the confirmed `0x52×0x22` size);
-/// the screen supplies the panel frame from the loaded `gamelist_directgo.img`.
+/// Layout is runtime-confirmed from a `gbview` dump (panel id 1 at
+/// **(459,33) 314×160**): two `0x557c84` text fields at panel-relative
+/// (99,50)/(99,84) 180×12, and the two `0x557da0` label buttons — **Ok on the
+/// left** (id 1, (128,118)) and **Cancel on the right** (id 0, (213,118)),
+/// both 82×34. The screen positions the panel at (459,33).
 @MainActor
 public final class EnterRoomNumberDialogWidget: Widget {
 
@@ -18,11 +19,13 @@ public final class EnterRoomNumberDialogWidget: Widget {
     public static let numberRange = 1...1000
 
     public let numberField: TextFieldWidget
+    public let passwordField: TextFieldWidget
     public let okButton: ButtonWidget
     public let cancelButton: ButtonWidget
 
-    /// Fired when OK is pressed with a valid number, carrying the parsed value.
-    public var onSubmit: ((Int) -> Void)?
+    /// Fired when Ok is pressed with a valid number, carrying the parsed
+    /// number and the (possibly empty) password.
+    public var onSubmit: ((Int, String) -> Void)?
     public var onCancel: (() -> Void)?
 
     public var backgroundTexture: ClientTexture?
@@ -36,41 +39,49 @@ public final class EnterRoomNumberDialogWidget: Widget {
     ) {
         self.backgroundTexture = background
 
-        // Number field centered in the panel body; OK/Cancel below it.
-        let fieldWidth: Float = 120
+        // Panel-relative rects from the runtime dump.
         numberField = TextFieldWidget(
-            frame: Rect(x: frame.x + (frame.width - fieldWidth) / 2, y: frame.y + frame.height * 0.42, width: fieldWidth, height: 16),
+            frame: Rect(x: frame.x + 99, y: frame.y + 50, width: 180, height: 12),
             font: font
         )
         numberField.characterFilter = { $0.isNumber }
         numberField.maxLength = 4
+        passwordField = TextFieldWidget(
+            frame: Rect(x: frame.x + 99, y: frame.y + 84, width: 180, height: 12),
+            font: font
+        )
+        passwordField.isSecure = true
+        passwordField.maxLength = 16
         okButton = ButtonWidget(
-            frame: Rect(x: frame.x + frame.width / 2 + 8, y: frame.y + frame.height - 40, width: 82, height: 34),
+            frame: Rect(x: frame.x + 128, y: frame.y + 118, width: 82, height: 34),
             texture: okTexture
         )
         cancelButton = ButtonWidget(
-            frame: Rect(x: frame.x + frame.width / 2 - 90, y: frame.y + frame.height - 40, width: 82, height: 34),
+            frame: Rect(x: frame.x + 213, y: frame.y + 118, width: 82, height: 34),
             texture: cancelTexture
         )
 
         super.init(frame: frame)
         add(numberField)
+        add(passwordField)
         add(okButton)
         add(cancelButton)
 
         numberField.onSubmit = { [weak self] in self?.submit() }
+        passwordField.onSubmit = { [weak self] in self?.submit() }
         okButton.onClick = { [weak self] in self?.submit() }
         cancelButton.onClick = { [weak self] in self?.onCancel?() }
     }
 
     public func reset() {
         numberField.setText("")
+        passwordField.setText("")
         numberField.focus()  // ready to type immediately
     }
 
     private func submit() {
         guard let value = Int(numberField.text), Self.numberRange.contains(value) else { return }
-        onSubmit?(value)
+        onSubmit?(value, passwordField.text)
     }
 
     public override func drawSelf(_ renderer: ClientRenderer) {
