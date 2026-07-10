@@ -85,6 +85,13 @@ extension GunBoundExtract {
             ("Channel scroll", "0x00557e90", [751, 350, 18, 154]),
             ("Channel scroll up", "0x00557da0", [751, 322, 18, 18]),
             ("Channel scroll down", "0x00557da0", [751, 514, 18, 18]),
+            // DIRECT GO (enter-room-by-number) dialog (id 1) — present only
+            // while it's shown.
+            ("DirectGo dialog", "0x00557df0", [459, 33, 314, 160]),
+            ("DirectGo room",   "0x00557c84", [558, 83, 180, 12]),   // id 0
+            ("DirectGo password", "0x00557c84", [558, 117, 180, 12]),// id 1
+            ("DirectGo Ok",     "0x00557da0", [587, 151, 82, 34]),   // id 1
+            ("DirectGo Cancel", "0x00557da0", [672, 151, 82, 34]),   // id 0
         ]
 
         private func runVerify(_ dump: GBViewDump) throws {
@@ -120,6 +127,11 @@ extension GunBoundExtract {
                 case ("0x00557e90", _, "0x00557cac", _): rects["Channel scroll"] = r
                 case ("0x00557da0", 0, "0x00557e90", "0x00557cac"): rects["Channel scroll up"] = r
                 case ("0x00557da0", 1, "0x00557e90", "0x00557cac"): rects["Channel scroll down"] = r
+                case ("0x00557df0", _, _, _): rects["DirectGo dialog"] = r
+                case ("0x00557c84", 0, "0x00557df0", _): rects["DirectGo room"] = r
+                case ("0x00557c84", 1, "0x00557df0", _): rects["DirectGo password"] = r
+                case ("0x00557da0", 1, "0x00557df0", _): rects["DirectGo Ok"] = r
+                case ("0x00557da0", 0, "0x00557df0", _): rects["DirectGo Cancel"] = r
                 default: break
                 }
                 for child in node.children { walk(child, parent: node, grand: parent) }
