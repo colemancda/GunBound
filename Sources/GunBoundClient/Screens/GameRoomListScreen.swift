@@ -22,6 +22,8 @@ public final class GameRoomListScreen: GameScreen {
     /// padlock. Stored sparse by index so drawing reads them by the frame
     /// number the view model computes.
     private var cardFrames: [Int: ClientTexture] = [:]
+    /// Map thumbnails (`gameliststage.img`) keyed by map id.
+    private var stageThumbs: [Int: ClientTexture] = [:]
     private var font: LoadedFont?
     private var audio: ClientAudioPlayer?
     private var textFont: LoadedFont?
@@ -54,6 +56,12 @@ public final class GameRoomListScreen: GameScreen {
         // background sheet; load each frame the card renderer can ask for.
         for frame in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15] {
             cardFrames[frame] = renderer.texture(named: viewModel.backgroundImageName, frame: frame, assets: assets)
+        }
+
+        // The cards' map thumbnails (`gameliststage.img`, frame = map id).
+        let thumbCount = (try? assets.image(named: viewModel.stageThumbImageName).count) ?? 0
+        for frame in 0..<min(thumbCount, 11) {
+            stageThumbs[frame] = renderer.texture(named: viewModel.stageThumbImageName, frame: frame, assets: assets)
         }
 
         font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
@@ -152,6 +160,7 @@ public final class GameRoomListScreen: GameScreen {
         backgroundTexture = nil
         buttonTextures = []
         cardFrames = [:]
+        stageThumbs = [:]
         font = nil
         textFont = nil
         audio?.stop()
@@ -218,6 +227,17 @@ public final class GameRoomListScreen: GameScreen {
                 guard let icon = cardFrames[frame] else { return }
                 let (w, h) = renderer.size(of: icon)
                 renderer.draw(icon, in: Rect(x: rect.x + offsetX, y: rect.y + offsetY, width: w, height: h), tint: nil)
+            }
+
+            // The room's map thumbnail (RenderRoomCard's `gameliststage`
+            // blit at card-relative (0x6a, 0x21)).
+            if let thumb = stageThumbs[viewModel.stageThumbFrame(of: room)] ?? stageThumbs[0] {
+                let (w, h) = renderer.size(of: thumb)
+                renderer.draw(thumb, in: Rect(
+                    x: rect.x + GameRoomListViewModel.stageThumbOffset.x,
+                    y: rect.y + GameRoomListViewModel.stageThumbOffset.y,
+                    width: w, height: h
+                ), tint: nil)
             }
 
             // Status (PLAY/FULL/WAIT), game-mode label (SOLO…JEWEL), and the
