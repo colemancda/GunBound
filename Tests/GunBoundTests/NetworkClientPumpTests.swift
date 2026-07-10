@@ -73,6 +73,24 @@ struct NetworkClientPumpTests {
         ])
     }
 
+    /// A server that stays connected but never replies fails the request
+    /// with `.timeout` (carrying the awaited opcode) after the deadline,
+    /// instead of hanging forever — our resilience convention, not the
+    /// original's (which blocks on its wait cursor indefinitely).
+    @Test func silentServerTimesOutTheRequest() async throws {
+        MockGunBoundSocket.queuedResponses = []
+        MockGunBoundSocket.hangWhenDrained = true
+        defer { MockGunBoundSocket.hangWhenDrained = false }
+        let client = try await NetworkClient<MockGunBoundSocket>.connect(
+            Self.config,
+            requestTimeout: .milliseconds(80)
+        )
+        await #expect(throws: NetworkClient<MockGunBoundSocket>.Error.timeout(.joinChannelResponse)) {
+            _ = try await client.joinChannel()
+        }
+        await client.close()
+    }
+
     /// A request whose reply never comes fails with `.disconnected` once the
     /// stream ends, instead of hanging or mis-decoding empty data.
     @Test func eofFailsWaitingRequests() async throws {
