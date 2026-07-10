@@ -5,12 +5,12 @@ import Testing
 @Suite @MainActor
 struct InBattleViewModelTests {
 
-    private func makeViewModel(battle: Bool = true) -> (InBattleViewModel, MockViewModelDelegate) {
+    private func makeViewModel(battle: Bool = true, settings: UInt32 = 0) -> (InBattleViewModel, MockViewModelDelegate) {
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let delegate = MockViewModelDelegate(network: network)
         if battle {
             delegate.session.battle = StartGameNotification(
-                settings: 0,
+                settings: settings,
                 map: .metropolis,
                 players: [
                     StartGameNotification.Player(id: 0, username: "admin", team: .a, primaryTank: .boomer, secondaryTank: .random, xPosition: 600, yPosition: 900, turnOrder: 1),
@@ -571,6 +571,50 @@ struct InBattleViewModelTests {
         viewModel.update(deltaTime: InBattleViewModel.matchEndDelay + 0.1)
         #expect(delegate.requestedTransitions == [.gameRoomList])
         #expect(delegate.session.battle == nil)
+    }
+
+    /// Score mode: the settings word selects the mode, deaths charge the
+    /// team's shared life pool and respawn after the delay (back at the
+    /// spawn column, full HP), and an empty pool — not a wipe — decides
+    /// the match.
+    @Test func scoreModeLivesRespawnAndDecideTheMatch() {
+        let scoreSettings = UInt32(UInt16(bitPattern: GameMode.score.rawValue)) << 16
+        let (viewModel, delegate) = makeViewModel(settings: scoreSettings)
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        #expect(viewModel.gameMode == .score)
+        // Two players → half = 1, rounded up to 2, plus 1 = 3 lives a side.
+        #expect(viewModel.teamLives?.a == 3)
+        #expect(viewModel.teamLives?.b == 3)
+
+        // "guest" walks off the spawn, then dies: a team-B life is spent
+        // and — no wipe ending — a respawn is scheduled instead.
+        viewModel.handle(.key(.right))  // guest's turn offline
+        #expect(viewModel.players[1].x == 1200 + InBattleViewModel.walkStep)
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        #expect(viewModel.teamLives?.b == 2)
+        #expect(!viewModel.players[1].isAlive)
+        #expect(!viewModel.isMatchOver)
+
+        // The respawn lands back on the spawn column with a full pool.
+        viewModel.update(deltaTime: InBattleViewModel.respawnDelay + 0.1)
+        #expect(viewModel.players[1].isAlive)
+        #expect(viewModel.players[1].hp == InBattleViewModel.maxHP)
+        #expect(viewModel.players[1].x == 1200)
+        #expect(viewModel.players[1].y == 1000)
+        #expect(viewModel.chatLines.contains { $0.message == "guest respawned" })
+
+        // Draining the pool ends the match (the offline referee) with no
+        // further respawn.
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        viewModel.update(deltaTime: InBattleViewModel.respawnDelay + 0.1)
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        #expect(viewModel.teamLives?.b == 0)
+        #expect(viewModel.isMatchOver)
+        #expect(viewModel.winner == .a)
+        viewModel.update(deltaTime: InBattleViewModel.matchEndDelay + 0.1)
+        #expect(delegate.requestedTransitions == [.gameRoomList])
     }
 
     /// Without battle data the screen still enters safely (offline path).
