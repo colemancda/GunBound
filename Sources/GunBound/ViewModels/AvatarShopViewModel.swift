@@ -21,6 +21,24 @@ import GunBoundProtocol
 @MainActor
 public final class AvatarShopViewModel: ScreenViewModel {
 
+    /// A part's stat bonuses/penalties, in the catalog's field order — the
+    /// rows the card's dark column shows as icon + value.
+    public enum Stat: CaseIterable, Sendable {
+        case shotDelay, bunge, attack, defense, health, itemDelay, shield, popularity
+    }
+
+    public struct StatValue: Equatable, Sendable {
+        public let stat: Stat
+        /// Signed: positive bonuses draw the "+" icon variant, negative
+        /// penalties the red-bar variant.
+        public let value: Int
+
+        public init(stat: Stat, value: Int) {
+            self.stat = stat
+            self.value = value
+        }
+    }
+
     /// One purchasable part, as a card: an `avatar.xfs` catalog record's
     /// display fields plus what's needed to preview it.
     public struct ShopItem: Equatable, Sendable {
@@ -30,13 +48,16 @@ public final class AvatarShopViewModel: ScreenViewModel {
         public let gold: Int32
         public let cash: Int32
         public let isMale: Bool
+        /// Non-zero stats in field order (the card shows up to three rows).
+        public let stats: [StatValue]
 
-        public init(id: Int, name: String, gold: Int32, cash: Int32, isMale: Bool) {
+        public init(id: Int, name: String, gold: Int32, cash: Int32, isMale: Bool, stats: [StatValue] = []) {
             self.id = id
             self.name = name
             self.gold = gold
             self.cash = cash
             self.isMale = isMale
+            self.stats = stats
         }
 
         /// The part's equip code (bit 15 = gender, bits 0–14 = id).
@@ -78,7 +99,7 @@ public final class AvatarShopViewModel: ScreenViewModel {
 
     public static let cardColumns = 3
     public static let cardsPerPage = 9
-    static let cardOrigin = (x: Float(22), y: Float(70))
+    static let cardOrigin = (x: Float(21), y: Float(69))
     static let cardSize = (width: Float(160), height: Float(156))
     static let cardPitch = (x: Float(160), y: Float(161))
 
@@ -94,7 +115,7 @@ public final class AvatarShopViewModel: ScreenViewModel {
 
     /// The four category tabs along the bottom-left (49×32, 53 pitch).
     public static func categoryTabRect(at index: Int) -> Rect {
-        Rect(x: 37 + Float(index) * 53, y: 561, width: 49, height: 32)
+        Rect(x: 39 + Float(index) * 53, y: 561, width: 49, height: 32)
     }
 
     public static let tryRect = Rect(x: 357, y: 562, width: 81, height: 33)
@@ -150,6 +171,26 @@ public final class AvatarShopViewModel: ScreenViewModel {
 
     /// The account name shown in the top info bar.
     public var username: String { delegate.network.username }
+
+    /// The worn outfit's summed stats (non-zero, field order) for the MY
+    /// AVATAR header — each equipped part looked up in its category's
+    /// catalog. Only male catalogs are loaded, so female part codes (and
+    /// categories whose catalog isn't set) contribute nothing.
+    public var previewStats: [StatValue] {
+        let equipment = AvatarEquipment(rawValue: previewEquipped)
+        var totals = [Stat: Int]()
+        for category in AvatarEquipment.Category.allCases {
+            let part = equipment.part(category)
+            guard !part.isEmpty,
+                  let item = catalog(for: category).first(where: { $0.id == part.id }) else { continue }
+            for stat in item.stats {
+                totals[stat.stat, default: 0] += stat.value
+            }
+        }
+        return Stat.allCases.compactMap { stat in
+            totals[stat].map { StatValue(stat: stat, value: $0) }
+        }.filter { $0.value != 0 }
+    }
 
     /// The view pushes each category's parsed `avatar.xfs` catalog in here.
     public func setCatalog(_ items: [ShopItem], for category: AvatarEquipment.Category) {
