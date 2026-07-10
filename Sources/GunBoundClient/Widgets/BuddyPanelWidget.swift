@@ -12,10 +12,10 @@ import GunBound
 /// and three `ButtonWidget`s under one panel and draws the buddy roster in
 /// the list band, scrolled by the bar.
 ///
-/// The panel's own rect (and `buddy_back.img`'s size) are decomp-confirmed;
-/// the *interior* button/scrollbar positions are not recorded in the decomp,
-/// so they're eyeballed against the panel art and documented as such (the
-/// same footing as the Server Select scrollbar's baked-arrow hit zones).
+/// The panel rect and the *interior* button/scrollbar positions are all
+/// runtime-confirmed against a live `gbview` panel-tree dump (panel id 20000):
+/// Add / Del / close-X are the three title-bar label buttons, and the scroll
+/// widget runs down the right edge — the exact rects below.
 @MainActor
 public final class BuddyPanelWidget: Widget {
 
@@ -80,29 +80,26 @@ public final class BuddyPanelWidget: Widget {
         self.backgroundTexture = background
         self.textTint = textTint
 
-        // Interior positions (panel-relative, not decomp-recorded):
-        //   close-X — far right of the title bar (25×22 art)
-        //   Add / Del — bottom-left, side by side (42×22 art)
-        //   scrollbar — right edge, below the title bar down to the bottom
-        closeButton = ButtonWidget(
-            frame: Rect(x: frame.x + frame.width - 29, y: frame.y + 5, width: 25, height: 22),
-            texture: closeTexture
-        )
+        // Interior positions — panel-relative offsets from the gbview dump
+        // (panel at 568,11): Add / Del / close-X all sit in the title bar,
+        // and the scroll widget (arrows on its baked knobs) runs down the
+        // right edge.
         addButton = ButtonWidget(
-            frame: Rect(x: frame.x + 10, y: frame.y + frame.height - 28, width: 42, height: 22),
+            frame: Rect(x: frame.x + 94, y: frame.y + 7, width: 39, height: 20),
             texture: addTexture
         )
         delButton = ButtonWidget(
-            frame: Rect(x: frame.x + 56, y: frame.y + frame.height - 28, width: 42, height: 22),
+            frame: Rect(x: frame.x + 137, y: frame.y + 7, width: 39, height: 20),
             texture: delTexture
         )
-        // The chrome's round knobs render outside the track (measured from
-        // buddy_back.img: y 44–63 above, 234–253 below); the arrow hit-zones
-        // sit on the knobs.
+        closeButton = ButtonWidget(
+            frame: Rect(x: frame.x + 180, y: frame.y + 7, width: 22, height: 20),
+            texture: closeTexture
+        )
         scrollBar = ScrollBarWidget(
-            track: Rect(x: frame.x + frame.width - 26, y: frame.y + 34, width: 22, height: frame.height - 66),
-            upArrow: Rect(x: frame.x + 184, y: frame.y + 44, width: 24, height: 20),
-            downArrow: Rect(x: frame.x + 184, y: frame.y + 234, width: 24, height: 20)
+            track: Rect(x: frame.x + 183, y: frame.y + 73, width: 18, height: 152),
+            upArrow: Rect(x: frame.x + 183, y: frame.y + 45, width: 18, height: 18),
+            downArrow: Rect(x: frame.x + 183, y: frame.y + 235, width: 18, height: 18)
         )
         scrollBar.pageSize = Self.visibleRows
 
