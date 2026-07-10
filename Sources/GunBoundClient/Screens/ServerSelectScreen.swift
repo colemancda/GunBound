@@ -94,7 +94,9 @@ public final class ServerSelectScreen: GameScreen {
             rowOfflineTexture: renderer.texture(named: viewModel.panelImageName, frame: 4, assets: assets),
             gaugeTextures: (5...9).map { renderer.texture(named: viewModel.panelImageName, frame: $0, assets: assets) },
             viewAllSprite: ButtonSprite(name: "b_server_all.img", renderer: renderer, assets: assets),
-            friendsSprite: ButtonSprite(name: "b_server_friend.img", renderer: renderer, assets: assets)
+            friendsSprite: ButtonSprite(name: "b_server_friend.img", renderer: renderer, assets: assets),
+            scrollUpSprite: ButtonSprite(name: "b_scroll_up.img", renderer: renderer, assets: assets),
+            scrollDownSprite: ButtonSprite(name: "b_scroll_down.img", renderer: renderer, assets: assets)
         )
         rootWidget.add(worldListPanel)
         self.worldListPanel = worldListPanel

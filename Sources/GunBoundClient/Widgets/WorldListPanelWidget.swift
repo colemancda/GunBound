@@ -53,7 +53,9 @@ public final class WorldListPanelWidget: Widget {
         rowOfflineTexture: ClientTexture?,
         gaugeTextures: [ClientTexture?],
         viewAllSprite: ButtonSprite,
-        friendsSprite: ButtonSprite
+        friendsSprite: ButtonSprite,
+        scrollUpSprite: ButtonSprite,
+        scrollDownSprite: ButtonSprite
     ) {
         self.viewModel = viewModel
         self.font = font
@@ -80,6 +82,11 @@ public final class WorldListPanelWidget: Widget {
         scrollBar.onScroll = { [weak viewModel] position in
             viewModel?.setScrollOffset(position)
         }
+        // Give the arrow buttons their state artwork (b_scroll_up/down) — they
+        // aren't baked into the panel chrome, so without this they'd be
+        // invisible.
+        scrollBar.upArrow.sprite = scrollUpSprite
+        scrollBar.downArrow.sprite = scrollDownSprite
         self.scrollBar = scrollBar
 
         super.init(frame: viewModel.panelRect)
