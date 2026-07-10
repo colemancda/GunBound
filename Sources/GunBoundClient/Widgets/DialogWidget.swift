@@ -91,14 +91,15 @@ public final class DialogWidget: Widget {
         }
         guard let font else { return }
 
-        // Title, centered in `error_back.img`'s top strip (the dark band
-        // above the body well).
+        // Title, centered in `error_back.img`'s top strip. The decomp blits
+        // the message's first wrapped line at panel-relative y 14
+        // (BlitRLESprite y 0xcf = 207, panel top 0xc1 = 193).
         if !title.isEmpty {
             let titleWidth = font.width(of: title)
             font.draw(
                 title,
                 x: frame.x + max(Self.bodyInset, (frame.width - titleWidth) / 2),
-                y: frame.y + 12,
+                y: frame.y + 14,
                 tint: textTint,
                 using: renderer
             )
@@ -114,10 +115,14 @@ public final class DialogWidget: Widget {
         }
     }
 
-    /// Body-text layout, panel-relative: `error_back.img`'s well starts just
-    /// below the title strip with a small left margin.
-    private static let bodyInset: Float = 16
-    private static let bodyTop: Float = 38
+    /// Body-text layout, panel-relative. The decomp blits the body lines
+    /// starting at y 236 (0xec) with the panel top at y 193 (0xc1), i.e.
+    /// panel-relative **43** — matching `RenderWrappedText`'s y arg (0x2b);
+    /// lines step 14px (0xe). The left inset isn't cleanly recoverable (the
+    /// wrapped-text buffer uses its own layout space, wrap width 0x15e), so
+    /// it stays a visual estimate.
+    private static let bodyInset: Float = 18
+    private static let bodyTop: Float = 43
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
         switch event {
