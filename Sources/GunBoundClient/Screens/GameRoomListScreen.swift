@@ -102,6 +102,8 @@ public final class GameRoomListScreen: GameScreen {
         )
         buddyPanel.isHidden = true
         buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
+        buddyPanel.onAdd = { [weak viewModel = self.viewModel] name in viewModel?.addBuddy(named: name) }
+        buddyPanel.onDelete = { [weak viewModel = self.viewModel] name in viewModel?.removeBuddy(named: name) }
         rootWidget.add(buddyPanel)
         self.buddyPanel = buddyPanel
 
