@@ -23,6 +23,15 @@ extension GunBoundExtract {
 
         func run() throws {
             let data = try Data(contentsOf: URL(fileURLWithPath: dumpPath))
+
+            // Two dump kinds share this command: the panel-tree `gbview` and
+            // the client-context `gbcontext` (game data — servers, rooms,
+            // inventory). Detect the context form by its `g_clientContext` key.
+            if let context = try? JSONDecoder().decode(GBContextDump.self, from: data) {
+                printContext(context)
+                return
+            }
+
             let dump = try JSONDecoder().decode(GBViewDump.self, from: data)
 
             let state = dump.gameState
@@ -39,6 +48,21 @@ extension GunBoundExtract {
                 print("")
                 try runVerify(dump)
             }
+        }
+
+        private func printContext(_ ctx: GBContextDump) {
+            let sl = ctx.serverList
+            print("Client context \(ctx.g_clientContext)")
+            print("Server list: \(sl.count) server(s), current \"\(sl.currentServerName)\" (selected id \(sl.selectedServerId))")
+            for s in sl.servers {
+                print("  [\(s.idx)] id \(s.id) \(s.online == 1 ? "online" : "offline") \"\(s.name)\" — \(s.desc)  \(s.ip):\(s.port)  players \(s.players)/\(s.maxCapacity)")
+            }
+            let occupied = ctx.rooms.filter { $0.status != 0 || $0.cardId != 0 || $0.lock != 0 }
+            print("Rooms: \(ctx.rooms.count) slots (\(occupied.count) occupied)")
+            for r in occupied {
+                print("  slot \(r.slot): card \(r.cardId) map \(r.map) status \(r.status) lock \(r.lock) fullness \(r.fullness)")
+            }
+            print("Players: \(ctx.players.count)   Inventory: \(ctx.inventory.count) item(s)")
         }
 
         private func printNode(_ node: GBViewNode, depth: Int) {
@@ -208,6 +232,36 @@ private struct GBViewNode: Decodable {
 
 private struct GBViewRect: Decodable {
     let x, y, w, h: Int
+}
+
+// MARK: - Context dump model
+
+/// The `gbcontext` dump — a snapshot of the live `g_clientContext` SoA.
+private struct GBContextDump: Decodable {
+    /// Ignores any element shape — used for `players`/`inventory` where we
+    /// only report the count.
+    struct Ignored: Decodable { init(from decoder: Decoder) throws {} }
+
+    let g_clientContext: String
+    let serverList: ServerList
+    let rooms: [Room]
+    let players: [Ignored]
+    let inventory: [Ignored]
+
+    struct ServerList: Decodable {
+        let count: Int
+        let selectedServerId: Int
+        let currentServerName: String
+        let servers: [Server]
+    }
+    struct Server: Decodable {
+        let idx, id, online, region: Int
+        let name, desc, ip: String
+        let port, players, maxCapacity, anim: Int
+    }
+    struct Room: Decodable {
+        let slot, cardId, map, fullness, flagA, flagB, status, lock: Int
+    }
 }
 
 // MARK: - Legend
