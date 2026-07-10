@@ -1,0 +1,340 @@
+{
+  "gameState": {
+    "id": 2,
+    "name": "ServerSelect",
+    "object": "0x02f73598",
+    "vtable": "0x005570f0",
+    "fields": {
+      "m_connecting": 0,
+      "m_sendHandshake": 0,
+      "m_uiDirty": 1,
+      "m_wantInitialList": 0,
+      "m_highlightedSlot": -1,
+      "m_unk0c": -1,
+      "m_viewMode": 0,
+      "m_scrollA": 0,
+      "m_scrollOffset": 0,
+      "m_unk1c": 0,
+      "m_tickCounter": 11469,
+      "m_inputEnabled": 0,
+      "m_connectingSlot": -1
+    }
+  },
+  "view": {
+    "manager": "0x00e53c40",
+    "head": "0x032dc714",
+    "panels": [
+      {
+        "addr": "0x032dca78",
+        "vtable": "0x00557e68",
+        "typeId": 0,
+        "id": 10000,
+        "rect": {
+          "x": 281,
+          "y": 206,
+          "w": 241,
+          "h": 148
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 4,
+        "children": [
+          {
+            "addr": "0x032dcb30",
+            "vtable": "0x00557c84",
+            "typeId": 2,
+            "id": 0,
+            "rect": {
+              "x": 331,
+              "y": 294,
+              "w": 140,
+              "h": 12
+            },
+            "focused": true,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x0cb32618",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 0,
+            "rect": {
+              "x": 347,
+              "y": 313,
+              "w": 74,
+              "h": 26
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x0cb32668",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 1,
+            "rect": {
+              "x": 432,
+              "y": 313,
+              "w": 74,
+              "h": 26
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x0cb326b8",
+            "vtable": "0x00557f30",
+            "typeId": 3,
+            "id": 0,
+            "rect": {
+              "x": 302,
+              "y": 251,
+              "w": 200,
+              "h": 30
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          }
+        ]
+      },
+      {
+        "addr": "0x032dc788",
+        "vtable": "0x00557be4",
+        "typeId": 0,
+        "id": 20000,
+        "rect": {
+          "x": 568,
+          "y": 11,
+          "w": 211,
+          "h": 267
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 4,
+        "children": [
+          {
+            "addr": "0x032dc830",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 0,
+            "rect": {
+              "x": 748,
+              "y": 18,
+              "w": 22,
+              "h": 20
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc880",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 1,
+            "rect": {
+              "x": 662,
+              "y": 18,
+              "w": 39,
+              "h": 20
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc8f8",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 2,
+            "rect": {
+              "x": 705,
+              "y": 18,
+              "w": 39,
+              "h": 20
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc948",
+            "vtable": "0x00557e90",
+            "typeId": 4,
+            "id": 0,
+            "rect": {
+              "x": 751,
+              "y": 84,
+              "w": 18,
+              "h": 152
+            },
+            "focused": false,
+            "enabled": false,
+            "hidden": false,
+            "childCount": 2,
+            "children": [
+              {
+                "addr": "0x032dc9b0",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 0,
+                "rect": {
+                  "x": 751,
+                  "y": 56,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": false,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              },
+              {
+                "addr": "0x032dca00",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 1,
+                "rect": {
+                  "x": 751,
+                  "y": 246,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": false,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "addr": "0x032dc440",
+        "vtable": "0x00557f08",
+        "typeId": 0,
+        "id": 9000,
+        "rect": {
+          "x": 11,
+          "y": 13,
+          "w": 545,
+          "h": 530
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 3,
+        "children": [
+          {
+            "addr": "0x032dc4e8",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 0,
+            "rect": {
+              "x": 336,
+              "y": 504,
+              "w": 74,
+              "h": 26
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc550",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 1,
+            "rect": {
+              "x": 430,
+              "y": 504,
+              "w": 74,
+              "h": 26
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc5c8",
+            "vtable": "0x00557e90",
+            "typeId": 4,
+            "id": 0,
+            "rect": {
+              "x": 526,
+              "y": 87,
+              "w": 18,
+              "h": 377
+            },
+            "focused": false,
+            "enabled": false,
+            "hidden": false,
+            "childCount": 2,
+            "children": [
+              {
+                "addr": "0x032dc630",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 0,
+                "rect": {
+                  "x": 526,
+                  "y": 59,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": false,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              },
+              {
+                "addr": "0x032dc680",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 1,
+                "rect": {
+                  "x": 526,
+                  "y": 474,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": false,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
