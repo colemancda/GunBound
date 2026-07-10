@@ -16,7 +16,10 @@ import GunBound
 /// Two deliberate divergences from the decompiled base
 /// (`Widget_DispatchMouseToChildren` `0x50eab0` / `Widget_DrawChildren`
 /// `0x50e520`), both because the original's top-level panels are siblings in
-/// a global *panel manager* rather than one root widget:
+/// a global *panel manager* rather than one root widget (its z-order is a
+/// linked list `PanelManager_Register` inserts into front-or-back by a
+/// panel flag, re-headed by `PanelManager_BringToFront` — reconstructed in
+/// the decomp's `src/cxx/Panel.cpp`):
 /// - **Dispatch order**: the original iterates children first-added-first;
 ///   ours goes last-added-first so a widget added later (a modal dialog)
 ///   shadows earlier siblings — the stacking the panel manager provided.
@@ -25,7 +28,11 @@ import GunBound
 ///   hiding happened at the panel-manager level); ours hides both, since
 ///   our root owns drawing too.
 /// Confirmed matches: a child hit counts even when the point misses the
-/// parent's own rect, and a hidden subtree receives no input.
+/// parent's own rect; a hidden subtree receives no input; children live in
+/// **absolute** coordinates (`Widget_AddChild` `0x50e670` shifts a new
+/// child by the parent's origin on insert — the convention our screens
+/// already used); and pointer-*up* is a real widget event
+/// (`Widget_MouseUpChildren`, vtable slot 3 — our `.pointerUp`).
 @MainActor
 open class Widget {
 
