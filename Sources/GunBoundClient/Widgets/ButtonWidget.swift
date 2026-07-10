@@ -9,6 +9,10 @@ import GunBound
 public final class ButtonWidget: Widget {
 
     public var texture: ClientTexture?
+    /// Optional per-state artwork. When set, the button draws the frame for
+    /// its current state (normal / hovered / pressed) instead of `texture`
+    /// plus a hover tint — the frame-based path the toggle buttons use.
+    public var sprite: ButtonSprite?
     public var hoverTint: (r: UInt8, g: UInt8, b: UInt8) = (200, 200, 255)
     public private(set) var isHovered = false
     /// Held down (armed on a press inside, released by any pointer-up) —
@@ -23,6 +27,13 @@ public final class ButtonWidget: Widget {
     }
 
     public override func drawSelf(_ renderer: ClientRenderer) {
+        if let sprite {
+            let state: ButtonState = isPressed ? .pressed : (isHovered ? .hovered : .normal)
+            if let texture = sprite.texture(for: state) {
+                renderer.draw(texture, in: frame, tint: nil)
+            }
+            return
+        }
         guard let texture else { return }
         renderer.draw(texture, in: frame, tint: isHovered ? hoverTint : nil)
     }
