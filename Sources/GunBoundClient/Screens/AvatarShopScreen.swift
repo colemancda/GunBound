@@ -8,7 +8,9 @@ import GunBound
 public final class AvatarShopScreen: GameScreen {
     private let viewModel: AvatarShopViewModel
     private var backgroundTexture: ClientTexture?
-    private var categoryTextures: [ClientTexture?] = []
+    /// Per-category-tab state artwork; the frame is chosen at draw time from
+    /// each tab's `ButtonState`.
+    private var categorySprites: [ButtonSprite] = []
     private var cancelTexture: ClientTexture?
     /// Item icons loaded lazily by ID — the inventory arrives asynchronously,
     /// so item textures can't be preloaded in `onEnter`. `NSNull`-style: a
@@ -30,11 +32,11 @@ public final class AvatarShopScreen: GameScreen {
 
         var x: Float = 20
         let y: Float = 20
-        categoryTextures = []
+        categorySprites = []
         for (index, button) in viewModel.categoryButtons.enumerated() {
-            let texture = context.renderer.texture(named: button.name, assets: context.assets)
-            categoryTextures.append(texture)
-            let (width, height) = context.renderer.size(of: texture)
+            let sprite = ButtonSprite(name: button.name, renderer: context.renderer, assets: context.assets)
+            categorySprites.append(sprite)
+            let (width, height) = context.renderer.size(of: sprite.texture(for: .normal))
             viewModel.setRect(Rect(x: x, y: y, width: width, height: height), forCategoryAt: index)
             x += width + 10
         }
@@ -49,7 +51,7 @@ public final class AvatarShopScreen: GameScreen {
     public func onExit() {
         viewModel.onExit()
         backgroundTexture = nil
-        categoryTextures = []
+        categorySprites = []
         cancelTexture = nil
         itemTextures = [:]
         renderer = nil
@@ -100,16 +102,20 @@ public final class AvatarShopScreen: GameScreen {
         }
 
         for (index, button) in viewModel.categoryButtons.enumerated() {
-            guard let texture = categoryTextures[index] else { continue }
-            let tint: (r: UInt8, g: UInt8, b: UInt8)?
+            // The current category tab draws its `selected` frame; the rest
+            // resolve to pressed/hovered/default from the pointer.
+            let state: ButtonState
             if index == viewModel.selectedCategory {
-                tint = (255, 255, 160)  // active tab
+                state = .selected
+            } else if index == viewModel.pressedIndex {
+                state = .pressed
             } else if index == viewModel.hoveredIndex {
-                tint = (200, 200, 255)  // hovered
+                state = .hovered
             } else {
-                tint = nil
+                state = .normal
             }
-            renderer.draw(texture, in: button.rect, tint: tint)
+            guard let texture = categorySprites[index].texture(for: state) else { continue }
+            renderer.draw(texture, in: button.rect, tint: nil)
         }
         if let cancelTexture {
             renderer.draw(cancelTexture, in: viewModel.cancelRect, tint: nil)
