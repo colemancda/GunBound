@@ -1,4 +1,5 @@
 import GunBound
+import GunBoundFile
 
 /// View for Server / Channel select (state 2) — all connect/login logic
 /// lives in `ServerSelectViewModel`; this loads/draws
@@ -51,6 +52,13 @@ public final class ServerSelectScreen: GameScreen {
     /// Kept so the error dialog can resolve a `DialogMessage`'s localized-id
     /// text against `Language.txt` when it's shown.
     private var assets: AssetLibrary?
+
+    /// A 1×1 opaque-white frame, stretched to fill the screen (tinted black
+    /// at partial opacity) as the modal dialog's shade.
+    private static let solidPixel = ImgFile.Frame(
+        width: 1, height: 1,
+        pixels: [ImgFile.Pixel(red: 255, green: 255, blue: 255, alpha: 255)]
+    )
 
     public init(viewModel: ServerSelectViewModel) {
         self.viewModel = viewModel
@@ -134,9 +142,11 @@ public final class ServerSelectScreen: GameScreen {
             : DialogWidget.defaultFrame
         let confirmTexture = renderer.texture(named: viewModel.errorConfirmImageName, assets: assets)
         let (confirmWidth, confirmHeight) = renderer.size(of: confirmTexture)
-        // Center the OK button along the dialog's lower body.
+        // The OK button is right-aligned along the dialog's lower body,
+        // matching the decomp's `b_error_confirm` at (0x1c6, 0x14b) — a ~25px
+        // right margin, not centered.
         let confirmFrame = confirmWidth > 0
-            ? Rect(x: dialogFrame.x + (dialogFrame.width - confirmWidth) / 2,
+            ? Rect(x: dialogFrame.x + dialogFrame.width - confirmWidth - 25,
                    y: dialogFrame.y + dialogFrame.height - confirmHeight - 12,
                    width: confirmWidth, height: confirmHeight)
             : DialogWidget.defaultConfirmFrame
@@ -147,6 +157,9 @@ public final class ServerSelectScreen: GameScreen {
             confirmFrame: confirmFrame,
             confirmTexture: confirmTexture
         )
+        // A 1×1 opaque texture, stretched full-screen behind the panel for
+        // the modal shade.
+        errorDialog.dimTexture = renderer.texture(from: Self.solidPixel)
         errorDialog.isHidden = true
         errorDialog.onConfirm = { [weak viewModel = self.viewModel] in viewModel?.dismissError() }
         rootWidget.add(errorDialog)

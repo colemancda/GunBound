@@ -29,6 +29,14 @@ public final class DialogWidget: Widget {
     public var title: String = ""
     public var message: String
     public var backgroundTexture: ClientTexture?
+    /// A solid texture drawn full-screen behind the panel to dim what's
+    /// underneath — the original's modal shade (a 50%-alpha black fill; the
+    /// decomp's `FUN_004ed5a0(…, 0x80000000)`). `nil` draws no dim.
+    public var dimTexture: ClientTexture?
+    /// The area the dim covers — the client's logical 800×600 canvas.
+    public var dimBounds = Rect(x: 0, y: 0, width: 800, height: 600)
+    /// The dim's opacity (0x80/0xff ≈ 0.5, matching the original's fill).
+    public static let dimOpacity: Float = 0.5
     private let font: LoadedFont?
     private let textTint: (r: UInt8, g: UInt8, b: UInt8)
     public let okButton: ButtonWidget
@@ -73,40 +81,43 @@ public final class DialogWidget: Widget {
     }
 
     public override func drawSelf(_ renderer: ClientRenderer) {
+        // Modal shade: dim the whole screen behind the panel first (the
+        // original darkens the background while a dialog is up).
+        if let dimTexture {
+            renderer.draw(dimTexture, in: dimBounds, tint: (0, 0, 0), blend: .alpha, opacity: Self.dimOpacity)
+        }
         if let backgroundTexture {
             renderer.draw(backgroundTexture, in: frame, tint: nil)
         }
         guard let font else { return }
 
-        let inset: Float = 18
-
         // Title, centered in `error_back.img`'s top strip (the dark band
-        // above the body well, ~y+8…+30).
+        // above the body well).
         if !title.isEmpty {
             let titleWidth = font.width(of: title)
             font.draw(
                 title,
-                x: frame.x + max(inset, (frame.width - titleWidth) / 2),
+                x: frame.x + max(Self.bodyInset, (frame.width - titleWidth) / 2),
                 y: frame.y + 12,
                 tint: textTint,
                 using: renderer
             )
         }
 
-        // Message body: inset inside the panel's dark inner band, below the
-        // title strip.
-        let bodyTop = frame.y + 40
-        let bodyWidth = frame.width - inset * 2
-        let lines = wrap(message, within: bodyWidth, font: font)
-        var y = bodyTop
+        // Message body: left-aligned in the panel's dark well (the original
+        // left-aligns the wrapped text, it isn't centered).
+        let lines = wrap(message, within: frame.width - Self.bodyInset * 2, font: font)
+        var y = frame.y + Self.bodyTop
         for line in lines {
-            // Center each line horizontally within the body.
-            let lineWidth = font.width(of: line)
-            let x = frame.x + inset + max(0, (bodyWidth - lineWidth) / 2)
-            font.draw(line, x: x, y: y, tint: textTint, using: renderer)
+            font.draw(line, x: frame.x + Self.bodyInset, y: y, tint: textTint, using: renderer)
             y += font.lineHeight + 4
         }
     }
+
+    /// Body-text layout, panel-relative: `error_back.img`'s well starts just
+    /// below the title strip with a small left margin.
+    private static let bodyInset: Float = 16
+    private static let bodyTop: Float = 38
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
         switch event {
