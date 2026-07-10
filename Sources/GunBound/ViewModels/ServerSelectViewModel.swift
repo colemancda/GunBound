@@ -513,7 +513,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// Not `private` so tests can verify `availableServers` population with
     /// a mock `directoryFetcher` without also exercising the real network
     /// connect `performConnect()` does afterward.
-    func fetchDirectoryAndChooseServer() async -> (address: String, port: UInt16) {
+    public func fetchDirectoryAndChooseServer() async -> (address: String, port: UInt16) {
         if availableServers.isEmpty {
             // Broker unreachable is non-fatal here — fall through to the
             // manually configured server/port below.
