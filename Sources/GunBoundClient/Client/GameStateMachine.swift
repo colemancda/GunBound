@@ -30,7 +30,12 @@ public final class GameStateMachine {
         }
         self.current = screen
         cursor.isVisible = false
-        cursor.texture = context.renderer.texture(named: SoftwareCursor.sheetName, frame: 0, assets: context.assets)
+        // Load the arrow's idle-shine loop (cursor.img frames 0–7) so the
+        // pointer animates; frame 0 doubles as the single-frame fallback.
+        cursor.frames = SoftwareCursor.arrowFrames.compactMap {
+            context.renderer.texture(named: SoftwareCursor.sheetName, frame: $0, assets: context.assets)
+        }
+        cursor.texture = cursor.frames.first
         print("[GunBoundClient] entering screen: \(initialMode)")
         try current.onEnter(context: context)
     }
@@ -65,6 +70,7 @@ public final class GameStateMachine {
 
     public func update(deltaTime: Double) throws {
         current.update(deltaTime: deltaTime)
+        cursor.update(deltaTime: deltaTime)
         if let nextMode = context.consumePendingTransition() {
             guard let nextScreen = makeScreen(nextMode) else {
                 print("[GunBoundClient] no screen registered for mode \(nextMode), ignoring transition")
