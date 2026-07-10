@@ -195,7 +195,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// The servers actually drawn/hit-tested — the scroll window over the
     /// fetched list, capped to the 12 on-screen row slots.
     public var visibleServers: ArraySlice<ServerDirectoryResponse.Server> {
-        availableServers
+        // The Friends view lists only worlds where buddies are online; with no
+        // buddy data wired the decomp clears the server count outright — a
+        // live capture (`gbview`, m_viewMode 2) shows the empty panel.
+        guard worldListFilter == .all else { return [] }
+        return availableServers
             .dropFirst(scrollOffset * Self.rowColumns)
             .prefix(Self.maxVisibleRows)
     }
@@ -301,6 +305,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// only moves the toggle highlight (friend-server filtering isn't wired).
     public func selectWorldListView(_ filter: WorldListFilter) {
         guard !state.isLoading, !state.isConnecting else { return }
+        // Either tab clears the row highlight (the decomp's OnCommand sets
+        // m_highlightedSlot = -1 and disables the connect button; confirmed by
+        // a live capture with m_highlightedSlot -1 / m_inputEnabled 0 right
+        // after a tab switch).
+        selectedIndex = nil
         switch filter {
         case .all:
             worldListFilter = .all
