@@ -6,6 +6,7 @@ import SwiftUI
 /// (username/password/server IP → asset check → `GameSceneView`), the same
 /// entry flow as the iOS Playground. See `AppDelegate_tvOS.swift` for the
 /// UIKit equivalent.
+@MainActor
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
