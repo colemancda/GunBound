@@ -45,14 +45,16 @@ struct WidgetTests {
     private final class FrameTex: ClientTexture { let frame: Int; init(_ frame: Int) { self.frame = frame } }
     private final class FrameRenderer: ClientRenderer {
         private(set) var lastFrame: Int?
+        private(set) var draws: [(frame: Int, rect: Rect)] = []
         func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? { FrameTex(frameIndex) }
         func texture(from frame: ImgFile.Frame) -> ClientTexture? { FrameTex(0) }
         func size(of texture: ClientTexture?) -> (width: Float, height: Float) { (10, 10) }
         func clear() {}
         func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {
-            if let tex = texture as? FrameTex { lastFrame = tex.frame }
+            if let tex = texture as? FrameTex { lastFrame = tex.frame; draws.append((tex.frame, rect)) }
         }
         func present() {}
+        func frame(at rect: Rect) -> Int? { draws.last { $0.rect == rect }?.frame }
     }
 
     private var noAssets: AssetLibrary { AssetLibrary(directory: URL(fileURLWithPath: "/nonexistent", isDirectory: true)) }
@@ -554,6 +556,27 @@ struct WidgetTests {
         dialog.reset()
         #expect(dialog.frame.x == 243 && dialog.frame.y == 202)
         #expect(dialog.okButton.frame == okStart)
+    }
+
+    @Test func lobbyChatChannelTabsSelectAndHighlight() {
+        let tabs: [(normal: ClientTexture?, selected: ClientTexture?)] =
+            (0..<8).map { _ in (normal: FrameTex(0) as ClientTexture?, selected: FrameTex(3) as ClientTexture?) }
+        let panel = LobbyChatWidget(font: nil, channelTabs: tabs)
+        var picked: Int?
+        panel.onSelectChannel = { picked = $0 }
+
+        #expect(panel.selectedChannel == 0)
+
+        // Click tab 3 — rect x = 23+264+3*32 = 383, y = 287+9 = 296.
+        #expect(panel.dispatch(.pointerDown(x: 388, y: 301)))
+        #expect(panel.selectedChannel == 3)
+        #expect(picked == 3)
+
+        // The selected tab draws its yellow frame (3); an unselected one, 0.
+        let renderer = FrameRenderer()
+        panel.drawSelf(renderer)
+        #expect(renderer.frame(at: Rect(x: 383, y: 296, width: 22, height: 22)) == 3)
+        #expect(renderer.frame(at: Rect(x: 287, y: 296, width: 22, height: 22)) == 0)
     }
 
     @Test func channelUserListScrollsItsRoster() {

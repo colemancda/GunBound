@@ -77,9 +77,16 @@ public final class GameRoomListScreen: GameScreen {
 
         // The lobby chat panel — always-visible chrome at the decomp rect,
         // fed by 0x201F broadcasts; Enter in its input sends 0x2010.
+        // The 8 channel tabs (b_gamelist_ch1…8): frame 0 = normal, 3 = the
+        // yellow selected state.
+        let channelTabs = (1...8).map { n in
+            (normal: renderer.texture(named: "b_gamelist_ch\(n).img", frame: 0, assets: assets),
+             selected: renderer.texture(named: "b_gamelist_ch\(n).img", frame: 3, assets: assets))
+        }
         let chatPanel = LobbyChatWidget(
             font: textFont,
-            background: renderer.texture(named: viewModel.chatBackImageName, assets: assets)
+            background: renderer.texture(named: viewModel.chatBackImageName, assets: assets),
+            channelTabs: channelTabs
         )
         chatPanel.onSend = { [weak viewModel = self.viewModel] line in
             viewModel?.sendChat(line)
