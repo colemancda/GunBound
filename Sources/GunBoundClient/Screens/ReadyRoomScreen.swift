@@ -192,10 +192,29 @@ public final class ReadyRoomScreen: GameScreen {
             renderer.draw(thumb, in: ReadyRoomViewModel.mapThumbRect, tint: nil)
         }
 
+        // The six option-value buttons under the map (mode/capacity live,
+        // groups A–D as fresh-room defaults).
+        for (name, rect) in viewModel.optionButtons {
+            if let texture = optionTexture(named: name, renderer: renderer) {
+                renderer.draw(texture, in: rect, tint: nil)
+            }
+        }
+
         if let font {
-            // Room name in the top strip.
+            // Room name in the top strip; channel + server in the top-right
+            // box (the original's "1 OptiPlex 7020" slot).
             font.draw(viewModel.roomName, x: 46, y: 12, using: renderer)
-            font.draw("\(viewModel.map)", x: 580, y: 12, using: renderer)
+            font.draw(viewModel.channelLabel, x: 580, y: 12, using: renderer)
+
+            // The map name, centered in the map panel's dark title band.
+            let mapName = "\(viewModel.map)".uppercased()
+            let band = ReadyRoomViewModel.mapTitleRect
+            font.draw(
+                mapName,
+                x: band.x + (band.width - font.width(of: mapName)) / 2,
+                y: band.y + (band.height - font.lineHeight) / 2,
+                using: renderer
+            )
 
             // Roster: every open slot (the room capacity) gets a team
             // platform — the occupant's team, or the side's default for an
@@ -289,6 +308,16 @@ public final class ReadyRoomScreen: GameScreen {
                 }
             }
         }
+    }
+
+    /// An option-value button's normal frame, cached by entry name (the
+    /// mode/capacity slots swap artwork with the room settings).
+    private func optionTexture(named name: String, renderer: ClientRenderer) -> ClientTexture? {
+        if let cached = frameCache[name] { return cached }
+        guard let assets else { return nil }
+        let texture = renderer.texture(named: name, frame: 0, assets: assets)
+        if let texture { frameCache[name] = texture }
+        return texture
     }
 
     /// The composited avatar for a packed `avatarEquipped` outfit — the
