@@ -274,6 +274,50 @@ public final class ServerSelectViewModel: ScreenViewModel {
         clock += deltaTime  // the double-click window's timebase
     }
 
+    /// Switches the world-list view tab (`WorldListPanelWidget`'s View All /
+    /// Friends). Ignored while the list is loading or a connect is in flight,
+    /// matching the pointer guard. `all` re-requests the full list; `friends`
+    /// only moves the toggle highlight (friend-server filtering isn't wired).
+    public func selectWorldListView(_ filter: WorldListFilter) {
+        guard !state.isLoading, !state.isConnecting else { return }
+        switch filter {
+        case .all:
+            worldListFilter = .all
+            reload()
+        case .friends:
+            worldListFilter = .friends
+        }
+    }
+
+    /// Handles a pointer press over the world-list row grid — the panel
+    /// widget's row hit-test. Selects the online row under `(x, y)`, or
+    /// connects on a double-click of the already-selected row (mirroring
+    /// `WorldListRowHitTest` + the decomp's row select). Returns whether a row
+    /// cell was hit. Ignored while the screen is busy.
+    @discardableResult
+    public func selectRow(atPoint x: Float, y: Float) -> Bool {
+        guard !state.isLoading, !state.isConnecting else { return false }
+        guard let slot = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) else {
+            return false
+        }
+        let index = absoluteIndex(forVisibleSlot: slot)
+        guard availableServers.indices.contains(index), availableServers[index].isEnabled else {
+            return true  // landed on a row cell, just not a selectable one
+        }
+        // A second click on the selected row inside the window is a
+        // double-click: connect straight away.
+        if selectedIndex == index,
+           let last = lastRowClick, last.index == index,
+           clock - last.time <= Self.doubleClickInterval {
+            lastRowClick = nil
+            connect()
+        } else {
+            selectedIndex = index
+            lastRowClick = (index: index, time: clock)
+        }
+        return true
+    }
+
     public func handle(_ event: ScreenInputEvent) {
         switch event {
         case .pointerMoved(let x, let y):
@@ -288,6 +332,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
             // `WorldListRowHitTest` maps the click through the same grid
             // geometry as the renderer and only accepts online rows
             // (fullness is checked later, at connect time).
+            // In the running client `WorldListPanelWidget` consumes the panel's
+            // View All / Friends tabs and the row grid (calling
+            // `selectWorldListView` / `selectRow`) before this runs. This full
+            // routing is kept so the view model stays usable standalone (tests,
+            // previews) — the tab/row cases just forward to the same methods.
             if let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) {
                 pressedIndex = index
                 switch buttons[index].name {
@@ -303,34 +352,15 @@ public final class ServerSelectViewModel: ScreenViewModel {
                     // the lobby and Avatar Store dispatchers.
                     setBuddyPanelVisible(!isBuddyPanelVisible)
                 case "b_server_all.img":
-                    worldListFilter = .all
-                    reload()
+                    selectWorldListView(.all)
                 case "b_server_friend.img":
-                    // Selects the Friends view (friend-server filtering isn't
-                    // wired yet, so the list is unchanged — the toggle just
-                    // moves the `selected` highlight).
-                    worldListFilter = .friends
+                    selectWorldListView(.friends)
                 default:
                     print("[GunBound] clicked server-select button: \(buttons[index].name)")
                 }
                 return
             }
-            if let slot = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) {
-                let index = absoluteIndex(forVisibleSlot: slot)
-                if availableServers.indices.contains(index), availableServers[index].isEnabled {
-                    // A second click on the selected row inside the window
-                    // is a double-click: connect straight away.
-                    if selectedIndex == index,
-                       let last = lastRowClick, last.index == index,
-                       clock - last.time <= Self.doubleClickInterval {
-                        lastRowClick = nil
-                        connect()
-                    } else {
-                        selectedIndex = index
-                        lastRowClick = (index: index, time: clock)
-                    }
-                }
-            }
+            selectRow(atPoint: x, y: y)
 
         case .activate:
             // Enter/return — mirrors the decomp keydown handler, which
