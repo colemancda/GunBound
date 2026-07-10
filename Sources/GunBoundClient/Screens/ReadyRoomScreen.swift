@@ -1,5 +1,6 @@
 import GunBound
 import GunBoundProtocol
+import GunBoundFile
 
 /// View for the pre-battle Ready Room (state 9) — `ready_back.img` chrome
 /// with the 8-slot roster (2×2 each side of the center map panel), the map
@@ -26,6 +27,14 @@ public final class ReadyRoomScreen: GameScreen {
     private var buddyPanel: BuddyPanelWidget?
     private var audio: ClientAudioPlayer?
 
+    /// Kept for lazily loading each roster mobile's animated tank sprite —
+    /// the slots show the live mobile (idle `.epa` loop), not the picker card.
+    private var assets: AssetLibrary?
+    private var mobileAnimations: [Mobile: EpaFile] = [:]
+    private var frameCache: [String: ClientTexture] = [:]
+    /// Drives the slot mobiles' idle animation.
+    private var clock: Double = 0
+
     public init(viewModel: ReadyRoomViewModel) {
         self.viewModel = viewModel
     }
@@ -34,6 +43,7 @@ public final class ReadyRoomScreen: GameScreen {
         viewModel.onEnter()
         let renderer = context.renderer
         let assets = context.assets
+        self.assets = assets
         backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
         if let musicName = viewModel.musicName {
             let audio = context.makeAudioPlayer()
@@ -118,6 +128,10 @@ public final class ReadyRoomScreen: GameScreen {
         rootWidget = Widget()
         chatPanel = nil
         buddyPanel = nil
+        assets = nil
+        mobileAnimations = [:]
+        frameCache = [:]
+        clock = 0
         audio?.stop()
         audio = nil
     }
@@ -132,6 +146,7 @@ public final class ReadyRoomScreen: GameScreen {
     }
 
     public func update(deltaTime: Double) {
+        clock += deltaTime
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
         if let chatPanel {
@@ -162,19 +177,21 @@ public final class ReadyRoomScreen: GameScreen {
             font.draw(viewModel.roomName, x: 46, y: 12, using: renderer)
             font.draw("\(viewModel.map)", x: 580, y: 12, using: renderer)
 
-            // Roster: name, team, mobile per occupied slot; readied players
-            // marked. Own slot also shows the picked mobile's portrait.
+            // Roster: name, team, and the live mobile per occupied slot —
+            // the actual idle-animated tank sprite (as in battle), not the
+            // picker's character card. Readied players are marked.
             for (index, player) in viewModel.players.enumerated() {
                 let rect = viewModel.rosterSlotRect(at: index)
                 let name = String(describing: player.username)
                 font.draw(name, x: rect.x + 8, y: rect.y + 8, using: renderer)
                 font.draw("Team \(player.team)", x: rect.x + 8, y: rect.y + 24, using: renderer)
-                let portraitFrame = ReadyRoomViewModel.characterFrame(for: player.primaryTank)
-                if let portrait = characterFrames[portraitFrame] {
-                    // Portraits are 113×146; fit them into the slot's lower band.
-                    let height = rect.height - 46
-                    let width = height * 113 / 146
-                    renderer.draw(portrait, in: Rect(x: rect.x + (rect.width - width) / 2, y: rect.y + 40, width: width, height: height), tint: nil)
+                if let sprite = mobileSprite(for: player.primaryTank, renderer: renderer) {
+                    let (w, h) = renderer.size(of: sprite)
+                    // The tank frames are large; sit the mobile on the slot
+                    // floor, centered, at its natural size (clamped to the slot).
+                    let scale = min(1, (rect.height - 52) / max(1, h))
+                    let dw = w * scale, dh = h * scale
+                    renderer.draw(sprite, in: Rect(x: rect.x + (rect.width - dw) / 2, y: rect.y + rect.height - dh - 12, width: dw, height: dh), tint: nil)
                 }
                 if viewModel.readyPlayers.contains(name) {
                     font.draw("READY", x: rect.x + 8, y: rect.y + rect.height - 18, tint: (120, 255, 120), using: renderer)
@@ -220,5 +237,37 @@ public final class ReadyRoomScreen: GameScreen {
                 }
             }
         }
+    }
+
+    /// The current idle frame of a mobile's tank sprite — its `.epa` `normal`
+    /// run looped by the screen clock, the same pipeline the battle uses.
+    /// Loads the animation table lazily and caches decoded frames.
+    private func mobileSprite(for mobile: Mobile, renderer: ClientRenderer) -> ClientTexture? {
+        guard let assets else { return nil }
+        if mobileAnimations[mobile] == nil {
+            mobileAnimations[mobile] = try? assets.animationTable(named: mobile.tankAnimationName)
+        }
+        var frame = 0
+        if let animation = mobileAnimations[mobile]?.animation(named: "normal") {
+            frame = frameIndex(in: animation, age: clock)
+        }
+        let key = "\(mobile.tankImageName)#\(frame)"
+        if let cached = frameCache[key] { return cached }
+        let texture = renderer.texture(named: mobile.tankImageName, frame: frame, assets: assets)
+        if let texture { frameCache[key] = texture }
+        return texture
+    }
+
+    /// The looping frame index at `age` seconds, honoring the run's per-frame
+    /// durations at ~15 ticks/s (matching the battle mobile animator).
+    private func frameIndex(in animation: EpaFile.Animation, age: Double) -> Int {
+        let total = max(1, animation.durations.reduce(0, +))
+        let tick = max(0, Int(age * 15)) % total
+        var elapsed = 0
+        for (offset, duration) in animation.durations.enumerated() {
+            elapsed += duration
+            if tick < elapsed { return animation.frames[offset] }
+        }
+        return animation.frames.first ?? 0
     }
 }
