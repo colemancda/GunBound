@@ -14,13 +14,20 @@ public final class ButtonWidget: Widget {
     /// plus a hover tint — the frame-based path the toggle buttons use.
     public var sprite: ButtonSprite?
     public var hoverTint: (r: UInt8, g: UInt8, b: UInt8) = (200, 200, 255)
-    /// When false the button ignores input and (with a `sprite`) draws its
-    /// `disabled` frame — the decomp's `SetEnabled(false)`.
+    /// When false the button ignores input and (with a `sprite`, if
+    /// `showsDisabledFrame`) draws its `disabled` frame — the decomp's
+    /// `SetEnabled(false)`.
     public var isEnabled = true {
         didSet {
             if !isEnabled { isHovered = false; isPressed = false }
         }
     }
+    /// Whether a disabled button draws its greyed `disabled` frame. The
+    /// original's enabled flag only *blocks input* — a live capture shows the
+    /// world list's disabled scroll arrows still drawn with their normal art —
+    /// so widgets that mirror that set this false; buttons whose disabled look
+    /// is real (the SERVER button) leave it on.
+    public var showsDisabledFrame = true
     public private(set) var isHovered = false
     /// Held down (armed on a press inside, released by any pointer-up) —
     /// the decomp's `+0x38` armed flag, which held arrow labels use to
@@ -36,7 +43,7 @@ public final class ButtonWidget: Widget {
     public override func drawSelf(_ renderer: ClientRenderer) {
         if let sprite {
             let state: ButtonState
-            if !isEnabled {
+            if !isEnabled, showsDisabledFrame {
                 state = .disabled
             } else if isPressed {
                 state = .pressed

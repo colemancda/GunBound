@@ -120,11 +120,15 @@ public final class ScrollBarWidget: Widget {
     }
 
     /// Enable the arrows only when there's something to scroll — the decomp's
-    /// `SetEnabled(total > page)`. When disabled they draw their greyed frame.
+    /// `SetEnabled(total > page)`. Disabling blocks input only: a live capture
+    /// of the original shows the disabled arrows still drawn with their normal
+    /// art, so the greyed frame is left off.
     private func updateArrowsEnabled() {
         let scrollable = maxPosition > 0
         upArrow.isEnabled = scrollable
         downArrow.isEnabled = scrollable
+        upArrow.showsDisabledFrame = false
+        downArrow.showsDisabledFrame = false
     }
 
     public func step(_ delta: Int) {
