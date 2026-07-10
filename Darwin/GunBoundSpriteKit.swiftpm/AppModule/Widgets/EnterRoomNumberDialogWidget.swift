@@ -16,9 +16,10 @@ import GunBoundClient
         let font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
         let background = renderer.texture(named: "gamelist_directgo.img", assets: assets)
         let (w, h) = renderer.size(of: background)
+        // Runtime rect (459,33) from a gbview dump, not centered.
         let frame = w > 0
-            ? Rect(x: (800 - w) / 2, y: (600 - h) / 2, width: w, height: h)
-            : Rect(x: 260, y: 210, width: 280, height: 180)
+            ? Rect(x: 459, y: 33, width: w, height: h)
+            : Rect(x: 459, y: 33, width: 314, height: 160)
         let dialog = EnterRoomNumberDialogWidget(
             frame: frame,
             font: font,
@@ -27,6 +28,7 @@ import GunBoundClient
             cancelTexture: renderer.texture(named: "b_gamelist_no.img", assets: assets)
         )
         dialog.numberField.setText("42")
+        dialog.passwordField.setText("pw")
         return dialog
     }
 }
