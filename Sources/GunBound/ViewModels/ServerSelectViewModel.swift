@@ -73,6 +73,8 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public var panelRect: Rect = .zero
 
     public private(set) var hoveredIndex: Int?
+    /// The button currently held down — drives the `pressed` button frame.
+    public private(set) var pressedIndex: Int?
 
     /// Whether the shared buddy-list panel is open — the BUDDY button
     /// toggles it, matching the singleton `BuildBuddyPanel` shown across
@@ -223,6 +225,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
 
     public func onEnter() {
         hoveredIndex = nil
+        pressedIndex = nil
         selectedIndex = nil  // the real client resets +0x08 to -1 on enter
         scrollOffset = 0
         // Populate the WORLD LIST up front, like the real client.
@@ -231,6 +234,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
 
     public func onExit() {
         hoveredIndex = nil
+        pressedIndex = nil
         selectedIndex = nil
         task?.cancel()
         task = nil  // let a later re-entry start a fresh reload
@@ -264,6 +268,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
             // geometry as the renderer and only accepts online rows
             // (fullness is checked later, at connect time).
             if let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) {
+                pressedIndex = index
                 switch buttons[index].name {
                 case "b_server_choiceserver.img":
                     // Live only once a row is selected.
@@ -319,7 +324,10 @@ public final class ServerSelectViewModel: ScreenViewModel {
                   panelRect.contains(x: x, y: y) else { return }
             setScrollOffset(scrollOffset + steps)
 
-        case .pointerUp, .text, .key:
+        case .pointerUp:
+            pressedIndex = nil
+
+        case .text, .key:
             break
         }
     }
