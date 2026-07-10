@@ -76,6 +76,26 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// The button currently held down — drives the `pressed` button frame.
     public private(set) var pressedIndex: Int?
 
+    /// Which world-list view the panel's View All / Friends toggle is on.
+    /// These are 5-frame toggle buttons: the current one shows its `selected`
+    /// (yellow) frame. `all` is the default; `friends` (worlds where buddies
+    /// are online) isn't filtered yet, so it only drives the toggle highlight.
+    public enum WorldListFilter: Equatable, Sendable {
+        case all
+        case friends
+    }
+    public private(set) var worldListFilter: WorldListFilter = .all
+
+    /// Whether a panel toggle button (`b_server_all` / `b_server_friend`) is
+    /// the current world-list view — the button's `selected` state.
+    public func isFilterSelected(_ buttonName: String) -> Bool {
+        switch buttonName {
+        case "b_server_all.img": return worldListFilter == .all
+        case "b_server_friend.img": return worldListFilter == .friends
+        default: return false
+        }
+    }
+
     /// Whether the shared buddy-list panel is open — the BUDDY button
     /// toggles it, matching the singleton `BuildBuddyPanel` shown across
     /// screens. `buddies` stays empty until a buddy-list protocol path
@@ -226,6 +246,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
     public func onEnter() {
         hoveredIndex = nil
         pressedIndex = nil
+        worldListFilter = .all
         selectedIndex = nil  // the real client resets +0x08 to -1 on enter
         scrollOffset = 0
         // Populate the WORLD LIST up front, like the real client.
@@ -282,7 +303,13 @@ public final class ServerSelectViewModel: ScreenViewModel {
                     // the lobby and Avatar Store dispatchers.
                     setBuddyPanelVisible(!isBuddyPanelVisible)
                 case "b_server_all.img":
+                    worldListFilter = .all
                     reload()
+                case "b_server_friend.img":
+                    // Selects the Friends view (friend-server filtering isn't
+                    // wired yet, so the list is unchanged — the toggle just
+                    // moves the `selected` highlight).
+                    worldListFilter = .friends
                 default:
                     print("[GunBound] clicked server-select button: \(buttons[index].name)")
                 }
