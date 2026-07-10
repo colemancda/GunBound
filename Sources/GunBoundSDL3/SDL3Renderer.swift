@@ -58,7 +58,7 @@ final class SDL3Renderer: ClientRenderer {
         try? renderer.clear()
     }
 
-    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) {
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {
         guard let texture = texture as? SDL3ClientTexture else { return }
         try? texture.texture.setBlendMode([blend == .additive ? .additive : .alpha])
         if let tint {
@@ -66,6 +66,7 @@ final class SDL3Renderer: ClientRenderer {
         } else {
             try? texture.texture.setColorModulation(red: 255, green: 255, blue: 255)
         }
+        try? texture.texture.setAlphaModulation(UInt8(max(0, min(1, opacity)) * 255))
         let destination = SDL_FRect(x: rect.x, y: rect.y, w: rect.width, h: rect.height)
         try? renderer.copy(texture.texture, destination: destination)
     }

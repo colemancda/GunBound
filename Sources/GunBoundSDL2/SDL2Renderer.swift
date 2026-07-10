@@ -57,7 +57,7 @@ final class SDL2Renderer: ClientRenderer {
         try? renderer.clear()
     }
 
-    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) {
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {
         guard let texture = texture as? SDL2ClientTexture else { return }
         try? texture.texture.setBlendMode([blend == .additive ? .additive : .alpha])
         if let tint {
@@ -65,6 +65,7 @@ final class SDL2Renderer: ClientRenderer {
         } else {
             try? texture.texture.setColorModulation(red: 255, green: 255, blue: 255)
         }
+        try? texture.texture.setAlphaModulation(UInt8(max(0, min(1, opacity)) * 255))
         // SDL2's simple (non-rotated) `copy(_:destination:)` overload only
         // takes an integer `SDL_Rect` — unlike SDL3's `SDL_FRect`-based one —
         // so the float `Rect` is rounded here rather than passed through.
