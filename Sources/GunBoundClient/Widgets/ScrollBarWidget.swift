@@ -39,12 +39,12 @@ public final class ScrollBarWidget: Widget {
 
     /// Total content lines; positions clamp to `contentCount - pageSize`.
     public var contentCount = 0 {
-        didSet { position = min(position, maxPosition) }
+        didSet { position = min(position, maxPosition); updateArrowsEnabled() }
     }
 
     /// How many content lines one page shows.
     public var pageSize = 1 {
-        didSet { position = min(position, maxPosition) }
+        didSet { position = min(position, maxPosition); updateArrowsEnabled() }
     }
 
     public var onScroll: ((Int) -> Void)?
@@ -116,6 +116,15 @@ public final class ScrollBarWidget: Widget {
         add(self.downArrow)
         self.upArrow.onClick = { [weak self] in self?.step(-1) }
         self.downArrow.onClick = { [weak self] in self?.step(1) }
+        updateArrowsEnabled()
+    }
+
+    /// Enable the arrows only when there's something to scroll — the decomp's
+    /// `SetEnabled(total > page)`. When disabled they draw their greyed frame.
+    private func updateArrowsEnabled() {
+        let scrollable = maxPosition > 0
+        upArrow.isEnabled = scrollable
+        downArrow.isEnabled = scrollable
     }
 
     public func step(_ delta: Int) {
