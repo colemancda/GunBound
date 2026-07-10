@@ -24,7 +24,12 @@ public final class BuddyPanelWidget: Widget {
 
     /// Buddy names shown in the list band; the counter reflects the count.
     public var buddies: [String] = [] {
-        didSet { scrollBar.contentCount = buddies.count }
+        didSet {
+            scrollBar.contentCount = buddies.count
+            if buddies != oldValue {
+                selectedIndex = nil
+            }
+        }
     }
 
     public var backgroundTexture: ClientTexture?
@@ -42,8 +47,20 @@ public final class BuddyPanelWidget: Widget {
 
     /// Called when the close-X is clicked (after the panel hides itself).
     public var onClose: (() -> Void)?
-    public var onAdd: (() -> Void)?
-    public var onDelete: (() -> Void)?
+    /// Called when a name typed into the Add field is submitted.
+    public var onAdd: ((String) -> Void)?
+    /// Called when Del is clicked with a roster row selected, with that
+    /// buddy's name.
+    public var onDelete: ((String) -> Void)?
+
+    /// The roster row highlighted by a click — Del acts on it. Cleared
+    /// when the roster changes out from under it.
+    public private(set) var selectedIndex: Int?
+
+    /// The inline name-entry field the Add button toggles (the decomp
+    /// documents Add/Del only as label buttons with no captured entry
+    /// flow, so the inline field is this port's own convention).
+    public let addField: TextFieldWidget
 
     /// The list band the roster is drawn into, inset inside the panel border
     /// (below the title bar, left of the scrollbar).
@@ -89,19 +106,60 @@ public final class BuddyPanelWidget: Widget {
         )
         scrollBar.pageSize = Self.visibleRows
 
+        // The Add field sits in the band between the roster and the
+        // Add/Del buttons, hidden until Add toggles it open.
+        addField = TextFieldWidget(
+            frame: Rect(x: frame.x + 12, y: frame.y + frame.height - 52, width: 160, height: 16),
+            font: font,
+            textTint: textTint
+        )
+        addField.placeholder = "buddy name"
+        addField.maxLength = 12  // Username's fixed wire length
+        addField.isHidden = true
+
         super.init(frame: frame)
         add(scrollBar)
+        add(addField)
         add(addButton)
         add(delButton)
         add(closeButton)
 
         closeButton.onClick = { [weak self] in self?.close() }
-        addButton.onClick = { [weak self] in self?.onAdd?() }
-        delButton.onClick = { [weak self] in self?.onDelete?() }
+        addButton.onClick = { [weak self] in self?.toggleAddField() }
+        delButton.onClick = { [weak self] in self?.deleteSelected() }
+        addField.onSubmit = { [weak self] in self?.submitAddField() }
     }
 
-    /// Hides the panel and fires `onClose`.
+    /// Add: opens (and focuses) the name field, or closes it if open.
+    private func toggleAddField() {
+        if addField.isHidden {
+            addField.setText("")
+            addField.isHidden = false
+            addField.focus()
+        } else {
+            addField.isHidden = true
+            addField.blur()
+        }
+    }
+
+    private func submitAddField() {
+        let name = addField.text.trimmingCharacters(in: .whitespaces)
+        addField.isHidden = true
+        addField.blur()
+        guard !name.isEmpty else { return }
+        onAdd?(name)
+    }
+
+    /// Del: removes the highlighted roster row, if any.
+    private func deleteSelected() {
+        guard let index = selectedIndex, buddies.indices.contains(index) else { return }
+        onDelete?(buddies[index])
+    }
+
+    /// Hides the panel (and its add field) and fires `onClose`.
     public func close() {
+        addField.isHidden = true
+        addField.blur()
         isHidden = true
         onClose?()
     }
@@ -116,12 +174,28 @@ public final class BuddyPanelWidget: Widget {
         // avatar icon baked into the panel art).
         font.draw("\(buddies.count)", x: frame.x + 34, y: frame.y + 7, tint: textTint, using: renderer)
 
-        // The roster, scrolled by the bar: draw the visible window only.
+        // The roster, scrolled by the bar: draw the visible window only,
+        // the selected row (Del's target) highlighted.
         let start = scrollBar.position
         let (originX, originY) = listOrigin
         for (row, name) in buddies.dropFirst(start).prefix(Self.visibleRows).enumerated() {
-            font.draw(name, x: originX, y: originY + Float(row) * linePitch, tint: textTint, using: renderer)
+            let tint = (start + row == selectedIndex) ? (r: UInt8(255), g: UInt8(220), b: UInt8(120)) : textTint
+            font.draw(name, x: originX, y: originY + Float(row) * linePitch, tint: tint, using: renderer)
         }
+    }
+
+    /// The visible roster row (absolute index into `buddies`) at a point,
+    /// or `nil` outside the list band.
+    private func rowIndex(atX x: Float, y: Float) -> Int? {
+        let (originX, originY) = listOrigin
+        // The band spans from the list origin down to the Add field's band,
+        // left of the scrollbar.
+        guard x >= originX, x < scrollBar.frame.x,
+              y >= originY, y < frame.y + frame.height - 56 else { return nil }
+        let row = Int((y - originY) / linePitch)
+        guard row >= 0, row < Self.visibleRows else { return nil }
+        let index = scrollBar.position + row
+        return buddies.indices.contains(index) ? index : nil
     }
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
@@ -130,7 +204,13 @@ public final class BuddyPanelWidget: Widget {
         // through to the screen behind. Clicks outside the panel pass through.
         switch event {
         case .pointerDown(let x, let y):
-            return frame.contains(x: x, y: y)
+            guard frame.contains(x: x, y: y) else { return false }
+            // A click in the list band selects (or re-clicks deselect) the
+            // row under it — Del acts on the selection.
+            if let index = rowIndex(atX: x, y: y) {
+                selectedIndex = (selectedIndex == index) ? nil : index
+            }
+            return true
         case .scroll(let x, let y, let steps):
             guard frame.contains(x: x, y: y) else { return false }
             scrollBar.step(steps)
