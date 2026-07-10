@@ -249,6 +249,18 @@ public final class InBattleViewModel: ScreenViewModel {
     public private(set) var selectedWeapon: Weapon = .shot1
     /// Seconds left on the acting player's turn; expiry forfeits it.
     public private(set) var turnRemaining: Double = InBattleViewModel.turnDuration
+
+    /// The match's winning team once one side is wiped — `nil` while the
+    /// match runs, and also `nil` on an everyone-dead draw (check
+    /// `isMatchOver` to distinguish). Set by the server's game-end push
+    /// online, by the local wipe check offline.
+    public private(set) var winner: Team?
+    /// Whether the match has ended (the result lingers on screen for
+    /// `matchEndDelay`, then the battle returns to the room).
+    public private(set) var isMatchOver = false
+    /// How long the result banner shows before leaving the battle.
+    public static let matchEndDelay: Double = 3
+    private var matchEndCountdown: Double?
     /// Every hit so far, in order (the `0x8404` hit log).
     public private(set) var damageLedger: [DamageEvent] = []
     /// The acting remote player's live aim (angle/power/direction), relayed
@@ -344,6 +356,9 @@ public final class InBattleViewModel: ScreenViewModel {
         turnRemaining = Self.turnDuration
         soundQueue = []
         lastWalkCue = -1
+        winner = nil
+        isMatchOver = false
+        matchEndCountdown = nil
         wind = Float.random(in: Self.windRange)
         // Start centered on our own mobile (else the first player).
         let own = players.first { $0.name == delegate.network.username } ?? players.first
@@ -507,9 +522,8 @@ public final class InBattleViewModel: ScreenViewModel {
             }
         case .userQuit(let quit):
             players.removeAll { UInt16($0.slot) == quit.slot }
-        case .gameEnded:
-            delegate.session.battle = nil
-            delegate.requestTransition(to: .gameRoomList)
+        case .gameEnded(let end):
+            endMatch(winner: end.winner)
         case .tunnelReceived(let forward):
             applyTunnel(forward)
         case .chatReceived(let broadcast):
@@ -805,6 +819,17 @@ public final class InBattleViewModel: ScreenViewModel {
     public func update(deltaTime: Double) {
         clock += deltaTime
         expirePoses()
+        // The match result lingers, then hands control back to the room.
+        if var countdown = matchEndCountdown {
+            countdown -= deltaTime
+            if countdown <= 0 {
+                matchEndCountdown = nil
+                finishMatch()
+            } else {
+                matchEndCountdown = countdown
+            }
+            return  // play is frozen under the result banner
+        }
         switch phase {
         case .charging:
             tickTurnTimer(deltaTime)
@@ -901,7 +926,50 @@ public final class InBattleViewModel: ScreenViewModel {
             }
         }
         self.explosion = nil
-        advanceTurn()
+        checkMatchOver()
+        if !isMatchOver {
+            advanceTurn()
+        }
+    }
+
+    /// Offline the client is its own referee: once every living player is
+    /// on one team (or nobody's left), show the result and wind down.
+    /// Online the server decides (`checkPlayEnd` → the game-end push).
+    private func checkMatchOver() {
+        guard delegate.client == nil, !isMatchOver, players.count > 1 else { return }
+        let livingTeams = Set(players.filter(\.isAlive).map(\.team))
+        guard livingTeams.count <= 1 else { return }
+        endMatch(winner: livingTeams.first)
+    }
+
+    /// Freezes play and starts the result-banner countdown.
+    private func endMatch(winner: Team?) {
+        guard !isMatchOver else { return }
+        self.winner = winner
+        isMatchOver = true
+        matchEndCountdown = Self.matchEndDelay
+        phase = .waiting
+        let message = winner.map { "Team \($0) wins!" } ?? "Draw!"
+        appendChat(ChatLine(message: message, type: .notice))
+    }
+
+    /// Leaves the battle once the result banner has shown: online, tell
+    /// the server we're returning (`0x3040`) and re-enter the Ready Room;
+    /// offline, back to the lobby.
+    private func finishMatch() {
+        delegate.session.battle = nil
+        if let client = delegate.client {
+            Task {
+                do {
+                    try await client.returnToRoom()
+                } catch {
+                    print("[GunBound] couldn't return to room: \(error)")
+                }
+            }
+            delegate.requestTransition(to: .readyRoom)
+        } else {
+            delegate.requestTransition(to: .gameRoomList)
+        }
     }
 
     /// Deducts HP, logs the hit in the ledger (credited to the in-flight
@@ -919,8 +987,25 @@ public final class InBattleViewModel: ScreenViewModel {
         if players[index].hp == 0 {
             players[index].isAlive = false
             setPose(.dead, at: index)
+            reportOwnDeath(players[index])
         } else {
             setPose(.shock, at: index)
+        }
+    }
+
+    /// The original's death flow is self-reported: each client sends
+    /// `0x4100` when its *own* mobile dies (every client resolves the same
+    /// deterministic damage, so each one sees its own death locally). The
+    /// server broadcasts the `0x4102` death and ends the match on a wipe.
+    private func reportOwnDeath(_ player: BattlePlayer) {
+        guard let client = delegate.client,
+              player.name == delegate.network.username else { return }
+        Task {
+            do {
+                try await client.reportDeath()
+            } catch {
+                print("[GunBound] couldn't report death: \(error)")
+            }
         }
     }
 
