@@ -110,6 +110,14 @@ struct ReadyRoomViewModelTests {
         #expect(buttons[4].rect == Rect(x: 317, y: 288, width: 81, height: 24))
     }
 
+    /// The item shelf's 3×3 grid is decomp-exact: 70×45 cells at (528,403).
+    @Test func shelfGridMatchesTheDecomp() {
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 0) == Rect(x: 528, y: 403, width: 64, height: 43))
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 2).x == 528 + 2 * 70)
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 3) == Rect(x: 528, y: 448, width: 64, height: 43))
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 8).y == 403 + 2 * 45)
+    }
+
     @Test func exposesRoomFromSession() {
         let (viewModel, delegate) = makeViewModel()
         #expect(viewModel.roomName == "")

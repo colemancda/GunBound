@@ -150,6 +150,19 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     /// (directly above the thumbnail).
     public static let mapTitleRect = Rect(x: 332, y: 52, width: 136, height: 13)
 
+    /// The item shelf's 3×3 grid — decomp-exact (`FUN_004d7db0`: spacing
+    /// `(i%3)*0x46+0x210` / `(i/3)*0x2d+0x193`, i.e. 70×45 cells at
+    /// (528,403)); the icons themselves are 64×43.
+    public static let shelfCellCount = 9
+    public static func shelfCellRect(at index: Int) -> Rect {
+        Rect(
+            x: 528 + Float(index % 3) * 70,
+            y: 403 + Float(index / 3) * 45,
+            width: 64,
+            height: 43
+        )
+    }
+
     /// The six option-value buttons under the map panel (81×24, two columns
     /// × three rows — screenshot-measured). Mode and capacity render live
     /// (both decoded); the A SIDE / SSDEATH / ATTACK / DEATH72 slots belong
