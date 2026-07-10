@@ -188,6 +188,14 @@ struct WidgetTests {
         let renderer = FrameRenderer()
         button.drawSelf(renderer)
         #expect(renderer.lastFrame == ButtonState.disabled.frame)
+
+        // With `showsDisabledFrame` off (the scroll arrows' mode — the
+        // original's enabled flag blocks input only), it draws normal art.
+        button.showsDisabledFrame = false
+        button.drawSelf(renderer)
+        #expect(renderer.lastFrame == 0)
+        #expect(!button.dispatch(.pointerDown(x: 15, y: 15)))
+        #expect(clicks == 0)
     }
 
     /// The decomp's thumb formulas: the page's share of the track floored

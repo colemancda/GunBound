@@ -200,18 +200,33 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.isFilterSelected("b_server_all.img"))
         #expect(!viewModel.isFilterSelected("b_server_friend.img"))
 
-        // Click Friends (rect x 430, y 504, 80×33).
+        // Select a row first, so the tab switch's highlight-clearing shows.
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.selectedIndex != nil)
+
+        // Click Friends (rect x 430, y 504, 74×26).
         viewModel.handle(.pointerDown(x: 435, y: 510))
         #expect(viewModel.isFilterSelected("b_server_friend.img"))
         #expect(!viewModel.isFilterSelected("b_server_all.img"))
+        // A tab switch clears the row highlight (live capture:
+        // m_highlightedSlot -1 / m_inputEnabled 0 after switching) and the
+        // Friends view lists nothing without buddy data (m_viewMode 2 shows
+        // an empty panel).
+        #expect(viewModel.selectedIndex == nil)
+        #expect(!viewModel.isConnectEnabled)
+        #expect(viewModel.visibleServers.isEmpty)
         // Releasing clears the transient pressed state.
         viewModel.handle(.pointerUp(x: 435, y: 510))
         #expect(viewModel.pressedIndex == nil)
 
-        // Click View All again (rect x 336, y 504, 81×33).
+        // Click View All again (rect x 336, y 504, 74×26) — the full list
+        // comes back.
         viewModel.handle(.pointerDown(x: 340, y: 510))
         #expect(viewModel.isFilterSelected("b_server_all.img"))
         #expect(!viewModel.isFilterSelected("b_server_friend.img"))
+        #expect(!viewModel.visibleServers.isEmpty)
     }
 
     /// Clicking a row selects it — but only online rows, mirroring
