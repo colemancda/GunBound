@@ -1,5 +1,9 @@
 {
   "g_clientContext": "0x007a7ae0",
+  "localUser": {
+    "off": "ctx+0x2331c",
+    "name": "colemancda2"
+  },
   "serverList": {
     "base": "0x007e72e8",
     "count": 1,
@@ -16,8 +20,21 @@
         "ip": "100.65.243.48",
         "port": 8370,
         "players": 0,
-        "maxCapacity": 25600,
+        "maxCapacity": 100,
         "anim": 0
+      }
+    ]
+  },
+  "channelRoster": {
+    "base": "ctx+0x41440",
+    "users": [
+      {
+        "off": "ctx+0x41445",
+        "name": "admin"
+      },
+      {
+        "off": "ctx+0x41452",
+        "name": "colemancda2"
       }
     ]
   },
@@ -89,7 +106,7 @@
       "lock": 0
     }
   ],
-  "players": [],
+  "roomPlayers": [],
   "peerEndpoint": {
     "addr": "99.111.108.101",
     "field4": "0x636e616d",

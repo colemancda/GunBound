@@ -53,16 +53,22 @@ extension GunBoundExtract {
         private func printContext(_ ctx: GBContextDump) {
             let sl = ctx.serverList
             print("Client context \(ctx.g_clientContext)")
+            if let me = ctx.localUser {
+                print("Local user: \"\(me.name)\"")
+            }
             print("Server list: \(sl.count) server(s), current \"\(sl.currentServerName)\" (selected id \(sl.selectedServerId))")
             for s in sl.servers {
                 print("  [\(s.idx)] id \(s.id) \(s.online == 1 ? "online" : "offline") \"\(s.name)\" — \(s.desc)  \(s.ip):\(s.port)  players \(s.players)/\(s.maxCapacity)")
+            }
+            if let roster = ctx.channelRoster {
+                print("Channel roster: \(roster.users.count) user(s) — \(roster.users.map(\.name).joined(separator: ", "))")
             }
             let occupied = ctx.rooms.filter { $0.status != 0 || $0.cardId != 0 || $0.lock != 0 }
             print("Rooms: \(ctx.rooms.count) slots (\(occupied.count) occupied)")
             for r in occupied {
                 print("  slot \(r.slot): card \(r.cardId) map \(r.map) status \(r.status) lock \(r.lock) fullness \(r.fullness)")
             }
-            print("Players: \(ctx.players.count)   Inventory: \(ctx.inventory.count) item(s)")
+            print("Room players: \(ctx.roomPlayerCount)   Inventory: \(ctx.inventory.count) item(s)")
         }
 
         private func printNode(_ node: GBViewNode, depth: Int) {
@@ -243,11 +249,22 @@ private struct GBContextDump: Decodable {
     struct Ignored: Decodable { init(from decoder: Decoder) throws {} }
 
     let g_clientContext: String
+    let localUser: LocalUser?
     let serverList: ServerList
+    let channelRoster: Roster?
     let rooms: [Room]
-    let players: [Ignored]
+    // The room-player array was renamed `players` → `roomPlayers`; accept both.
+    let players: [Ignored]?
+    let roomPlayers: [Ignored]?
     let inventory: [Ignored]
 
+    var roomPlayerCount: Int { (roomPlayers ?? players ?? []).count }
+
+    struct LocalUser: Decodable { let name: String }
+    struct Roster: Decodable {
+        struct User: Decodable { let name: String }
+        let users: [User]
+    }
     struct ServerList: Decodable {
         let count: Int
         let selectedServerId: Int
