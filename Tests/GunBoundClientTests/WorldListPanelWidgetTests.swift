@@ -51,8 +51,8 @@ struct WorldListPanelWidgetTests {
         )
     }
 
-    private let viewAllRect = Rect(x: 336, y: 504, width: 81, height: 33)
-    private let friendsRect = Rect(x: 430, y: 504, width: 80, height: 33)
+    private let viewAllRect = Rect(x: 336, y: 504, width: 74, height: 26)
+    private let friendsRect = Rect(x: 430, y: 504, width: 74, height: 26)
 
     @Test func drawsTheActiveViewTabInItsSelectedFrame() {
         let viewModel = makeViewModel()  // default worldListFilter == .all
