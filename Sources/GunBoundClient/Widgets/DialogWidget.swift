@@ -23,6 +23,10 @@ public final class DialogWidget: Widget {
     /// texture's own dimensions.
     public static let defaultConfirmFrame = Rect(x: 454, y: 331, width: 74, height: 26)
 
+    /// The heading drawn in `error_back.img`'s top title-bar strip — the
+    /// original draws the message's first sentence there (before the blank
+    /// line), the detail going in the body. Empty draws nothing.
+    public var title: String = ""
     public var message: String
     public var backgroundTexture: ClientTexture?
     private let font: LoadedFont?
@@ -74,9 +78,23 @@ public final class DialogWidget: Widget {
         }
         guard let font else { return }
 
-        // Message body: inset inside the panel's dark inner band. The top
-        // strip of `error_back.img` is a title bar, so text starts below it.
         let inset: Float = 18
+
+        // Title, centered in `error_back.img`'s top strip (the dark band
+        // above the body well, ~y+8…+30).
+        if !title.isEmpty {
+            let titleWidth = font.width(of: title)
+            font.draw(
+                title,
+                x: frame.x + max(inset, (frame.width - titleWidth) / 2),
+                y: frame.y + 12,
+                tint: textTint,
+                using: renderer
+            )
+        }
+
+        // Message body: inset inside the panel's dark inner band, below the
+        // title strip.
         let bodyTop = frame.y + 40
         let bodyWidth = frame.width - inset * 2
         let lines = wrap(message, within: bodyWidth, font: font)
