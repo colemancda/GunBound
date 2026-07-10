@@ -1,22 +1,32 @@
 import GunBound
 
 /// The scroll widget — the counterpart of the original's `CScrollBar`
-/// (`CreateScrollListWidget`, `0x5080a0`; see GunBound-Decomp
-/// `docs/widgets.md`), which auto-creates two arrow child buttons at the
-/// track's ends, steps its position ±1 per arrow click clamped to
-/// `total − pageSize`, and fires **`0x2000` + the new position** up to its
-/// parent panel on any change.
+/// (`CreateScrollListWidget`, `0x5080a0`; fully promoted in GunBound-Decomp
+/// `src/cxx/ScrollBar.cpp`), which auto-creates two arrow children at the
+/// track's ends and fires **`0x2000` + the new position** up to its parent
+/// panel on any change.
 ///
-/// This port keeps that shape: `upArrow`/`downArrow` are `ButtonWidget`
-/// children (textureless by default, acting as hit zones over arrow art
-/// baked into a panel sheet), position changes fire both the decomp-faithful
-/// `Command(id: 0x2000 + position)` up the tree and the Swift-idiomatic
-/// `onScroll` closure. An optional `thumbTexture` draws a proportional thumb
-/// on the track. Pressing anywhere in the track (the arrow bands are already
-/// claimed by the child buttons) starts a **drag**: position tracks the
-/// pointer's vertical movement scaled to the track's travel, released by a
-/// `pointerUp` anywhere — a real thumb-texture size isn't needed since the
-/// drag is relative, not a hit-test against the drawn thumb.
+/// Decomp-confirmed interaction model, all ported here:
+/// - **Thumb geometry** (`ThumbHeight` `0x50e050` / `IsOverThumb`
+///   `0x50f770`): the thumb spans `pos·height/total` from the track top,
+///   its height the page's share of the track floored at 10 and rounded
+///   down to a multiple of 5; an empty list fills the whole track.
+/// - **Thumb drag** (`OnMouseDown` `0x50f500`): a press on the thumb arms
+///   dragging with a grab offset so the thumb doesn't jump under the
+///   cursor; releases anywhere disarm (`OnMouseUp` `0x50f5f0`).
+/// - **Held-track paging** (`Draw` `0x50f660`): while the track (not the
+///   thumb) is held pressed, the position pages one `pageSize` per frame
+///   toward the held point.
+/// - **Held-arrow auto-repeat** (`OnCommand` `0x50f7c0`): a held arrow
+///   steps ±1 every frame.
+///
+/// `upArrow`/`downArrow` are `ButtonWidget` children (textureless by
+/// default, acting as hit zones over arrow art baked into a panel sheet);
+/// position changes fire both the decomp-faithful
+/// `Command(id: 0x2000 + position)` and the Swift-idiomatic `onScroll`
+/// closure. An optional `thumbTexture` draws the thumb at the decomp
+/// geometry. Per-frame behaviors (held paging/stepping) tick from
+/// `update(deltaTime:)` — the original runs them from its per-frame draw.
 @MainActor
 public final class ScrollBarWidget: Widget {
 
@@ -42,14 +52,44 @@ public final class ScrollBarWidget: Widget {
     public let upArrow: ButtonWidget
     public let downArrow: ButtonWidget
 
-    /// Optional proportional thumb drawn on the track between the arrows.
+    /// Optional thumb art, drawn at the decomp's thumb rect.
     public var thumbTexture: ClientTexture?
 
     public var maxPosition: Int { max(0, contentCount - pageSize) }
 
-    /// The pointer's y and the position it started dragging from; `nil`
-    /// when no drag is in progress.
-    private var drag: (startY: Float, startPosition: Int)?
+    /// `thumbTop - pointerY` at the grab (the decomp's `m_grabOffset`);
+    /// `nil` when no thumb drag is in progress.
+    private var dragGrabOffset: Float?
+    /// The track (not the thumb) is held pressed — pages toward the
+    /// pointer each frame (the decomp's `m_pressed`).
+    private var isTrackPressed = false
+    /// The last pointer position seen (the decomp's `m_lastX/m_lastY`).
+    private var lastPointer: (x: Float, y: Float) = (0, 0)
+
+    // MARK: Thumb geometry (decomp formulas)
+
+    /// The thumb's height: the page's share of the track, floored at 10
+    /// and rounded down to a multiple of 5; a bar with no content fills
+    /// the whole track (`CScrollBar::ThumbHeight`).
+    public var thumbHeight: Float {
+        guard contentCount > 0 else { return frame.height }
+        let share = Float(pageSize) * frame.height / Float(contentCount)
+        return (max(10, share) / 5).rounded(.down) * 5
+    }
+
+    /// The thumb's top edge: `pos · height / total` from the track top
+    /// (`CScrollBar::IsOverThumb`'s placement).
+    public var thumbTop: Float {
+        guard contentCount > 0 else { return frame.y }
+        return frame.y + Float(position) * frame.height / Float(contentCount)
+    }
+
+    /// Whether a point is over the thumb (x within the track, y within
+    /// the thumb span).
+    public func isOverThumb(x: Float, y: Float) -> Bool {
+        guard x >= frame.x, x <= frame.x + frame.width else { return false }
+        return y >= thumbTop && y <= thumbTop + thumbHeight
+    }
 
     /// - Parameters:
     ///   - track: the full track rect, arrows included (the decomp's arrows
@@ -93,40 +133,60 @@ public final class ScrollBarWidget: Widget {
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
         switch event {
         case .pointerDown(let x, let y):
+            lastPointer = (x, y)
             // The arrow bands are children and already claimed pointerDowns
-            // over themselves before dispatch reaches here, so any hit
-            // inside our own frame is the track/thumb area.
+            // over themselves before dispatch reached here (their held
+            // auto-repeat runs from update). A thumb hit arms the drag with
+            // the grab offset; any other press inside arms held paging.
             guard maxPosition > 0, frame.contains(x: x, y: y) else { return false }
-            drag = (startY: y, startPosition: position)
+            if isOverThumb(x: x, y: y) {
+                dragGrabOffset = thumbTop - y
+                isTrackPressed = false
+            } else {
+                isTrackPressed = true
+            }
             return true
-        case .pointerMoved(_, let y):
-            guard let drag else { return false }
-            let arrowHeight = upArrow.frame.height
-            let travel = frame.height - 2 * arrowHeight
-            guard travel > 0 else { return true }
-            let delta = Int(((y - drag.startY) / travel * Float(maxPosition)).rounded())
-            setPosition(drag.startPosition + delta)
+        case .pointerMoved(let x, let y):
+            lastPointer = (x, y)
+            guard let grab = dragGrabOffset else { return false }
+            // Place the thumb top at the pointer plus the grab offset and
+            // invert the thumb-top formula for the position.
+            guard contentCount > 0, frame.height > 0 else { return true }
+            let newTop = y + grab
+            setPosition(Int(((newTop - frame.y) * Float(contentCount) / frame.height).rounded()))
             return true
-        case .pointerUp:
-            guard drag != nil else { return false }
-            drag = nil
-            return true
+        case .pointerUp(let x, let y):
+            lastPointer = (x, y)
+            let consumed = dragGrabOffset != nil || isTrackPressed
+            dragGrabOffset = nil
+            isTrackPressed = false
+            return consumed
         case .activate, .text, .key, .scroll:
             return false
         }
     }
 
+    /// The per-frame held behaviors the original runs from its draw pass:
+    /// a held track pages toward the pointer, and held arrows auto-repeat
+    /// their ±1 step.
+    public override func update(deltaTime: Double) {
+        super.update(deltaTime: deltaTime)
+        if upArrow.isPressed { step(-1) }
+        if downArrow.isPressed { step(1) }
+        guard isTrackPressed, maxPosition > 0, !isOverThumb(x: lastPointer.x, y: lastPointer.y) else { return }
+        if lastPointer.y < thumbTop {
+            setPosition(position - pageSize)
+        } else if lastPointer.y > thumbTop + thumbHeight {
+            setPosition(position + pageSize)
+        }
+    }
+
     public override func drawSelf(_ renderer: ClientRenderer) {
-        guard let thumbTexture, maxPosition > 0 else { return }
-        let (thumbWidth, thumbHeight) = renderer.size(of: thumbTexture)
-        let arrowHeight = upArrow.frame.height
-        let innerTop = frame.y + arrowHeight
-        let travel = frame.height - 2 * arrowHeight - thumbHeight
-        guard travel > 0 else { return }
-        let y = innerTop + travel * Float(position) / Float(maxPosition)
+        guard let thumbTexture, contentCount > 0 else { return }
+        let (thumbWidth, _) = renderer.size(of: thumbTexture)
         renderer.draw(
             thumbTexture,
-            in: Rect(x: frame.x + (frame.width - thumbWidth) / 2, y: y, width: thumbWidth, height: thumbHeight),
+            in: Rect(x: frame.x + (frame.width - thumbWidth) / 2, y: thumbTop, width: thumbWidth, height: thumbHeight),
             tint: nil
         )
     }
