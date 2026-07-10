@@ -21,6 +21,8 @@ public final class AvatarShopScreen: GameScreen {
     private var actionSprites: [String: ButtonSprite] = [:]
     /// Large part sprites by entry name; `nil` cached for missing art.
     private var iconTextures: [String: ClientTexture?] = [:]
+    /// `store_icon.img` stat icons by frame; `nil` cached for missing frames.
+    private var statIconTextures: [Int: ClientTexture?] = [:]
     private let avatarCache = AvatarSpriteCache()
     private weak var renderer: ClientRenderer?
     private var assets: AssetLibrary?
@@ -61,23 +63,75 @@ public final class AvatarShopScreen: GameScreen {
 
         // The card catalog comes from avatar.xfs's part tables (male
         // catalogs; flags are gender-neutral and live in mf.dat), only the
-        // purchasable records.
+        // purchasable records. The stat rows carry every non-zero stat in
+        // field order — verified against a live screenshot (mh.dat's
+        // records match the original's cards value for value).
         for (_, category) in AvatarShopViewModel.categoryTabs {
             let table = "m\(category.code).dat"
             let items = (try? assets.avatarCatalog(named: table)) ?? []
             viewModel.setCatalog(
-                items.filter(\.buyable).map {
-                    AvatarShopViewModel.ShopItem(
-                        id: Int($0.index),
-                        name: $0.name,
-                        gold: $0.gold,
-                        cash: $0.cash,
-                        isMale: true
+                items.filter(\.buyable).map { item in
+                    let stats: [(AvatarShopViewModel.Stat, Int32)] = [
+                        (.shotDelay, item.shotDelay), (.bunge, item.bunge),
+                        (.attack, item.attack), (.defense, item.defense),
+                        (.health, item.health), (.itemDelay, item.itemDelay),
+                        (.shield, item.shield), (.popularity, item.popularity),
+                    ]
+                    return AvatarShopViewModel.ShopItem(
+                        id: Int(item.index),
+                        name: item.name,
+                        gold: item.gold,
+                        cash: item.cash,
+                        isMale: true,
+                        stats: stats.filter { $0.1 != 0 }.map {
+                            AvatarShopViewModel.StatValue(stat: $0.0, value: Int($0.1))
+                        }
                     )
                 },
                 for: category
             )
         }
+    }
+
+    /// `store_icon.img` frame for a stat row — each stat has a "+" (bonus)
+    /// and red-bar (penalty) variant, picked by the value's sign. The
+    /// frame↔stat mapping is derived visually from the sheet (hourglass =
+    /// shot delay, cone = bunge, shovel = attack, shield = defense/shield,
+    /// heart = health, ring = item delay, star = popularity) — provisional
+    /// until cross-checked against more originals.
+    static func statIconFrame(for stat: AvatarShopViewModel.Stat, value: Int) -> Int {
+        let bonus = value >= 0
+        switch stat {
+        case .shotDelay: return bonus ? 19 : 9
+        case .bunge: return bonus ? 13 : 12
+        case .attack: return bonus ? 21 : 20
+        case .defense, .shield: return bonus ? 15 : 14
+        case .health: return bonus ? 17 : 16
+        case .itemDelay: return bonus ? 23 : 22
+        case .popularity: return bonus ? 11 : 10
+        }
+    }
+
+    /// A stat icon texture (`store_icon.img`), cached by frame.
+    private func statIcon(frame: Int) -> ClientTexture? {
+        if let cached = statIconTextures[frame] { return cached }
+        guard let renderer, let assets else { return nil }
+        let texture = renderer.texture(named: "store_icon.img", frame: frame, assets: assets)
+        statIconTextures[frame] = texture
+        return texture
+    }
+
+    /// One icon + zero-padded value row (the card column and the MY AVATAR
+    /// header share the format).
+    private func drawStat(_ stat: AvatarShopViewModel.StatValue, x: Float, y: Float, using renderer: ClientRenderer) {
+        if let icon = statIcon(frame: Self.statIconFrame(for: stat.stat, value: stat.value)) {
+            let (w, h) = renderer.size(of: icon)
+            renderer.draw(icon, in: Rect(x: x, y: y, width: w, height: h), tint: nil)
+        }
+        guard let font else { return }
+        let magnitude = min(99, abs(stat.value))
+        let text = magnitude < 10 ? "0\(magnitude)" : "\(magnitude)"
+        font.draw(text, x: x + 21, y: y + 2, tint: (255, 255, 255), using: renderer)
     }
 
     public func onExit() {
@@ -88,6 +142,7 @@ public final class AvatarShopScreen: GameScreen {
         categorySprites = []
         actionSprites = [:]
         iconTextures = [:]
+        statIconTextures = [:]
         avatarCache.reset()
         renderer = nil
         assets = nil
@@ -155,8 +210,12 @@ public final class AvatarShopScreen: GameScreen {
                 let dw = w * scale, dh = h * scale
                 renderer.draw(icon, in: Rect(x: box.x + (box.width - dw) / 2, y: box.y + (box.height - dh) / 2, width: dw, height: dh), tint: nil)
             }
-            drawPrice(item.cash, label: cardFrames[4], tint: (255, 232, 90), atY: rect.y + 112, in: rect, using: renderer)
-            drawPrice(item.gold, label: cardFrames[5], tint: (140, 255, 150), atY: rect.y + 131, in: rect, using: renderer)
+            // Up to three stat rows in the dark column right of the icon box.
+            for (row, stat) in item.stats.prefix(3).enumerated() {
+                drawStat(stat, x: rect.x + 102, y: rect.y + 30 + Float(row) * 21, using: renderer)
+            }
+            drawPrice(item.cash, label: cardFrames[4], tint: (255, 232, 90), atY: rect.y + 117, in: rect, using: renderer)
+            drawPrice(item.gold, label: cardFrames[5], tint: (140, 255, 150), atY: rect.y + 136, in: rect, using: renderer)
         }
 
         // Category tabs (selected/pressed/hovered frames) + action buttons.
@@ -197,14 +256,32 @@ public final class AvatarShopScreen: GameScreen {
             renderer.draw(avatar, in: Rect(x: box.x + (box.width - dw) / 2, y: box.y + (box.height - dh) / 2, width: dw, height: dh), tint: nil)
         }
 
+        // The worn outfit's summed stats beside the preview box, two columns.
+        for (index, stat) in viewModel.previewStats.prefix(6).enumerated() {
+            drawStat(
+                stat,
+                x: 660 + Float(index % 2) * 62,
+                y: 44 + Float(index / 2) * 20,
+                using: renderer
+            )
+        }
+
         // Owned-item IDs down the inventory rows until the id→name mapping
         // is decoded.
         if let font {
             for (row, id) in viewModel.inventory.prefix(11).enumerated() {
                 font.draw("\(id)", x: AvatarShopViewModel.myAvatarPanelRect.x + 18, y: AvatarShopViewModel.myAvatarPanelRect.y + 10 + Float(row) * 19, using: renderer)
             }
-            // The account line in the top info bar.
+            // The top info bar: account name, rank, and the currency wells.
+            // Rank/GP/GOLD/CASH have no wire source yet, so they read 0 —
+            // the same as a fresh private-server account in the original.
             font.draw(viewModel.username, x: 196, y: 12, using: renderer)
+            font.draw("Rank", x: 388, y: 10, tint: (200, 200, 200), using: renderer)
+            font.draw("0 GP", x: 388, y: 24, tint: (255, 255, 255), using: renderer)
+            font.draw("GOLD :", x: 208, y: 32, tint: (255, 232, 90), using: renderer)
+            font.draw("0", x: 296 - font.width(of: "0"), y: 32, tint: (255, 232, 90), using: renderer)
+            font.draw("CASH :", x: 348, y: 32, tint: (255, 255, 255), using: renderer)
+            font.draw("0", x: 436 - font.width(of: "0"), y: 32, tint: (255, 255, 255), using: renderer)
         }
     }
 
