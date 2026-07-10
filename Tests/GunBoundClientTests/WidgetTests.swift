@@ -505,14 +505,18 @@ struct WidgetTests {
     }
 
     @Test func enterNumberDialogSubmitsValidNumbersOnly() {
-        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 250, y: 200, width: 300, height: 180), font: nil)
-        var joined: Int?
-        dialog.onSubmit = { joined = $0 }
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 459, y: 33, width: 314, height: 160), font: nil)
+        var joined: (number: Int, password: String)?
+        dialog.onSubmit = { joined = ($0, $1) }
 
         dialog.numberField.focus()
         _ = dialog.numberField.dispatch(.text("42"))
+        // A password typed into the second field is carried through.
+        dialog.passwordField.focus()
+        _ = dialog.passwordField.dispatch(.text("secret"))
         dialog.okButton.onClick?()
-        #expect(joined == 42)
+        #expect(joined?.number == 42)
+        #expect(joined?.password == "secret")
 
         // Out of range → no submit.
         joined = nil
