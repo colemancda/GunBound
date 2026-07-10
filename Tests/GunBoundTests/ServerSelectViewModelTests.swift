@@ -250,6 +250,55 @@ struct ServerSelectViewModelTests {
         #expect(fallback.port == 8370)
     }
 
+    /// The SERVER button stays disabled until a row is selected: clicking
+    /// it with no selection does nothing, one row click arms it, and then
+    /// it connects.
+    @Test func serverButtonRequiresASelection() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        let serverButton = try #require(viewModel.buttons.first { $0.name == "b_server_choiceserver.img" })
+        #expect(!viewModel.isConnectEnabled)
+        viewModel.handle(.pointerDown(x: serverButton.rect.x + 5, y: serverButton.rect.y + 5))
+        #expect(!viewModel.state.isConnecting)  // disabled: nothing happened
+
+        // Selecting a row arms the button; clicking it now connects.
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.isConnectEnabled)
+        viewModel.handle(.pointerDown(x: serverButton.rect.x + 5, y: serverButton.rect.y + 5))
+        #expect(viewModel.state.isConnecting)
+    }
+
+    /// Double-clicking the selected row connects; a slow second click
+    /// (outside the window) just keeps the selection.
+    @Test func doubleClickingTheSelectedRowConnects() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        let row1 = viewModel.rowRect(at: 1)
+        // A slow pair: select, wait past the window, click again — still
+        // just selected.
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        viewModel.update(deltaTime: ServerSelectViewModel.doubleClickInterval + 0.1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.selectedIndex == 1)
+        #expect(!viewModel.state.isConnecting)
+
+        // A quick second click inside the window connects.
+        viewModel.update(deltaTime: 0.1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.state.isConnecting)
+    }
+
     /// Scrolling slides a 12-slot window over the fetched list one grid
     /// line (two servers) at a time, and row clicks select the *absolute*
     /// entry under the slot.
