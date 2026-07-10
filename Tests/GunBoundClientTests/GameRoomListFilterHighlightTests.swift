@@ -61,7 +61,7 @@ struct GameRoomListFilterHighlightTests {
         let viewAll = renderer.draws.last { $0.rect == viewAllRect }
         let wait = renderer.draws.last { $0.rect == waitRect }
         #expect(viewAll?.tex.name == "b_gamelist_viewall.img")
-        #expect(viewAll?.tex.frame == GameRoomListViewModel.activeButtonFrame)  // 4
+        #expect(viewAll?.tex.frame == ButtonState.selected.frame)  // 4
         #expect(wait?.tex.frame == 0)
     }
 
@@ -81,7 +81,7 @@ struct GameRoomListFilterHighlightTests {
 
         let viewAll = renderer.draws.last { $0.rect == viewAllRect }
         let wait = renderer.draws.last { $0.rect == waitRect }
-        #expect(wait?.tex.frame == GameRoomListViewModel.activeButtonFrame)  // 4
+        #expect(wait?.tex.frame == ButtonState.selected.frame)  // 4
         #expect(viewAll?.tex.frame == 0)
     }
 }
