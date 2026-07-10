@@ -40,20 +40,24 @@ public struct DialogMessage: Equatable, Hashable, Sendable {
 public extension DialogMessage {
 
     /// id 200 — "Server access error": the requested server couldn't be
-    /// reached (broker unreachable, connection refused).
+    /// reached (broker unreachable, connection refused). Fallback text is
+    /// verbatim from the decomp's English `Language.txt`
+    /// (GunBound-Decomp `docs/localized-strings.md`).
     static let serverAccessError = DialogMessage(
         localizedID: 200,
-        fallback: "Server Access Error\n\nCannot access the server you requested.\nPlease use other servers or try a little later."
+        fallback: "Server Access Error\n\nCan't access to server you required.\nPlease use other servers or try little later."
     )
 
     /// id 201 — "Access time has expired": a network problem or the wait
-    /// ran too long (our request timeout, a mid-attempt stall).
+    /// ran too long (our request timeout, a mid-attempt stall). Fallback is
+    /// verbatim from the decomp's English `Language.txt`.
     static let accessTimeExpired = DialogMessage(
         localizedID: 201,
         fallback: "Access time has expired.\n\nEither the problem in network or waiting time were too long.\nThe connection will close automatically.\nPlease try little later."
     )
 
-    /// id 205 — "Login error": the password was wrong.
+    /// id 205 — "Login error": the password was wrong. Fallback verbatim
+    /// from the decomp's English `Language.txt`.
     static let loginError = DialogMessage(
         localizedID: 205,
         fallback: "Login Error\n\nWrong password.\nPlease check your password."
