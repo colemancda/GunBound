@@ -24,6 +24,11 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         /// The connection ended (EOF or a socket error) while a request was
         /// waiting for its reply.
         case disconnected
+        /// No reply with this opcode arrived within `requestTimeout` — a
+        /// native-client resilience measure (the original blocks on the
+        /// wait cursor indefinitely), so a wedged server surfaces as an
+        /// error instead of a hang.
+        case timeout(Opcode)
     }
 
     private let socket: Socket
@@ -43,8 +48,10 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     public let pushes: AsyncStream<ServerPush>
     private let pushContinuation: AsyncStream<ServerPush>.Continuation
 
-    /// One waiter per expected reply opcode, FIFO within an opcode.
-    private var pending: [Opcode: [CheckedContinuation<Packet, Swift.Error>]] = [:]
+    /// One waiter per expected reply opcode, FIFO within an opcode. Each
+    /// carries an id so its timeout can evict exactly its own continuation.
+    private var pending: [Opcode: [(id: UInt64, continuation: CheckedContinuation<Packet, Swift.Error>)]] = [:]
+    private var nextWaiterID: UInt64 = 0
 
     /// Replies that arrived before their `request()` registered a waiter —
     /// also how the strictly-sequential mock tests keep working: their canned
@@ -66,18 +73,25 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     /// every 30–60 seconds.
     private let keepAliveInterval: Duration
 
-    private init(socket: Socket, keepAliveInterval: Duration) {
+    /// How long a request waits for its reply before failing with
+    /// `Error.timeout` (see that case's note — our convention, not the
+    /// original's).
+    private let requestTimeout: Duration
+
+    private init(socket: Socket, keepAliveInterval: Duration, requestTimeout: Duration) {
         self.socket = socket
         self.keepAliveInterval = keepAliveInterval
+        self.requestTimeout = requestTimeout
         (self.pushes, self.pushContinuation) = AsyncStream.makeStream(of: ServerPush.self)
     }
 
     /// Opens a TCP connection to `config.serverAddress`:`config.serverPort`
-    /// and starts the read loop and the periodic keepalive (injectable so
-    /// tests can shorten the cadence).
+    /// and starts the read loop and the periodic keepalive (the cadence and
+    /// the request timeout are injectable so tests can shorten them).
     public static func connect(
         _ config: NetworkConfig,
-        keepAliveInterval: Duration = .seconds(30)
+        keepAliveInterval: Duration = .seconds(30),
+        requestTimeout: Duration = .seconds(10)
     ) async throws -> NetworkClient<Socket> {
         guard let destination = GunBoundAddress(address: config.serverAddress, port: config.serverPort) else {
             throw Error.invalidAddress(config.serverAddress)
@@ -86,7 +100,7 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
             throw Error.invalidAddress("0.0.0.0")
         }
         let socket = try await Socket.client(address: local, destination: destination)
-        let client = NetworkClient(socket: socket, keepAliveInterval: keepAliveInterval)
+        let client = NetworkClient(socket: socket, keepAliveInterval: keepAliveInterval, requestTimeout: requestTimeout)
         await client.startReading()
         await client.startKeepAlive()
         return client
@@ -175,9 +189,9 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
             packet = decrypted
         }
         if var waiters = pending[packet.opcode], !waiters.isEmpty {
-            let continuation = waiters.removeFirst()
+            let waiter = waiters.removeFirst()
             pending[packet.opcode] = waiters
-            continuation.resume(returning: packet)
+            waiter.continuation.resume(returning: packet)
         } else if packet.opcode.type == .notification {
             pushContinuation.yield(ServerPush(packet, decoder: decoder))
         } else {
@@ -193,8 +207,8 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         pushContinuation.finish()
         let waiters = pending.values.flatMap { $0 }
         pending.removeAll()
-        for continuation in waiters {
-            continuation.resume(throwing: Error.disconnected)
+        for waiter in waiters {
+            waiter.continuation.resume(throwing: Error.disconnected)
         }
     }
 
@@ -440,13 +454,32 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
 
     /// The next inbound packet with `opcode` — from the mailbox if it already
     /// arrived, else by registering a waiter for the read loop to resume.
+    /// The waiter fails with `Error.timeout` if no reply lands within
+    /// `requestTimeout`.
     private func receivePacket(opcode: Opcode) async throws -> Packet {
         if let index = mailbox.firstIndex(where: { $0.opcode == opcode }) {
             return mailbox.remove(at: index)
         }
         guard !isFinished else { throw Error.disconnected }
+        let id = nextWaiterID
+        nextWaiterID += 1
+        let deadline = requestTimeout
         return try await withCheckedThrowingContinuation { continuation in
-            pending[opcode, default: []].append(continuation)
+            pending[opcode, default: []].append((id: id, continuation: continuation))
+            Task { [weak self] in
+                try? await Task.sleep(for: deadline)
+                await self?.timeOutWaiter(id: id, opcode: opcode)
+            }
         }
+    }
+
+    /// Evicts and fails one waiter if it's still pending when its deadline
+    /// fires — a no-op when the reply (or a disconnect) already resumed it.
+    private func timeOutWaiter(id: UInt64, opcode: Opcode) {
+        guard var waiters = pending[opcode],
+              let index = waiters.firstIndex(where: { $0.id == id }) else { return }
+        let waiter = waiters.remove(at: index)
+        pending[opcode] = waiters
+        waiter.continuation.resume(throwing: Error.timeout(opcode))
     }
 }
