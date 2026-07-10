@@ -208,11 +208,9 @@ public final class ServerSelectScreen: GameScreen {
         if let errorDialog {
             if let message = viewModel.state.error {
                 // Resolve the localized text (falling back to the built-in
-                // string), then split its title sentence from the body.
-                let text = assets?.localizedString(message.localizedID) ?? message.fallback
-                let (title, body) = DialogMessage.split(text)
-                errorDialog.title = title
-                errorDialog.message = body
+                // string). The dialog puts its first line in the title strip
+                // and the rest in the body, like the original.
+                errorDialog.message = assets?.localizedString(message.localizedID) ?? message.fallback
                 errorDialog.isHidden = false
             } else {
                 errorDialog.isHidden = true

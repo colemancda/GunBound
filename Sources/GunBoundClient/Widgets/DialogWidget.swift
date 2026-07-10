@@ -23,10 +23,13 @@ public final class DialogWidget: Widget {
     /// texture's own dimensions.
     public static let defaultConfirmFrame = Rect(x: 454, y: 331, width: 74, height: 26)
 
-    /// The heading drawn in `error_back.img`'s top title-bar strip — the
-    /// original draws the message's first sentence there (before the blank
-    /// line), the detail going in the body. Empty draws nothing.
-    public var title: String = ""
+    /// The full message. Following the original (`ShowErrorDialog` renders
+    /// one wrapped string, `GameTick` blits its first line into the title
+    /// strip and the rest into the body), this widget has **no separate
+    /// title**: the first wrapped line is drawn in the strip and the
+    /// remaining lines in the body. The localized error strings are authored
+    /// as `Title\n\nDetail`, so the first line naturally becomes the title
+    /// and the blank line becomes the gap beneath it.
     public var message: String
     public var backgroundTexture: ClientTexture?
     /// A solid texture drawn full-screen behind the panel to dim what's
@@ -91,13 +94,15 @@ public final class DialogWidget: Widget {
         }
         guard let font else { return }
 
-        // Title, centered in `error_back.img`'s top strip. The decomp blits
-        // the message's first wrapped line at panel-relative y 14
-        // (BlitRLESprite y 0xcf = 207, panel top 0xc1 = 193).
-        if !title.isEmpty {
-            let titleWidth = font.width(of: title)
+        let lines = wrap(message, within: frame.width - Self.bodyInset * 2, font: font)
+
+        // First wrapped line → the title strip (the decomp blits it at
+        // panel-relative y 14: BlitRLESprite y 0xcf = 207, panel top
+        // 0xc1 = 193). Centered in the strip.
+        if let titleLine = lines.first, !titleLine.isEmpty {
+            let titleWidth = font.width(of: titleLine)
             font.draw(
-                title,
+                titleLine,
                 x: frame.x + max(Self.bodyInset, (frame.width - titleWidth) / 2),
                 y: frame.y + 14,
                 tint: textTint,
@@ -105,11 +110,11 @@ public final class DialogWidget: Widget {
             )
         }
 
-        // Message body: left-aligned in the panel's dark well (the original
-        // left-aligns the wrapped text, it isn't centered).
-        let lines = wrap(message, within: frame.width - Self.bodyInset * 2, font: font)
+        // Remaining lines → the body, left-aligned (the original blits them
+        // from y 236 = panel-relative 43). The message's blank line after
+        // the title keeps a slot here, forming the gap beneath the title.
         var y = frame.y + Self.bodyTop
-        for line in lines {
+        for line in lines.dropFirst() {
             font.draw(line, x: frame.x + Self.bodyInset, y: y, tint: textTint, using: renderer)
             y += font.lineHeight + 4
         }

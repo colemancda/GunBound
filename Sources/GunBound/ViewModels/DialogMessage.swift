@@ -7,8 +7,11 @@
 /// when the loaded language pack lacks that id.
 ///
 /// Both the localized text and `fallback` use the original's convention: a
-/// title sentence, a blank line, then the detail body — so the dialog can
-/// split on the first blank line into its title bar and body.
+/// title sentence, a blank line, then the detail body. The dialog renders
+/// the whole string wrapped, putting the first line in the title strip and
+/// the rest in the body (there's no separate title field — mirroring
+/// `ShowErrorDialog`, which wraps one message and blits its first line into
+/// the strip).
 public struct DialogMessage: Equatable, Hashable, Sendable {
 
     /// The `Language.txt` string id (the original's `GetLocalizedString`
@@ -22,18 +25,6 @@ public struct DialogMessage: Equatable, Hashable, Sendable {
     public init(localizedID: LocalizedStringID, fallback: String) {
         self.localizedID = localizedID
         self.fallback = fallback
-    }
-
-    /// Splits a resolved message (the localized string, or `fallback`) into
-    /// the dialog's title bar and body on the first blank line — the
-    /// original stores both in one entry separated by `\n\n`.
-    public static func split(_ text: String) -> (title: String, body: String) {
-        if let range = text.range(of: "\n\n") {
-            let title = String(text[..<range.lowerBound]).trimmingNewlines()
-            let body = String(text[range.upperBound...]).trimmingNewlines()
-            return (title, body)
-        }
-        return ("", text)
     }
 }
 
@@ -67,16 +58,5 @@ public extension DialogMessage {
             localizedID: .loginError,
             fallback: "Login Error\n\nWrong password.\nPlease check your password."
         )
-    }
-}
-
-private extension String {
-    /// Drops leading/trailing newline characters (keeps interior blank
-    /// lines within the body intact).
-    func trimmingNewlines() -> String {
-        var slice = self[...]
-        while let first = slice.first, first.isNewline { slice = slice.dropFirst() }
-        while let last = slice.last, last.isNewline { slice = slice.dropLast() }
-        return String(slice)
     }
 }
