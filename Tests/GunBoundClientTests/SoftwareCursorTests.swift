@@ -68,10 +68,10 @@ struct SoftwareCursorTests {
         let frames = (0..<8).map { _ in Tex() }
         cursor.frames = frames
 
-        // Advance one full loop; it wraps back to frame 0.
-        for _ in 0..<frames.count {
-            cursor.update(deltaTime: SoftwareCursor.frameDuration)
-        }
+        // Advance one full loop; it wraps back to frame 0. (One update call —
+        // stepwise 0.05 additions accumulate float error below the loop
+        // length; a single product matches the wrap threshold exactly.)
+        cursor.update(deltaTime: SoftwareCursor.frameDuration * Double(frames.count))
         #expect(cursor.currentTexture === frames[0])
     }
 
