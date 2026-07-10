@@ -338,7 +338,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
                 try await fetchDirectory()
             } catch {
                 print("[GunBound] couldn't reach broker: \(error)")
-                self.state = .error("Couldn't reach the server broker: \(error.localizedDescription)")
+                self.state = .error(Self.dialogMessage(for: error))
             }
         }
     }
@@ -369,7 +369,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
             guard response.status == .success else {
                 print("[GunBound] authentication failed: \(response.status)")
                 await client.close()
-                finishConnecting(client: nil, success: false)
+                finishConnecting(client: nil, failure: .loginError)
                 return
             }
             print("[GunBound] authenticated as \(network.username)")
@@ -382,16 +382,28 @@ public final class ServerSelectViewModel: ScreenViewModel {
             guard joinResponse.isSuccess else {
                 print("[GunBound] channel join rejected (status non-zero)")
                 await client.close()
-                finishConnecting(client: nil, success: false)
+                finishConnecting(client: nil, failure: .serverAccessError)
                 return
             }
             print("[GunBound] joined channel \(joinResponse.channel) (\(joinResponse.users.count) user(s) present)")
             delegate.session.channel = joinResponse
-            finishConnecting(client: client, success: true)
+            finishConnecting(client: client, failure: nil)
         } catch {
             print("[GunBound] connection failed: \(error)")
-            finishConnecting(client: nil, success: false)
+            finishConnecting(client: nil, failure: Self.dialogMessage(for: error))
         }
+    }
+
+    /// Maps a networking error to the dialog message the original would
+    /// show: a request timeout (a slow/dead connection) is "access time
+    /// expired" (id 201); anything else — connection refused, EOF, a bad
+    /// address — is the "server access error" (id 200). Never leaks the
+    /// underlying `Error`'s text.
+    static func dialogMessage(for error: Swift.Error) -> DialogMessage {
+        if case NetworkClient<GunBoundSocketIPv4TCP>.Error.timeout = error {
+            return .accessTimeExpired
+        }
+        return .serverAccessError
     }
 
     /// Ensures the directory has been fetched (refreshing it if the eager
@@ -442,15 +454,17 @@ public final class ServerSelectViewModel: ScreenViewModel {
         print("Broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
     }
 
-    private func finishConnecting(client: NetworkClient<GunBoundSocketIPv4TCP>?, success: Bool) {
+    /// Finishes a connect attempt: `failure == nil` means success (advance
+    /// to the lobby); otherwise show that dialog message.
+    private func finishConnecting(client: NetworkClient<GunBoundSocketIPv4TCP>?, failure: DialogMessage?) {
         if let client {
             delegate.client = client
         }
-        if success {
+        if let failure {
+            state = .error(failure)
+        } else {
             state = .loaded
             delegate.requestTransition(to: .gameRoomList)
-        } else {
-            state = .error("Couldn't connect to the server — check the address and try again.")
         }
     }
 }
@@ -462,7 +476,7 @@ public extension ServerSelectViewModel {
         case loading
         case loaded
         case connecting
-        case error(String)
+        case error(DialogMessage)
     }
 }
 
@@ -488,10 +502,10 @@ public extension ServerSelectViewModel.State {
         }
     }
 
-    var error: String? {
+    var error: DialogMessage? {
         switch self {
-        case let .error(error):
-            return error
+        case let .error(message):
+            return message
         default:
             return nil
         }
