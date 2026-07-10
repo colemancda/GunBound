@@ -58,6 +58,16 @@ open class Widget {
     /// included).
     public var isHidden = false
 
+    /// When true, a press on this widget's own chrome (one its children didn't
+    /// consume) begins a drag that moves the whole subtree — the decomp's
+    /// unpinned "movable dialogs" (`m_pinned` clear: the buddy and
+    /// enter-room-number dialogs), vs the pinned list panels.
+    public var isDraggable = false
+
+    /// The active drag's last pointer position (the decomp's
+    /// `m_lastPressX/Y`); `nil` when not dragging.
+    private var dragLast: (x: Float, y: Float)?
+
     /// The upward channel: set on a container to receive commands sent by
     /// any descendant (nearest handler wins).
     public var onCommand: ((Command) -> Void)?
@@ -69,6 +79,41 @@ open class Widget {
     public func add(_ child: Widget) {
         child.parent = self
         children.append(child)
+    }
+
+    /// Shifts this widget and its whole subtree by `(dx, dy)` — how a movable
+    /// panel drags: the decomp moves the panel origin and its children
+    /// together (children hold absolute coordinates).
+    public func moveBy(dx: Float, dy: Float) {
+        frame = Rect(x: frame.x + dx, y: frame.y + dy, width: frame.width, height: frame.height)
+        for child in children {
+            child.moveBy(dx: dx, dy: dy)
+        }
+    }
+
+    /// Drag handling a draggable container calls from `handleSelf` on the
+    /// events its children didn't consume: a press on the chrome arms the
+    /// drag, a move drags the subtree, a release disarms. Returns whether the
+    /// event was a drag action. A no-op unless `isDraggable`.
+    public func handleDrag(_ event: ScreenInputEvent) -> Bool {
+        guard isDraggable else { return false }
+        switch event {
+        case let .pointerDown(x, y):
+            guard frame.contains(x: x, y: y) else { return false }
+            dragLast = (x, y)
+            return true
+        case let .pointerMoved(x, y):
+            guard let last = dragLast else { return false }
+            moveBy(dx: x - last.x, dy: y - last.y)
+            dragLast = (x, y)
+            return true
+        case .pointerUp:
+            let wasDragging = dragLast != nil
+            dragLast = nil
+            return wasDragging
+        case .activate, .text, .key, .scroll:
+            return false
+        }
     }
 
     /// Bubbles a command up from this widget to the nearest ancestor (or
