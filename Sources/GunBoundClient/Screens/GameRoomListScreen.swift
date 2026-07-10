@@ -17,6 +17,10 @@ public final class GameRoomListScreen: GameScreen {
     private let viewModel: GameRoomListViewModel
     private var backgroundTexture: ClientTexture?
     private var buttonTextures: [ClientTexture?] = []
+    /// The "active" (yellow) frame of each filter toggle button, keyed by
+    /// button index — the 5th frame of the 5-frame `b_gamelist_viewall`/
+    /// `wait` sheets, drawn when that filter is the current one.
+    private var activeButtonTextures: [Int: ClientTexture] = [:]
     /// `gamelist_back.img` frames keyed by frame index (see `RenderRoomCard`):
     /// 1–6 card backgrounds, 7–9 status icons, 10–13 game-mode labels, 15
     /// padlock. Stored sparse by index so drawing reads them by the frame
@@ -70,6 +74,11 @@ public final class GameRoomListScreen: GameScreen {
         // Button rects are decomp-confirmed constants on the view model
         // (`State03_GameRoomList_CreateButtons`); just load the artwork.
         buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
+        // The filter toggles carry a 5th "active" frame; preload it for the
+        // buttons that can be the current filter.
+        for (index, button) in viewModel.buttons.enumerated() where button.action == .viewAll || button.action == .waitingOnly {
+            activeButtonTextures[index] = renderer.texture(named: button.name, frame: GameRoomListViewModel.activeButtonFrame, assets: assets)
+        }
 
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
 
@@ -159,6 +168,7 @@ public final class GameRoomListScreen: GameScreen {
         viewModel.onExit()
         backgroundTexture = nil
         buttonTextures = []
+        activeButtonTextures = [:]
         cardFrames = [:]
         stageThumbs = [:]
         font = nil
@@ -267,8 +277,11 @@ public final class GameRoomListScreen: GameScreen {
         }
 
         for (index, button) in viewModel.buttons.enumerated() {
-            guard let texture = buttonTextures[index] else { continue }
-            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredButtonIndex ? (200, 200, 255) : nil
+            // The current filter shows its "active" (yellow) frame; the
+            // others draw their normal frame with a hover highlight.
+            let active = viewModel.isFilterActive(button.action)
+            guard let texture = active ? (activeButtonTextures[index] ?? buttonTextures[index]) : buttonTextures[index] else { continue }
+            let tint: (r: UInt8, g: UInt8, b: UInt8)? = (!active && index == viewModel.hoveredButtonIndex) ? (200, 200, 255) : nil
             renderer.draw(texture, in: button.rect, tint: tint)
         }
 
