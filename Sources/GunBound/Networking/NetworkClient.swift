@@ -322,6 +322,13 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         _ = try await request(RoomReturnResultRequest(), response: RoomReturnResultResponse.self)
     }
 
+    /// Reports the local player's score-mode respawn (`0x4104`) — flips the
+    /// server's slot back to alive so its bookkeeping matches the clients'
+    /// deterministic respawn.
+    public func resurrect() async throws {
+        try await send(PlayerResurrectCommand())
+    }
+
     /// Sends in-game traffic to another player through the server's tunnel
     /// relay (`0x4500`): the payload is delivered to whoever sits in `slot`
     /// as a `.tunnelReceived` push carrying this player's slot.
