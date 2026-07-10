@@ -58,7 +58,7 @@ extension GunBoundExtract {
 
         /// Rect the port expects for a `(vtable, id, parentVTable)` node in the
         /// WORLD LIST panel — the constants Server Select is built from.
-        private static let serverSelectExpected: [(label: String, vtable: String, rect: [Int])] = [
+        private static let knownRects: [(label: String, vtable: String, rect: [Int])] = [
             ("WorldListPanel", "0x00557f08", [11, 13, 545, 530]),
             ("View All tab",   "0x00557da0", [336, 504, 74, 26]),   // id 0 under the panel
             ("Friends tab",    "0x00557da0", [430, 504, 74, 26]),   // id 1 under the panel
@@ -73,14 +73,23 @@ extension GunBoundExtract {
             ("Buddy scroll",   "0x00557e90", [751, 84, 18, 152]),
             // Add-buddy dialog (id 10000) — present only while it's shown.
             ("Add-buddy dialog", "0x00557e68", [281, 206, 241, 148]),
+            // State 3 (lobby) chat panel (id 9001) + channel-user panel (9002).
+            ("Chat panel",     "0x00557cd4", [23, 287, 549, 259]),
+            ("Chat input",     "0x00557c84", [49, 522, 484, 12]),
+            ("Chat tab 0",     "0x00557da0", [287, 296, 22, 22]),  // CH 1
+            ("Chat tab 7",     "0x00557da0", [511, 296, 22, 22]),  // CH 8
+            ("Chat scroll",    "0x00557e90", [549, 350, 18, 154]),
+            ("Chat scroll up", "0x00557da0", [549, 322, 18, 18]),
+            ("Chat scroll down", "0x00557da0", [549, 514, 18, 18]),
+            ("Channel panel",  "0x00557cac", [572, 287, 209, 259]),
+            ("Channel scroll", "0x00557e90", [751, 350, 18, 154]),
+            ("Channel scroll up", "0x00557da0", [751, 322, 18, 18]),
+            ("Channel scroll down", "0x00557da0", [751, 514, 18, 18]),
         ]
 
         private func runVerify(_ dump: GBViewDump) throws {
-            guard dump.gameState.id == 2 else {
-                print("verify: only Server Select (state 2) is known; dump is state \(dump.gameState.id). Skipping.")
-                return
-            }
-            // Flatten every node's rect keyed by (label we can recognize).
+            // Flatten every node's rect keyed by (label we can recognize);
+            // only the widgets present in this dump report a match.
             var rects: [String: [Int]] = [:]
             func walk(_ node: GBViewNode, parent: GBViewNode?, grand: GBViewNode?) {
                 let r = [node.rect.x, node.rect.y, node.rect.w, node.rect.h]
@@ -99,6 +108,18 @@ extension GunBoundExtract {
                 case ("0x00557da0", 0, "0x00557be4", _): rects["Buddy close"] = r
                 case ("0x00557e90", _, "0x00557be4", _): rects["Buddy scroll"] = r
                 case ("0x00557e68", _, _, _): rects["Add-buddy dialog"] = r
+                // State 3 lobby chat panel (0x557cd4) + channel panel (0x557cac).
+                case ("0x00557cd4", _, _, _): rects["Chat panel"] = r
+                case ("0x00557c84", _, "0x00557cd4", _): rects["Chat input"] = r
+                case ("0x00557da0", 0, "0x00557cd4", _): rects["Chat tab 0"] = r
+                case ("0x00557da0", 7, "0x00557cd4", _): rects["Chat tab 7"] = r
+                case ("0x00557e90", _, "0x00557cd4", _): rects["Chat scroll"] = r
+                case ("0x00557da0", 0, "0x00557e90", "0x00557cd4"): rects["Chat scroll up"] = r
+                case ("0x00557da0", 1, "0x00557e90", "0x00557cd4"): rects["Chat scroll down"] = r
+                case ("0x00557cac", _, _, _): rects["Channel panel"] = r
+                case ("0x00557e90", _, "0x00557cac", _): rects["Channel scroll"] = r
+                case ("0x00557da0", 0, "0x00557e90", "0x00557cac"): rects["Channel scroll up"] = r
+                case ("0x00557da0", 1, "0x00557e90", "0x00557cac"): rects["Channel scroll down"] = r
                 default: break
                 }
                 for child in node.children { walk(child, parent: node, grand: parent) }
@@ -106,7 +127,7 @@ extension GunBoundExtract {
             for panel in dump.view.panels { walk(panel, parent: nil, grand: nil) }
 
             var mismatches = 0
-            for expected in Self.serverSelectExpected {
+            for expected in Self.knownRects {
                 guard let actual = rects[expected.label] else {
                     print("  ? \(expected.label): not found in dump")
                     continue
@@ -119,7 +140,7 @@ extension GunBoundExtract {
                 }
             }
             if mismatches == 0 {
-                print("verify: OK — all known Server Select rects match the port.")
+                print("verify: OK — all known rects present in the dump match the port.")
             } else {
                 throw ValidationError("verify: \(mismatches) geometry mismatch(es).")
             }
