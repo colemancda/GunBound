@@ -1,0 +1,85 @@
+{
+  "gameState": {
+    "id": 9,
+    "name": "ReadyRoom",
+    "object": "0x02f738f0",
+    "vtable": "0x005569f8",
+    "fields": {}
+  },
+  "view": {
+    "manager": "0x00e53c40",
+    "head": "0x032bdd58",
+    "panels": [
+      {
+        "addr": "0x0cc3dc00",
+        "vtable": "0x00557ee0",
+        "typeId": 0,
+        "id": 2000,
+        "rect": {
+          "x": 21,
+          "y": 385,
+          "w": 480,
+          "h": 160
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": true,
+        "childCount": 1,
+        "children": [
+          {
+            "addr": "0x0cc3dca0",
+            "vtable": "0x00557e90",
+            "typeId": 4,
+            "id": 0,
+            "rect": {
+              "x": 476,
+              "y": 436,
+              "w": 18,
+              "h": 69
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 2,
+            "children": [
+              {
+                "addr": "0x02f7cf70",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 0,
+                "rect": {
+                  "x": 476,
+                  "y": 408,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": true,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              },
+              {
+                "addr": "0x0cc3dd08",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 1,
+                "rect": {
+                  "x": 476,
+                  "y": 515,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": true,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

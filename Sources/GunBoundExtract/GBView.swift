@@ -129,6 +129,12 @@ extension GunBoundExtract {
             ("BuddyChat input", "0x00557c84", [560, 537, 211, 12]),
             ("BuddyChat recipient", "0x00557f30", [628, 283, 145, 12]),
             ("BuddyChat scroll", "0x00557e90", [768, 340, 18, 157]),
+            // State 9 (Ready Room) chat panel (CReadyRoomChatPanel, id 2000)
+            // — hidden by default; arrows sit outside the track.
+            ("ReadyChat panel", "0x00557ee0", [21, 385, 480, 160]),
+            ("ReadyChat scroll", "0x00557e90", [476, 436, 18, 69]),
+            ("ReadyChat scroll up", "0x00557da0", [476, 408, 18, 18]),
+            ("ReadyChat scroll down", "0x00557da0", [476, 515, 18, 18]),
         ]
 
         private func runVerify(_ dump: GBViewDump) throws {
@@ -174,6 +180,10 @@ extension GunBoundExtract {
                 case ("0x00557c84", _, "0x00557b94", _): rects["BuddyChat input"] = r
                 case ("0x00557f30", _, "0x00557b94", _): rects["BuddyChat recipient"] = r
                 case ("0x00557e90", _, "0x00557b94", _): rects["BuddyChat scroll"] = r
+                case ("0x00557ee0", _, _, _): rects["ReadyChat panel"] = r
+                case ("0x00557e90", _, "0x00557ee0", _): rects["ReadyChat scroll"] = r
+                case ("0x00557da0", 0, "0x00557e90", "0x00557ee0"): rects["ReadyChat scroll up"] = r
+                case ("0x00557da0", 1, "0x00557e90", "0x00557ee0"): rects["ReadyChat scroll down"] = r
                 default: break
                 }
                 for child in node.children { walk(child, parent: node, grand: parent) }
