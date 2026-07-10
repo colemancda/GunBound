@@ -540,9 +540,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
     }
 
     /// Shows or hides the buddy panel — the toggle path, also used by
-    /// previews/tests to open it directly.
+    /// previews/tests to open it directly. Opening refreshes the roster
+    /// (online statuses go stale while the panel is closed).
     public func setBuddyPanelVisible(_ visible: Bool) {
         isBuddyPanelVisible = visible
+        if visible {
+            loadBuddies()
+        }
     }
 
     private func setFilter(_ newFilter: RoomFilter) {
