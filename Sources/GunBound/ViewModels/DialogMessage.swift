@@ -13,13 +13,13 @@ public struct DialogMessage: Equatable, Hashable, Sendable {
 
     /// The `Language.txt` string id (the original's `GetLocalizedString`
     /// argument) — for the error family, `code + 0xc7`.
-    public let localizedID: Int
+    public let localizedID: LocalizedStringID
 
     /// Built-in English text used when the loaded `Language.txt` has no
     /// entry for `localizedID`. "Title\n\nBody" form.
     public let fallback: String
 
-    public init(localizedID: Int, fallback: String) {
+    public init(localizedID: LocalizedStringID, fallback: String) {
         self.localizedID = localizedID
         self.fallback = fallback
     }
@@ -44,7 +44,7 @@ public extension DialogMessage {
     /// verbatim from the decomp's English `Language.txt`
     /// (GunBound-Decomp `docs/localized-strings.md`).
     static let serverAccessError = DialogMessage(
-        localizedID: 200,
+        localizedID: .serverAccessError,
         fallback: "Server Access Error\n\nCan't access to server you required.\nPlease use other servers or try little later."
     )
 
@@ -52,14 +52,14 @@ public extension DialogMessage {
     /// ran too long (our request timeout, a mid-attempt stall). Fallback is
     /// verbatim from the decomp's English `Language.txt`.
     static let accessTimeExpired = DialogMessage(
-        localizedID: 201,
+        localizedID: .accessTimeExpired,
         fallback: "Access time has expired.\n\nEither the problem in network or waiting time were too long.\nThe connection will close automatically.\nPlease try little later."
     )
 
     /// id 205 — "Login error": the password was wrong. Fallback verbatim
     /// from the decomp's English `Language.txt`.
     static let loginError = DialogMessage(
-        localizedID: 205,
+        localizedID: .loginError,
         fallback: "Login Error\n\nWrong password.\nPlease check your password."
     )
 }

@@ -1,4 +1,5 @@
 import Foundation
+import GunBound
 import GunBoundFile
 
 /// Loads named resources (`.img` sprites, `.mp3`/`.xes` audio) out of the
@@ -164,7 +165,7 @@ public final class AssetLibrary {
     /// The localized message for `id` — the `GetLocalizedString` counterpart.
     /// `nil` when the loaded `Language.txt` has no such entry (or couldn't be
     /// loaded), so callers can fall back to a built-in default string.
-    public func localizedString(id: Int) -> String? {
-        (try? language())?.string(id: id)
+    public func localizedString(_ id: LocalizedStringID) -> String? {
+        (try? language())?.string(id: id.rawValue)
     }
 }
