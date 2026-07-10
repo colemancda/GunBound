@@ -63,6 +63,12 @@ extension GunBoundExtract {
             if let roster = ctx.channelRoster {
                 print("Channel roster: \(roster.users.count) user(s) — \(roster.users.map(\.name).joined(separator: ", "))")
             }
+            if let slots = ctx.roomSlots, !slots.isEmpty {
+                print("Room slots: \(slots.count) occupied")
+                for s in slots {
+                    print("  slot \(s.slot): \(s.name) (status \(s.status))")
+                }
+            }
             let occupied = ctx.rooms.filter { $0.status != 0 || $0.cardId != 0 || $0.lock != 0 }
             print("Rooms: \(ctx.rooms.count) slots (\(occupied.count) occupied)")
             for r in occupied {
@@ -262,6 +268,7 @@ private struct GBContextDump: Decodable {
     let localUser: LocalUser?
     let serverList: ServerList
     let channelRoster: Roster?
+    let roomSlots: [RoomSlot]?
     let rooms: [Room]
     // The room-player array was renamed `players` → `roomPlayers`; accept both.
     let players: [Ignored]?
@@ -274,6 +281,11 @@ private struct GBContextDump: Decodable {
     struct Roster: Decodable {
         struct User: Decodable { let name: String }
         let users: [User]
+    }
+    struct RoomSlot: Decodable {
+        let slot: Int
+        let name: String
+        let status: Int
     }
     struct ServerList: Decodable {
         let count: Int
