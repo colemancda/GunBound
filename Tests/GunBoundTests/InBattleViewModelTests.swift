@@ -67,7 +67,8 @@ struct InBattleViewModelTests {
     }
 
     /// Battle pushes: a death grays the slot (turn skips them), a quit
-    /// removes it, and game end returns to the lobby clearing the battle.
+    /// removes it, and game end shows the winner then returns to the room
+    /// (offline: the lobby) once the result banner's delay elapses.
     @Test func battlePushesUpdateTheScene() {
         let (viewModel, delegate) = makeViewModel()
 
@@ -78,7 +79,13 @@ struct InBattleViewModelTests {
         viewModel.apply(.userQuit(UserQuitNotification(slot: 1)))
         #expect(viewModel.players.count == 1)
 
-        viewModel.apply(.gameEnded(GameEndNotification(payload: [0x00])))
+        viewModel.apply(.gameEnded(GameEndNotification(winner: .a)))
+        #expect(viewModel.isMatchOver)
+        #expect(viewModel.winner == .a)
+        #expect(viewModel.chatLines.last?.message == "Team A wins!")
+        #expect(delegate.requestedTransitions.isEmpty)  // the banner lingers
+
+        viewModel.update(deltaTime: InBattleViewModel.matchEndDelay + 0.1)
         #expect(delegate.requestedTransitions == [.gameRoomList])
         #expect(delegate.session.battle == nil)
     }
@@ -530,6 +537,40 @@ struct InBattleViewModelTests {
         #expect(cues.contains(.blast(.armor, .shot2)))
         // Draining clears the queue.
         #expect(viewModel.drainSounds().isEmpty)
+    }
+
+    /// Offline the client referees its own match: wiping a side ends it —
+    /// the winner banner shows, play freezes, and after the delay the
+    /// battle returns to the lobby.
+    @Test func offlineTeamWipeEndsTheMatch() {
+        let (viewModel, delegate) = makeViewModel()
+        viewModel.setWorldSize(width: 1800, height: 1800)
+        viewModel.setTerrain(FlatWorld(floor: 1000))
+
+        // Kill team B's only player ("guest"): team A wins.
+        viewModel.applyDamage(InBattleViewModel.maxHP, toSlot: 1, cause: .shot)
+        // The wipe check runs at impact resolution — drive one through.
+        viewModel.apply(.tunnelReceived(TunnelForward(
+            sourceSlot: 0,
+            payload: [0x01, 10, 5, 1, 127, 1]
+        )))
+        var frames = 0
+        while !viewModel.isMatchOver, frames < 4000 {
+            viewModel.update(deltaTime: 1.0 / 60)
+            frames += 1
+        }
+        #expect(viewModel.isMatchOver)
+        #expect(viewModel.winner == .a)
+        #expect(viewModel.phase == .waiting)  // play frozen under the banner
+        #expect(viewModel.chatLines.contains { $0.message == "Team A wins!" })
+
+        // Gameplay input is locked out while the banner shows.
+        viewModel.handle(.activate)
+        #expect(viewModel.phase == .waiting)
+
+        viewModel.update(deltaTime: InBattleViewModel.matchEndDelay + 0.1)
+        #expect(delegate.requestedTransitions == [.gameRoomList])
+        #expect(delegate.session.battle == nil)
     }
 
     /// Without battle data the screen still enters safely (offline path).
