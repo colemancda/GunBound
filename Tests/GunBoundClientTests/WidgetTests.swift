@@ -532,6 +532,30 @@ struct WidgetTests {
         #expect(dialog.numberField.text == "12")
     }
 
+    @Test func enterNumberDialogDragsByItsChromeAndResetsOnReopen() {
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 459, y: 33, width: 314, height: 160), font: nil)
+        let okStart = dialog.okButton.frame
+
+        // Press the chrome (a spot that isn't a field/button) and drag +40,+30.
+        #expect(dialog.dispatch(.pointerDown(x: 465, y: 40)))
+        _ = dialog.dispatch(.pointerMoved(x: 505, y: 70))
+        #expect(dialog.frame.x == 499 && dialog.frame.y == 63)
+        // Children move with the panel.
+        #expect(dialog.okButton.frame.x == okStart.x + 40 && dialog.okButton.frame.y == okStart.y + 30)
+        _ = dialog.dispatch(.pointerUp(x: 505, y: 70))
+
+        // Pressing a child (the Ok button) does not start a drag.
+        let beforeButtonPress = dialog.frame
+        _ = dialog.dispatch(.pointerDown(x: dialog.okButton.frame.x + 2, y: dialog.okButton.frame.y + 2))
+        _ = dialog.dispatch(.pointerMoved(x: dialog.okButton.frame.x + 60, y: dialog.okButton.frame.y + 60))
+        #expect(dialog.frame == beforeButtonPress)
+
+        // Reopening (reset) returns it to its start position.
+        dialog.reset()
+        #expect(dialog.frame.x == 459 && dialog.frame.y == 33)
+        #expect(dialog.okButton.frame == okStart)
+    }
+
     @Test func channelUserListScrollsItsRoster() {
         let panel = ChannelUserListWidget(font: nil)
         #expect(panel.frame == Rect(x: 572, y: 287, width: 209, height: 259))
