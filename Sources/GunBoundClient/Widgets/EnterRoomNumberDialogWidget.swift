@@ -30,6 +30,11 @@ public final class EnterRoomNumberDialogWidget: Widget {
 
     public var backgroundTexture: ClientTexture?
 
+    /// The panel's start origin — `reset()` (called each time it opens)
+    /// returns it here, so a drag doesn't persist across re-opens (the
+    /// original rebuilds the dialog fresh at its fixed spot).
+    private let initialOrigin: (x: Float, y: Float)
+
     public init(
         frame: Rect,
         font: LoadedFont?,
@@ -38,6 +43,7 @@ public final class EnterRoomNumberDialogWidget: Widget {
         cancelTexture: ClientTexture? = nil
     ) {
         self.backgroundTexture = background
+        self.initialOrigin = (frame.x, frame.y)
 
         // Panel-relative rects from the runtime dump.
         numberField = TextFieldWidget(
@@ -62,6 +68,7 @@ public final class EnterRoomNumberDialogWidget: Widget {
         )
 
         super.init(frame: frame)
+        isDraggable = true  // a movable dialog (m_pinned clear in the decomp)
         add(numberField)
         add(passwordField)
         add(okButton)
@@ -74,6 +81,7 @@ public final class EnterRoomNumberDialogWidget: Widget {
     }
 
     public func reset() {
+        moveBy(dx: initialOrigin.x - frame.x, dy: initialOrigin.y - frame.y)  // undo any drag
         numberField.setText("")
         passwordField.setText("")
         numberField.focus()  // ready to type immediately
@@ -91,7 +99,10 @@ public final class EnterRoomNumberDialogWidget: Widget {
     }
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
-        // Modal within its bounds.
+        // A press on the chrome (not a field/button, which consume first) drags
+        // the whole dialog; a move drags it, a release drops it.
+        if handleDrag(event) { return true }
+        // Otherwise modal within its bounds.
         switch event {
         case .pointerDown(let x, let y):
             return frame.contains(x: x, y: y)
