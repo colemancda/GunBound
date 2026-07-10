@@ -411,32 +411,31 @@ struct WidgetTests {
 
     /// Add opens the inline name field; typing a name and pressing Enter
     /// fires `onAdd` and closes the field. An empty submit is a no-op.
-    @Test func buddyPanelAddFieldSubmitsNames() {
+    @Test func buddyPanelAddOpensDialogAndSubmitsNames() {
         let panel = BuddyPanelWidget(font: nil)
         var added: [String] = []
         panel.onAdd = { added.append($0) }
+        let dialog = panel.addBuddyDialog
 
-        #expect(panel.addField.isHidden)
+        // Add opens the modal dialog, cleared and focused.
+        #expect(dialog.isHidden)
         panel.addButton.onClick?()
-        #expect(!panel.addField.isHidden)
-        #expect(panel.addField.isFocused)
+        #expect(!dialog.isHidden)
+        #expect(dialog.nameField.isFocused)
 
-        _ = panel.addField.dispatch(.text("guest"))
-        _ = panel.addField.dispatch(.activate)
+        // Typing a name and confirming fires onAdd and closes the dialog.
+        _ = dialog.nameField.dispatch(.text("guest"))
+        _ = dialog.nameField.dispatch(.activate)
         #expect(added == ["guest"])
-        #expect(panel.addField.isHidden)
+        #expect(dialog.isHidden)
 
-        // Reopened: an empty Enter closes without firing.
+        // Reopened: an empty submit fires nothing; CLOSE hides it.
         panel.addButton.onClick?()
-        _ = panel.addField.dispatch(.activate)
+        _ = dialog.nameField.dispatch(.activate)
         #expect(added == ["guest"])
-        #expect(panel.addField.isHidden)
-
-        // Add toggles: open, then a second click closes it.
-        panel.addButton.onClick?()
-        #expect(!panel.addField.isHidden)
-        panel.addButton.onClick?()
-        #expect(panel.addField.isHidden)
+        #expect(!dialog.isHidden)
+        dialog.closeButton.onClick?()
+        #expect(dialog.isHidden)
     }
 
     /// Clicking a roster row selects it (re-click deselects); Del fires
