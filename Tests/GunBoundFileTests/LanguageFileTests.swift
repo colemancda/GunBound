@@ -47,11 +47,11 @@ import Testing
         let table = LanguageFile.read(try XFSArchive.readEntryData(archive, entry: entry))
 
         #expect(table.strings.count > 100)
-        // id 201 = the network-timeout / "access time expired" dialog; a
-        // multi-line message with the detail after a blank line.
-        let expired = try #require(table.string(id: 201))
-        #expect(expired.contains("\n\n"))
-        #expect(table.string(id: 200) != nil)  // server-access error
-        #expect(table.string(id: 205) != nil)  // bad password
+        // id 201 = the network-timeout / "access time expired" dialog: the
+        // exact English wording from the reference build (jglim English
+        // TestClient), with the detail after the blank line.
+        #expect(table.string(id: 201) == "Access time has expired.\n\nEither the problem in network or waiting time were too long.\nThe connection will close automatically.\nPlease try little later.")
+        #expect(table.string(id: 200) == "Server Access Error\n\nCan't access to server you required.\nPlease use other servers or try little later.")
+        #expect(table.string(id: 205) == "Login Error\n\nWrong password.\nPlease check your password.")
     }
 }
