@@ -175,4 +175,53 @@ struct LobbyLoopbackTests {
             #expect(started?.players.count == 2)
         }
     }
+
+    /// The buddy list end to end (our own convention — see `BuddyEntry`'s
+    /// type-level note): an empty roster fetches clean, adding a connected
+    /// username reports it online in the refreshed push, and removing it
+    /// clears the roster again.
+    @Test func buddyListAddRemoveReflectsOnlineStatus() async throws {
+        let (server, port) = try await Self.startServer()
+        defer { withExtendedLifetime(server) {} }
+
+        func connect(_ username: String) async throws -> NetworkClient<GunBoundSocketIPv4TCP> {
+            let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(NetworkConfig(
+                username: username, password: "1234",
+                serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
+            ))
+            let auth = try await client.authenticate(username: username, password: "1234")
+            #expect(auth.status == .success, "\(username)")
+            let channel = try await client.joinChannel()
+            #expect(channel.isSuccess, "\(username)")
+            return client
+        }
+
+        let admin = try await connect("admin")
+        defer { Task { await admin.close() } }
+        let guest = try await connect("guest")
+        defer { Task { await guest.close() } }
+
+        #expect(try await admin.fetchBuddyList().isEmpty)
+
+        try await admin.addBuddy("guest")
+        var afterAdd: [BuddyEntry]?
+        for await push in await admin.pushes {
+            if case .buddyListUpdated(let notification) = push {
+                afterAdd = notification.buddies
+                break
+            }
+        }
+        #expect(afterAdd == [BuddyEntry(username: "guest", isOnline: true)])
+
+        try await admin.removeBuddy("guest")
+        var afterRemove: [BuddyEntry]?
+        for await push in await admin.pushes {
+            if case .buddyListUpdated(let notification) = push {
+                afterRemove = notification.buddies
+                break
+            }
+        }
+        #expect(afterRemove == [])
+        #expect(try await admin.fetchBuddyList().isEmpty)
+    }
 }
