@@ -147,6 +147,23 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// The active room-list filter (View All / Waiting bottom-bar buttons).
     public private(set) var filter: RoomFilter = .all
 
+    /// Whether a filter button is the current selection — the toggle's
+    /// "active" (yellow) state in the decomp (`SetState("active")`, the 5th
+    /// frame of `b_gamelist_viewall`/`wait.img`). Exactly one filter is
+    /// always current; Find Friend's mode-6 filter isn't modeled here, so
+    /// it never shows active.
+    public func isFilterActive(_ action: ButtonAction) -> Bool {
+        switch action {
+        case .viewAll: return filter == .all
+        case .waitingOnly: return filter == .waitingOnly
+        default: return false
+        }
+    }
+
+    /// The frame index of a filter button's "active" (yellow) highlight —
+    /// the 5th frame (index 4) of the 5-frame toggle-button sheets.
+    public static let activeButtonFrame = 4
+
     /// Rooms from the most recent `0x2103` room-list response — the full
     /// fetched list (`visibleRooms` applies the filter and page cap for
     /// display). Settable so tests and SwiftUI previews can populate it
