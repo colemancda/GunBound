@@ -47,4 +47,40 @@ struct SoftwareCursorTests {
         cursor.draw(renderer)
         #expect(renderer.draws.isEmpty)
     }
+
+    @Test func advancesThroughAnimationFrames() {
+        let cursor = SoftwareCursor()
+        let frames = (0..<8).map { _ in Tex() }
+        cursor.frames = frames
+
+        // Frame 0 at t=0.
+        #expect(cursor.currentTexture === frames[0])
+        // One frame duration in -> frame 1.
+        cursor.update(deltaTime: SoftwareCursor.frameDuration)
+        #expect(cursor.currentTexture === frames[1])
+        // Halfway into a frame still shows the same frame.
+        cursor.update(deltaTime: SoftwareCursor.frameDuration / 2)
+        #expect(cursor.currentTexture === frames[1])
+    }
+
+    @Test func animationLoops() {
+        let cursor = SoftwareCursor()
+        let frames = (0..<8).map { _ in Tex() }
+        cursor.frames = frames
+
+        // Advance one full loop; it wraps back to frame 0.
+        for _ in 0..<frames.count {
+            cursor.update(deltaTime: SoftwareCursor.frameDuration)
+        }
+        #expect(cursor.currentTexture === frames[0])
+    }
+
+    @Test func fallsBackToSingleTextureWhenNoFrames() {
+        let cursor = SoftwareCursor()
+        let single = Tex()
+        cursor.texture = single
+        // update is a no-op with no frames, and currentTexture uses the fallback.
+        cursor.update(deltaTime: 1)
+        #expect(cursor.currentTexture === single)
+    }
 }
