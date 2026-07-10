@@ -85,8 +85,11 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
     let mixer = try SDLMixer()
     let assets = AssetLibrary(directory: assetsDirectory)
     let renderer = SDL3Renderer(renderer: sdlRenderer)
+    // One coordinator shared by every player so only a single music track ever
+    // plays — a screen's music can't bleed into the next one.
+    let music = MusicCoordinator()
     let context = ClientContext(assets: assets, renderer: renderer, network: network) {
-        SDL3AudioPlayer(mixer: mixer)
+        SDL3AudioPlayer(mixer: mixer, coordinator: music)
     }
 
     let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
@@ -110,6 +113,13 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
             case .quit:
                 running = false
             case .keyDown(let scancode, _) where scancode.rawValue == SDL_SCANCODE_ESCAPE.rawValue:
+                running = false
+            // Cmd+Q — the standard macOS quit shortcut. SDL doesn't build a
+            // native app menu for a bare executable, so match it explicitly:
+            // 'q' with either GUI/Cmd modifier held.
+            case .keyDown(let scancode, _)
+                where scancode.rawValue == SDL_SCANCODE_Q.rawValue
+                    && (SDL_GetModState() & UInt16(SDL_KMOD_LGUI | SDL_KMOD_RGUI)) != 0:
                 running = false
             case .gamepadAdded(let which):
                 if gamepad == nil {
