@@ -54,6 +54,13 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     public let exitButtonImageName = "b_ready_exit.img"
     public let buddyButtonImageName = "b_ready_buddy.img"
 
+    /// The shared buddy panel's chrome — the same art the lobby uses (the
+    /// decomp's panel is a singleton shown from both screens).
+    public let buddyBackImageName = "buddy_back.img"
+    public let buddyAddImageName = "b_buddy_plus.img"
+    public let buddyDelImageName = "b_buddy_del.img"
+    public let buddyCloseImageName = "b_buddy_exit.img"
+
     /// The bottom-bar buttons at the decomp rects, plus the picker toggle
     /// (id 500 at (0x25, 0x16b), the chat panel's top-left corner).
     public let buttons: [Button] = [
@@ -104,6 +111,14 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     /// Room chat lines (see the type-level note on the chat opcode).
     public var chatMessages: [ChatLine] = []
     public static let maxChatLines = 100
+
+    /// The shared buddy panel (the decomp's singleton `BuildBuddyPanel`,
+    /// shown from the lobby *and* the Ready Room) — the BUDDY button
+    /// toggles it; the roster is fetched on open and refreshed by
+    /// `.buddyListUpdated` pushes.
+    public private(set) var isBuddyPanelVisible = false
+    public var buddies: [String] = []
+    public private(set) var onlineBuddies: Set<String> = []
 
     private var pushTask: Task<Void, Never>?
 
@@ -156,6 +171,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         isReady = false
         isBusy = false
         isPickerVisible = false
+        isBuddyPanelVisible = false
         hoveredButtonIndex = nil
         selectedMobile = .random
         readyPlayers = []
@@ -197,7 +213,9 @@ public final class ReadyRoomViewModel: ScreenViewModel {
             ))
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
-        case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .buddyListUpdated, .raw:
+        case .buddyListUpdated(let notification):
+            applyBuddyList(notification.buddies)
+        case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .raw:
             break
         case .userQuit, .hostMigrated, .tunnelReceived, .playerDied, .gameEnded:
             // Roster/battle updates for these pushes are not applied yet.
@@ -246,7 +264,63 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         case .togglePicker:
             isPickerVisible.toggle()
         case .buddy:
-            print("[GunBound] ready-room buddy panel not wired yet")
+            setBuddyPanelVisible(!isBuddyPanelVisible)
+        }
+    }
+
+    // MARK: - Buddy panel
+
+    /// Closes the buddy panel (its close-X button).
+    public func dismissBuddyPanel() {
+        setBuddyPanelVisible(false)
+    }
+
+    /// Shows or hides the shared buddy panel, fetching the roster on open.
+    public func setBuddyPanelVisible(_ visible: Bool) {
+        isBuddyPanelVisible = visible
+        if visible {
+            loadBuddies()
+        }
+    }
+
+    private func applyBuddyList(_ entries: [BuddyEntry]) {
+        buddies = entries.map { String(describing: $0.username) }
+        onlineBuddies = Set(entries.filter(\.isOnline).map { String(describing: $0.username) })
+    }
+
+    private func loadBuddies() {
+        guard let client = delegate.client else { return }
+        Task {
+            do {
+                applyBuddyList(try await client.fetchBuddyList())
+            } catch {
+                print("[GunBound] couldn't fetch buddy list: \(error)")
+            }
+        }
+    }
+
+    /// Adds a username to the buddy list (the panel's Add field) — the
+    /// refreshed roster arrives as a `.buddyListUpdated` push.
+    public func addBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.addBuddy(username)
+            } catch {
+                print("[GunBound] couldn't add buddy: \(error)")
+            }
+        }
+    }
+
+    /// Removes a username from the buddy list (the panel's Del button).
+    public func removeBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.removeBuddy(username)
+            } catch {
+                print("[GunBound] couldn't remove buddy: \(error)")
+            }
         }
     }
 
