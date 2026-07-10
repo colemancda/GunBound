@@ -185,6 +185,7 @@ let package = Package(
             name: "GunBoundExtract",
             dependencies: [
                 "GunBoundFile",
+                "GunBoundProtocol",
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"

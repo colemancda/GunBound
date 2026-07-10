@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import GunBoundFile
+import GunBoundProtocol
 #if canImport(CoreGraphics)
 import CoreGraphics
 import ImageIO
@@ -13,7 +14,7 @@ struct GunBoundExtract: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "GunBoundExtract",
         abstract: "Extracts and decodes entries from GunBound .xfs archives — a Swift replacement for the decomp repo's Python tools/lzhuf scripts.",
-        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self, Text.self, GBView.self],
+        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self, Text.self, Avatar.self, GBView.self],
         defaultSubcommand: List.self
     )
 }
@@ -95,6 +96,75 @@ extension GunBoundExtract {
 
             #if canImport(CoreGraphics)
             try writePNG(decodedFrame, to: URL(fileURLWithPath: outputPath))
+            print("wrote \(outputPath)")
+            #else
+            throw ExtractError.pngUnsupported
+            #endif
+        }
+    }
+}
+
+extension GunBoundExtract {
+
+    /// Composites a worn avatar outfit (a packed `avatarEquipped` UInt64) into
+    /// a single PNG via `AvatarComposite` — the eyeball-verification tool for
+    /// the part-code decode and the hotspot-aligned layering.
+    struct Avatar: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Composites an avatarEquipped outfit's part sprites into a PNG.")
+
+        @Argument(help: "Path to graphics.xfs (the part sprites).")
+        var archivePath: String
+
+        @Argument(help: "The packed avatarEquipped value, hex (e.g. 0x8000800080008000) or decimal.")
+        var equipped: String
+
+        @Argument(help: "Output PNG path.")
+        var outputPath: String
+
+        @Option(help: "Which frame of each part sprite to composite.")
+        var frame: Int = 0
+
+        @Flag(help: "Use the large (in-battle) part-sprite variants.")
+        var large: Bool = false
+
+        func run() throws {
+            let digits = equipped.lowercased()
+            let value = digits.hasPrefix("0x")
+                ? UInt64(digits.dropFirst(2), radix: 16)
+                : UInt64(digits)
+            guard let value else {
+                throw ValidationError("'\(equipped)' isn't a hex or decimal UInt64")
+            }
+            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: archivePath)))
+            let entries = try XFSArchive.readEntries(data)
+
+            let equipment = AvatarEquipment(rawValue: value)
+            var layers: [ImgFile.Frame] = []
+            for category in AvatarEquipment.Category.allCases {
+                guard let name = equipment.spriteName(category, large: large) else {
+                    print("\(category): empty slot")
+                    continue
+                }
+                guard let entry = entries.first(where: { $0.name == name }) else {
+                    print("\(category): \(name) — not in the archive, skipped")
+                    continue
+                }
+                let frames = try ImgFile.readFrames(try XFSArchive.readEntryData(data, entry: entry))
+                guard frames.indices.contains(frame) else {
+                    print("\(category): \(name) — no frame \(frame) (has \(frames.count)), skipped")
+                    continue
+                }
+                let part = frames[frame]
+                print("\(category): \(name) frame \(frame) \(part.width)x\(part.height) at (\(part.xCenter),\(part.yCenter))")
+                layers.append(part)
+            }
+            guard let composite = AvatarComposite.compose(layers) else {
+                throw ValidationError("no drawable layers for \(equipped)")
+            }
+            print("composite: \(composite.width)x\(composite.height) anchored at (\(composite.xCenter),\(composite.yCenter))")
+
+            #if canImport(CoreGraphics)
+            try writePNG(composite, to: URL(fileURLWithPath: outputPath))
             print("wrote \(outputPath)")
             #else
             throw ExtractError.pngUnsupported
