@@ -4,7 +4,8 @@ import Testing
 @Suite struct AvatarEquipmentTests {
 
     /// The four little-endian u16 words map body / head / glasses / flag
-    /// (word 1 = Head, word 3 = Flag per the state-9 unpacker `0x004dc5c0`).
+    /// (word 1 = Head, word 3 = Flag per `LoadRoomSlotAvatar` `0x4dc5c0`;
+    /// the Head/Flag order is provisional — see `AvatarEquipment`'s note).
     @Test func unpacksTheFourWords() {
         let outfit = AvatarEquipment(rawValue: 0x0001_8001_8000_8005)
         #expect(outfit.body.rawValue == 0x8005)

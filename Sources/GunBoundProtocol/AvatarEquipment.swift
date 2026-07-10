@@ -8,10 +8,12 @@
 /// that slot.
 ///
 /// **Word-order caveat:** Body (word 0) and Glasses (word 2) are confirmed;
-/// the two in-binary unpackers disagree on whether word 1 is Head and
-/// word 3 Flag or the reverse. This follows the state-9-side unpacker
-/// (`0x004dc5c0`: word 1 = Head, word 3 = Flag) until a live-client test
-/// resolves it.
+/// which of words 1/3 is Head vs Flag is **unresolved from static
+/// analysis** — `LoadRoomSlotAvatar` (`0x4dc5c0`) reads word 1 = Head,
+/// `LoadReadyRoomSlotAvatar` (`0x4431a0`) reads the opposite, exactly one
+/// is transposed, and the `0x2105` writer only pins Body/Glasses. This
+/// follows `LoadRoomSlotAvatar` until the decomp's live equip probe
+/// (`tools/debug/avatar-probe.sh`) settles it.
 public struct AvatarEquipment: RawRepresentable, Equatable, Hashable, Sendable {
 
     public let rawValue: UInt64

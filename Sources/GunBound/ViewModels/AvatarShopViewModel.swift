@@ -13,10 +13,11 @@ import GunBoundProtocol
 ///
 /// The card catalog itself comes from `avatar.xfs`'s part tables (names,
 /// gold/cash prices) — pushed in by the view via `setCatalog`, since file
-/// parsing lives above this module. Try mirrors the original's slot handlers
-/// (push the previewed code into the store context and re-composite): it
-/// re-dresses the local preview only. Buy needs the `0x6017`/`0x6037`
-/// purchase round-trip and stays a follow-up.
+/// parsing lives above this module. Try is the port of the store's
+/// `PreviewAvatarPart` (`0x44b460`) — decomp-confirmed **local-only** (its
+/// peers `EquipAvatarPart`/`UnequipAvatarSlot` are the ones that transmit):
+/// it re-dresses the local preview and sends nothing. Buy needs the
+/// `0x6017`/`0x6037` purchase round-trip and stays a follow-up.
 @MainActor
 public final class AvatarShopViewModel: ScreenViewModel {
 
