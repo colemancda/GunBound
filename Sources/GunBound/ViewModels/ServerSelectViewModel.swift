@@ -170,6 +170,19 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// decompiled Enter-key behaviour.
     public private(set) var selectedIndex: Int?
 
+    /// Whether the SERVER button is live: one click selects a row (which
+    /// enables the button), then the button — or a double-click on the
+    /// selected row — connects. Disabled until then, and while the list
+    /// loads or a connect attempt is in flight.
+    public var isConnectEnabled: Bool {
+        selectedIndex != nil && !state.isLoading && !state.isConnecting
+    }
+
+    /// Two clicks on the already-selected row within this window connect.
+    public static let doubleClickInterval: Double = 0.4
+    private var clock: Double = 0
+    private var lastRowClick: (index: Int, time: Double)?
+
     private let delegate: ViewModelDelegate
     
     private let directoryFetcher: ServerDirectoryFetching
@@ -232,7 +245,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
         }
     }
 
-    public func update(deltaTime: Double) {}
+    public func update(deltaTime: Double) {
+        clock += deltaTime  // the double-click window's timebase
+    }
 
     public func handle(_ event: ScreenInputEvent) {
         switch event {
@@ -251,6 +266,8 @@ public final class ServerSelectViewModel: ScreenViewModel {
             if let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) {
                 switch buttons[index].name {
                 case "b_server_choiceserver.img":
+                    // Live only once a row is selected.
+                    guard isConnectEnabled else { return }
                     connect()
                 case "b_server_exitgame.img":
                     delegate.requestQuit()
@@ -269,7 +286,17 @@ public final class ServerSelectViewModel: ScreenViewModel {
             if let slot = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) {
                 let index = absoluteIndex(forVisibleSlot: slot)
                 if availableServers.indices.contains(index), availableServers[index].isEnabled {
-                    selectedIndex = index
+                    // A second click on the selected row inside the window
+                    // is a double-click: connect straight away.
+                    if selectedIndex == index,
+                       let last = lastRowClick, last.index == index,
+                       clock - last.time <= Self.doubleClickInterval {
+                        lastRowClick = nil
+                        connect()
+                    } else {
+                        selectedIndex = index
+                        lastRowClick = (index: index, time: clock)
+                    }
                 }
             }
 
