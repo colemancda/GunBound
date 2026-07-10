@@ -505,7 +505,7 @@ struct WidgetTests {
     }
 
     @Test func enterNumberDialogSubmitsValidNumbersOnly() {
-        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 459, y: 33, width: 314, height: 160), font: nil)
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 243, y: 202, width: 314, height: 160), font: nil)
         var joined: (number: Int, password: String)?
         dialog.onSubmit = { joined = ($0, $1) }
 
@@ -533,16 +533,16 @@ struct WidgetTests {
     }
 
     @Test func enterNumberDialogDragsByItsChromeAndResetsOnReopen() {
-        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 459, y: 33, width: 314, height: 160), font: nil)
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 243, y: 202, width: 314, height: 160), font: nil)
         let okStart = dialog.okButton.frame
 
-        // Press the chrome (a spot that isn't a field/button) and drag +40,+30.
-        #expect(dialog.dispatch(.pointerDown(x: 465, y: 40)))
-        _ = dialog.dispatch(.pointerMoved(x: 505, y: 70))
-        #expect(dialog.frame.x == 499 && dialog.frame.y == 63)
+        // Press the title-bar chrome (above the fields at y 252) and drag +40,+30.
+        #expect(dialog.dispatch(.pointerDown(x: 250, y: 210)))
+        _ = dialog.dispatch(.pointerMoved(x: 290, y: 240))
+        #expect(dialog.frame.x == 283 && dialog.frame.y == 232)
         // Children move with the panel.
         #expect(dialog.okButton.frame.x == okStart.x + 40 && dialog.okButton.frame.y == okStart.y + 30)
-        _ = dialog.dispatch(.pointerUp(x: 505, y: 70))
+        _ = dialog.dispatch(.pointerUp(x: 290, y: 240))
 
         // Pressing a child (the Ok button) does not start a drag.
         let beforeButtonPress = dialog.frame
@@ -552,7 +552,7 @@ struct WidgetTests {
 
         // Reopening (reset) returns it to its start position.
         dialog.reset()
-        #expect(dialog.frame.x == 459 && dialog.frame.y == 33)
+        #expect(dialog.frame.x == 243 && dialog.frame.y == 202)
         #expect(dialog.okButton.frame == okStart)
     }
 
