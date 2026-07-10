@@ -118,6 +118,7 @@ public final class BuddyPanelWidget: Widget {
         addBuddyDialog.isHidden = true
 
         super.init(frame: frame)
+        isDraggable = true  // a movable dialog (m_pinned clear in the decomp)
         add(scrollBar)
         add(addButton)
         add(delButton)
@@ -194,18 +195,31 @@ public final class BuddyPanelWidget: Widget {
         switch event {
         case .pointerDown(let x, let y):
             guard frame.contains(x: x, y: y) else { return false }
-            // A click in the list band selects (or re-clicks deselect) the
-            // row under it — Del acts on the selection.
+            // A click in the list band selects (or re-clicks deselect) the row
+            // under it; anywhere else on the chrome begins a drag (the panel
+            // is a movable dialog — `m_pinned` clear in the decomp).
             if let index = rowIndex(atX: x, y: y) {
                 selectedIndex = (selectedIndex == index) ? nil : index
+                return true
             }
-            return true
+            return handleDrag(event)
+        case .pointerMoved, .pointerUp:
+            return handleDrag(event)
         case .scroll(let x, let y, let steps):
             guard frame.contains(x: x, y: y) else { return false }
             scrollBar.step(steps)
             return true
-        case .pointerMoved, .pointerUp, .activate, .text, .key:
+        case .activate, .text, .key:
             return false
+        }
+    }
+
+    /// Drags the panel and its own chrome/children, but leaves the modal
+    /// add-buddy dialog (a fixed-position child) where it is.
+    public override func moveBy(dx: Float, dy: Float) {
+        frame = Rect(x: frame.x + dx, y: frame.y + dy, width: frame.width, height: frame.height)
+        for child in children where child !== addBuddyDialog {
+            child.moveBy(dx: dx, dy: dy)
         }
     }
 }

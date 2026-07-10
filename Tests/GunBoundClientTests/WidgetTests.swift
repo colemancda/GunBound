@@ -400,6 +400,31 @@ struct WidgetTests {
         #expect(!panel.dispatch(.pointerDown(x: 400, y: 400)))
     }
 
+    @Test func buddyPanelDragsByChromeButNotRows() {
+        // Default frame (568,11,211×267). Drag by empty title-bar chrome.
+        let panel = BuddyPanelWidget(font: nil)
+        panel.buddies = ["a", "b", "c"]
+        let closeStart = panel.closeButton.frame
+        let dialogStart = panel.addBuddyDialog.frame
+
+        // (600,15) is title-bar chrome — not a button (662/705/748) nor a row.
+        #expect(panel.dispatch(.pointerDown(x: 600, y: 15)))
+        _ = panel.dispatch(.pointerMoved(x: 620, y: 35))
+        #expect(panel.frame.x == 588 && panel.frame.y == 31)
+        #expect(panel.closeButton.frame.x == closeStart.x + 20)     // chrome moves
+        #expect(panel.addBuddyDialog.frame == dialogStart)          // modal stays put
+        _ = panel.dispatch(.pointerUp(x: 620, y: 35))
+
+        // A press on a roster row selects, it doesn't drag.
+        let fresh = BuddyPanelWidget(font: nil)
+        fresh.buddies = ["a", "b", "c"]
+        let before = fresh.frame
+        _ = fresh.dispatch(.pointerDown(x: 585, y: 50))   // row 0 (listOrigin 580,47)
+        _ = fresh.dispatch(.pointerMoved(x: 650, y: 120))
+        #expect(fresh.frame == before)
+        #expect(fresh.selectedIndex == 0)
+    }
+
     @Test func buddyPanelRosterDrivesTheScrollbar() {
         let panel = BuddyPanelWidget(font: nil)
         #expect(panel.scrollBar.contentCount == 0)
