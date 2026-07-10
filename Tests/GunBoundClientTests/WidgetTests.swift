@@ -39,6 +39,24 @@ struct WidgetTests {
         func present() {}
     }
 
+    /// A `ClientTexture` carrying its frame index, and a renderer that hands
+    /// them out and records the last frame drawn — so a widget's state→frame
+    /// choice is observable.
+    private final class FrameTex: ClientTexture { let frame: Int; init(_ frame: Int) { self.frame = frame } }
+    private final class FrameRenderer: ClientRenderer {
+        private(set) var lastFrame: Int?
+        func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? { FrameTex(frameIndex) }
+        func texture(from frame: ImgFile.Frame) -> ClientTexture? { FrameTex(0) }
+        func size(of texture: ClientTexture?) -> (width: Float, height: Float) { (10, 10) }
+        func clear() {}
+        func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {
+            if let tex = texture as? FrameTex { lastFrame = tex.frame }
+        }
+        func present() {}
+    }
+
+    private var noAssets: AssetLibrary { AssetLibrary(directory: URL(fileURLWithPath: "/nonexistent", isDirectory: true)) }
+
     @Test func addSetsParentAndDrawRecursesParentFirst() {
         ProbeWidget.drawOrder = []
         let root = ProbeWidget(name: "root")
@@ -135,6 +153,41 @@ struct WidgetTests {
         _ = scrollBar.dispatch(.pointerDown(x: 10, y: 10))
         #expect(scrollBar.position == 1)
         #expect(scrolls == [1, 2, 1])
+    }
+
+    @Test func scrollBarArrowsDisableWhenNothingToScroll() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        // A fresh bar (no content) can't scroll — arrows disabled.
+        #expect(!scrollBar.upArrow.isEnabled)
+        #expect(!scrollBar.downArrow.isEnabled)
+
+        // More content than a page fits → scrollable → arrows enabled.
+        scrollBar.contentCount = 8
+        scrollBar.pageSize = 6
+        #expect(scrollBar.upArrow.isEnabled)
+        #expect(scrollBar.downArrow.isEnabled)
+
+        // Content that fits a page → not scrollable → disabled again.
+        scrollBar.contentCount = 4
+        #expect(!scrollBar.upArrow.isEnabled)
+        #expect(!scrollBar.downArrow.isEnabled)
+    }
+
+    @Test func disabledButtonIgnoresClicksAndDrawsDisabledFrame() {
+        let button = ButtonWidget(frame: Rect(x: 10, y: 10, width: 20, height: 20))
+        button.sprite = ButtonSprite(name: "x.img", renderer: FrameRenderer(), assets: noAssets)
+        button.isEnabled = false
+        var clicks = 0
+        button.onClick = { clicks += 1 }
+
+        // A press inside a disabled button isn't consumed and fires nothing.
+        #expect(!button.dispatch(.pointerDown(x: 15, y: 15)))
+        #expect(clicks == 0)
+
+        // It draws the disabled frame (index 3).
+        let renderer = FrameRenderer()
+        button.drawSelf(renderer)
+        #expect(renderer.lastFrame == ButtonState.disabled.frame)
     }
 
     /// The decomp's thumb formulas: the page's share of the track floored
