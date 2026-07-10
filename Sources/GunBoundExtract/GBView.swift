@@ -86,12 +86,12 @@ extension GunBoundExtract {
             ("Channel scroll up", "0x00557da0", [751, 322, 18, 18]),
             ("Channel scroll down", "0x00557da0", [751, 514, 18, 18]),
             // DIRECT GO (enter-room-by-number) dialog (id 1) — present only
-            // while it's shown.
-            ("DirectGo dialog", "0x00557df0", [459, 33, 314, 160]),
-            ("DirectGo room",   "0x00557c84", [558, 83, 180, 12]),   // id 0
-            ("DirectGo password", "0x00557c84", [558, 117, 180, 12]),// id 1
-            ("DirectGo Ok",     "0x00557da0", [587, 151, 82, 34]),   // id 1
-            ("DirectGo Cancel", "0x00557da0", [672, 151, 82, 34]),   // id 0
+            // while shown, at its initial (un-dragged) rect (243,202).
+            ("DirectGo dialog", "0x00557df0", [243, 202, 314, 160]),
+            ("DirectGo room",   "0x00557c84", [342, 252, 180, 12]),  // id 0
+            ("DirectGo password", "0x00557c84", [342, 286, 180, 12]),// id 1
+            ("DirectGo Ok",     "0x00557da0", [371, 320, 82, 34]),   // id 1
+            ("DirectGo Cancel", "0x00557da0", [456, 320, 82, 34]),   // id 0
         ]
 
         private func runVerify(_ dump: GBViewDump) throws {
