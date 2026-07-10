@@ -26,6 +26,7 @@ public final class AssetLibrary {
     private var imageCache: [String: [ImgFile.Frame]] = [:]
     private var audioPathCache: [String: URL] = [:]
     private var languageCache: LanguageFile?
+    private var avatarCatalogCache: [String: [AvatarInfoFile.Item]] = [:]
 
     private lazy var audioCacheDirectory: URL = {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("GunBoundClientAudioCache", isDirectory: true)
@@ -150,6 +151,16 @@ public final class AssetLibrary {
     /// mobile poses.
     public func animationTable(named name: String) throws -> EpaFile {
         try EpaFile.read(entryData(name, in: "graphics.xfs"))
+    }
+
+    /// Loads and parses an avatar costume catalog (`{gender}{category}.dat`
+    /// inside `avatar.xfs` — e.g. `mh.dat`, the male head/hat table): the
+    /// per-part names, prices, and stats the Avatar Store's cards show.
+    public func avatarCatalog(named name: String) throws -> [AvatarInfoFile.Item] {
+        if let cached = avatarCatalogCache[name] { return cached }
+        let items = try AvatarInfoFile.readItems(entryData(name, in: "avatar.xfs"))
+        avatarCatalogCache[name] = items
+        return items
     }
 
     /// Loads and caches the localized UI-string table (`Language.txt` inside
