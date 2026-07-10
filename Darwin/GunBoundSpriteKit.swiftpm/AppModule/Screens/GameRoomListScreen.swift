@@ -20,13 +20,22 @@ import GunBoundClient
     gameRoomListScreenPreview(showBuddyPanel: true)
 }
 
+#Preview("Game Room List — Direct Go") {
+    gameRoomListScreenPreview(showDirectGo: true)
+}
+
 /// Preview body lives in a plain function (not the #Preview closure)
 /// because tvOS's #Preview expands to a ViewBuilder closure that
 /// rejects the explicit `return` this setup needs.
 @MainActor
-private func gameRoomListScreenPreview(showBuddyPanel: Bool = false) -> some View {
+private func gameRoomListScreenPreview(showBuddyPanel: Bool = false, showDirectGo: Bool = false) -> some View {
     let delegate = ScreenPreviewDelegate()
     let viewModel = GameRoomListViewModel(delegate: delegate)
+    if showDirectGo, let directGo = viewModel.buttons.first(where: { $0.action == .directGo }) {
+        // Open the DIRECT GO dialog by clicking its bottom-bar button (the
+        // flag survives onEnter, which doesn't reset dialog visibility).
+        viewModel.handle(.pointerDown(x: directGo.rect.x + 2, y: directGo.rect.y + 2))
+    }
     if showBuddyPanel {
         viewModel.buddies = [
             "alsey", "boomer", "trico", "mage", "armor",

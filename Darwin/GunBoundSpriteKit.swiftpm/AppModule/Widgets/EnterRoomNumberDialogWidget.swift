@@ -16,10 +16,10 @@ import GunBoundClient
         let font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
         let background = renderer.texture(named: "gamelist_directgo.img", assets: assets)
         let (w, h) = renderer.size(of: background)
-        // Runtime rect (459,33) from a gbview dump, not centered.
+        // Runtime initial rect (243,202) from a gbview dump.
         let frame = w > 0
-            ? Rect(x: 459, y: 33, width: w, height: h)
-            : Rect(x: 459, y: 33, width: 314, height: 160)
+            ? Rect(x: 243, y: 202, width: w, height: h)
+            : Rect(x: 243, y: 202, width: 314, height: 160)
         let dialog = EnterRoomNumberDialogWidget(
             frame: frame,
             font: font,
