@@ -157,6 +157,21 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         )
     }
 
+    /// The frame index in `ready_selectcharacter.img` for a mobile's card —
+    /// **not** ordered by `Mobile.rawValue`. Verified by extracting the sheet:
+    /// frame 0 is Random, frames 1–13 are Armor…Grub (`rawValue + 1`), and
+    /// Aduka is frame 16 (14–15 are unused placeholders). Dragon/Knight aren't
+    /// in this sheet, so they fall back to Random.
+    public static func characterFrame(for mobile: Mobile) -> Int {
+        switch mobile {
+        case .random: return 0
+        case .aduka: return 16
+        default:
+            let raw = Int(mobile.rawValue)
+            return (0...0x0c).contains(raw) ? raw + 1 : 0
+        }
+    }
+
     /// The picker cell rect for cell `index` (0..<`pickerCellCount`).
     public static func pickerCellRect(at index: Int) -> Rect {
         Rect(

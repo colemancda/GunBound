@@ -5,6 +5,18 @@ import Testing
 @Suite @MainActor
 struct ReadyRoomViewModelTests {
 
+    @Test func characterCardFrameMapping() {
+        // ready_selectcharacter.img isn't ordered by rawValue: Random is 0,
+        // Armor…Grub are rawValue+1, Aduka is 16 (verified from the sheet).
+        #expect(ReadyRoomViewModel.characterFrame(for: .random) == 0)
+        #expect(ReadyRoomViewModel.characterFrame(for: .armor) == 1)
+        #expect(ReadyRoomViewModel.characterFrame(for: .nak) == 3)
+        #expect(ReadyRoomViewModel.characterFrame(for: .trico) == 4)   // was wrongly frame 3
+        #expect(ReadyRoomViewModel.characterFrame(for: .grub) == 13)
+        #expect(ReadyRoomViewModel.characterFrame(for: .aduka) == 16)
+        #expect(ReadyRoomViewModel.characterFrame(for: .dragon) == 0)  // not in the sheet → random
+    }
+
     private func makeViewModel() -> (ReadyRoomViewModel, MockViewModelDelegate) {
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let delegate = MockViewModelDelegate(network: network)

@@ -169,7 +169,7 @@ public final class ReadyRoomScreen: GameScreen {
                 let name = String(describing: player.username)
                 font.draw(name, x: rect.x + 8, y: rect.y + 8, using: renderer)
                 font.draw("Team \(player.team)", x: rect.x + 8, y: rect.y + 24, using: renderer)
-                let portraitFrame = Int(player.primaryTank.rawValue)
+                let portraitFrame = ReadyRoomViewModel.characterFrame(for: player.primaryTank)
                 if let portrait = characterFrames[portraitFrame] {
                     // Portraits are 113×146; fit them into the slot's lower band.
                     let height = rect.height - 46
@@ -209,7 +209,8 @@ public final class ReadyRoomScreen: GameScreen {
                 let isDisabled = cell == ReadyRoomViewModel.pickerDisabledCell
                 let isRandom = cell == ReadyRoomViewModel.pickerCellCount - 1
                 let mobile: Mobile? = isRandom ? .random : Mobile(rawValue: UInt8(cell))
-                if let portrait = characterFrames[cell], !isRandom {
+                if !isRandom, let mobile,
+                   let portrait = characterFrames[ReadyRoomViewModel.characterFrame(for: mobile)] {
                     let tint: (r: UInt8, g: UInt8, b: UInt8)? = isDisabled
                         ? (90, 90, 90)
                         : (mobile == viewModel.selectedMobile ? (255, 255, 160) : nil)
