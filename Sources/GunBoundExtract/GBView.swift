@@ -82,26 +82,28 @@ extension GunBoundExtract {
             }
             // Flatten every node's rect keyed by (label we can recognize).
             var rects: [String: [Int]] = [:]
-            func walk(_ node: GBViewNode, parent: GBViewNode?) {
+            func walk(_ node: GBViewNode, parent: GBViewNode?, grand: GBViewNode?) {
                 let r = [node.rect.x, node.rect.y, node.rect.w, node.rect.h]
-                switch (node.vtable, node.id, parent?.vtable) {
-                case ("0x00557f08", _, _): rects["WorldListPanel"] = r
-                case ("0x00557da0", 0, "0x00557f08"): rects["View All tab"] = r
-                case ("0x00557da0", 1, "0x00557f08"): rects["Friends tab"] = r
-                case ("0x00557e90", _, "0x00557f08"): rects["Scroll list"] = r
-                case ("0x00557da0", 0, "0x00557e90") where parent?.id == 0: rects["Scroll up"] = r
-                case ("0x00557da0", 1, "0x00557e90") where parent?.id == 0: rects["Scroll down"] = r
-                case ("0x00557be4", _, _): rects["Buddy panel"] = r
-                case ("0x00557da0", 1, "0x00557be4"): rects["Buddy Add"] = r
-                case ("0x00557da0", 2, "0x00557be4"): rects["Buddy Del"] = r
-                case ("0x00557da0", 0, "0x00557be4"): rects["Buddy close"] = r
-                case ("0x00557e90", _, "0x00557be4"): rects["Buddy scroll"] = r
-                case ("0x00557e68", _, _): rects["Add-buddy dialog"] = r
+                // Both scrollbars nest `0x557da0` arrows under a `0x557e90`
+                // list, so the arrows are keyed by their grandparent panel.
+                switch (node.vtable, node.id, parent?.vtable, grand?.vtable) {
+                case ("0x00557f08", _, _, _): rects["WorldListPanel"] = r
+                case ("0x00557da0", 0, "0x00557f08", _): rects["View All tab"] = r
+                case ("0x00557da0", 1, "0x00557f08", _): rects["Friends tab"] = r
+                case ("0x00557e90", _, "0x00557f08", _): rects["Scroll list"] = r
+                case ("0x00557da0", 0, "0x00557e90", "0x00557f08"): rects["Scroll up"] = r
+                case ("0x00557da0", 1, "0x00557e90", "0x00557f08"): rects["Scroll down"] = r
+                case ("0x00557be4", _, _, _): rects["Buddy panel"] = r
+                case ("0x00557da0", 1, "0x00557be4", _): rects["Buddy Add"] = r
+                case ("0x00557da0", 2, "0x00557be4", _): rects["Buddy Del"] = r
+                case ("0x00557da0", 0, "0x00557be4", _): rects["Buddy close"] = r
+                case ("0x00557e90", _, "0x00557be4", _): rects["Buddy scroll"] = r
+                case ("0x00557e68", _, _, _): rects["Add-buddy dialog"] = r
                 default: break
                 }
-                for child in node.children { walk(child, parent: node) }
+                for child in node.children { walk(child, parent: node, grand: parent) }
             }
-            for panel in dump.view.panels { walk(panel, parent: nil) }
+            for panel in dump.view.panels { walk(panel, parent: nil, grand: nil) }
 
             var mismatches = 0
             for expected in Self.serverSelectExpected {
