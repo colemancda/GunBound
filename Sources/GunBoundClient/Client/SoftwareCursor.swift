@@ -11,23 +11,18 @@ import GunBound
 /// the cursor — a sentinel modelled here by `isVisible`.
 ///
 /// The sheet holds **102 frames** — a multi-context pointer set (the arrow,
-/// edge-scroll direction arrows, a grab hand, mouse icons). In the art, frames
-/// **0–7** read as the normal arrow's idle **shine loop** (a highlight sweeping
-/// across the blue arrow), which this port animates.
-///
-/// **This animation is an intentional cosmetic divergence — the decomp does
-/// *not* confirm it.** `GameTick` blits the cursor as
-/// `BlitSpriteClipped(g_cursorFrame)`, and `g_cursorFrame` (`0x7a7674`) occurs
-/// exactly once in the whole binary (that read), lives in zero-init data, and
-/// is **never written — always `0`**. `FindSpriteFrame` is a stateless
-/// `(spriteSet, frameIndex)` lookup with no time-advance. So the only
-/// recoverable evidence is a **static frame-0 cursor**; whether the sheet ever
-/// cycles depends on register setup Ghidra doesn't recover and "can't be
-/// determined from the ported code" (the sole confirmed time-based cursor
-/// behaviour is the replay-mode blink, not this shine loop). The loop range
-/// and rate below are therefore this port's own choice. When `frames` is empty
-/// the cursor falls back to the single `texture` (i.e. the faithful frame-0
-/// draw).
+/// edge-scroll direction arrows, a grab hand, mouse icons). The pointer is the
+/// **17-frame arrow idle loop, frames 0–16 — decomp- and live-confirmed**:
+/// a debugger probe on the original shows `g_cursorFrame` advancing
+/// `0→1→…→16→0` one step per tick, and the writer is `AdvanceSpriteAnimation`
+/// (`0x450730`), the generic keyframe player GameTick runs once per elapsed
+/// frame over the animated-cursor singleton (`0x7a7644`, whose `+0x30` is
+/// `g_cursorFrame`). Each step is held one tick of the fixed **~50 ms**
+/// present cadence, so the loop runs at 20 fps (~0.85 s per cycle) —
+/// `frameDuration` below. (An earlier static pass wrongly concluded a
+/// constant frame 0; the per-tick store is object-relative, so no absolute
+/// xref to `0x7a7674` exists for byte-search to find.) When `frames` is empty
+/// the cursor falls back to the single `texture`.
 @MainActor
 public final class SoftwareCursor {
 
@@ -35,12 +30,12 @@ public final class SoftwareCursor {
     /// `ChangeGameState` via `FindPreloadedTextureByName("cursor")`.
     public static let sheetName = "cursor.img"
 
-    /// The frame range this port animates as the arrow's idle shine sweep.
-    /// A cosmetic divergence — the decomp draws frame 0 statically; see the
-    /// type doc.
-    public static let arrowFrames = 0..<8
-    /// Seconds each arrow frame holds (~12.5 fps; ~0.64s per loop).
-    public static let frameDuration: Double = 0.08
+    /// The arrow's idle-loop frame range — the live-confirmed `0…16` cycle
+    /// (`g_cursorFrame` steps through all 17 each loop).
+    public static let arrowFrames = 0..<17
+    /// Seconds each arrow frame holds: one tick of the original's fixed
+    /// ~50 ms present cadence (20 fps; ~0.85 s per loop).
+    public static let frameDuration: Double = 0.05
 
     /// The current pointer position, in the same logical screen coordinates
     /// (origin top-left) the screens and renderer already use.
@@ -50,7 +45,7 @@ public final class SoftwareCursor {
     /// pointer).
     public var isVisible = true
 
-    /// The animated arrow frames (`cursor.img` frames 0–7). Set by whoever
+    /// The animated arrow frames (`cursor.img` frames 0–16). Set by whoever
     /// loads the sheet; when empty the cursor draws `texture` instead.
     public var frames: [ClientTexture] = []
 

@@ -30,10 +30,9 @@ public final class GameStateMachine {
         }
         self.current = screen
         cursor.isVisible = false
-        // Load cursor.img frames 0–7 so the pointer animates the arrow's idle
-        // shine sweep; frame 0 doubles as the single-frame fallback. The
-        // animation is a cosmetic divergence — the decomp draws frame 0
-        // statically (see SoftwareCursor's doc).
+        // Load cursor.img frames 0–16 — the live-confirmed 17-frame arrow idle
+        // loop (see SoftwareCursor's doc); frame 0 doubles as the single-frame
+        // fallback.
         cursor.frames = SoftwareCursor.arrowFrames.compactMap {
             context.renderer.texture(named: SoftwareCursor.sheetName, frame: $0, assets: context.assets)
         }
