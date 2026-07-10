@@ -24,6 +24,7 @@ public final class AssetLibrary {
     /// lazily per resource name, not eagerly for every entry.
     private var imageCache: [String: [ImgFile.Frame]] = [:]
     private var audioPathCache: [String: URL] = [:]
+    private var languageCache: LanguageFile?
 
     private lazy var audioCacheDirectory: URL = {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("GunBoundClientAudioCache", isDirectory: true)
@@ -148,5 +149,22 @@ public final class AssetLibrary {
     /// mobile poses.
     public func animationTable(named name: String) throws -> EpaFile {
         try EpaFile.read(entryData(name, in: "graphics.xfs"))
+    }
+
+    /// Loads and caches the localized UI-string table (`Language.txt` inside
+    /// `graphics.xfs`) — the port of the original's `LoadLocalizedStrings` →
+    /// `g_localizedStringTable`. Parsed once, then reused for every lookup.
+    public func language() throws -> LanguageFile {
+        if let cached = languageCache { return cached }
+        let file = LanguageFile.read(try entryData("Language.txt", in: "graphics.xfs"))
+        languageCache = file
+        return file
+    }
+
+    /// The localized message for `id` — the `GetLocalizedString` counterpart.
+    /// `nil` when the loaded `Language.txt` has no such entry (or couldn't be
+    /// loaded), so callers can fall back to a built-in default string.
+    public func localizedString(id: Int) -> String? {
+        (try? language())?.string(id: id)
     }
 }
