@@ -67,13 +67,14 @@ public final class WorldListPanelWidget: Widget {
         self.viewAllRect = viewModel.buttons.first { $0.name == "b_server_all.img" }?.rect ?? .zero
         self.friendsRect = viewModel.buttons.first { $0.name == "b_server_friend.img" }?.rect ?? .zero
 
-        // The panel's scroll track (arrow knobs are baked into the chrome at
-        // the track's ends — eyeballed positions, measured from server_list's
-        // baked round knobs, art y 43–66 / 458–481 + the 13px panel offset).
+        // The panel's scroll widget (typeId 4) and its two arrow children —
+        // exact rects from a runtime panel-tree dump (`gbview`), replacing the
+        // earlier eyeballed values. The arrow knobs are baked into the panel
+        // chrome; these are the invisible hit-zones over them.
         let scrollBar = ScrollBarWidget(
-            track: Rect(x: 522, y: 80, width: 32, height: 390),
-            upArrow: Rect(x: 524, y: 56, width: 28, height: 24),
-            downArrow: Rect(x: 524, y: 471, width: 28, height: 24)
+            track: Rect(x: 526, y: 87, width: 18, height: 377),
+            upArrow: Rect(x: 526, y: 59, width: 18, height: 18),
+            downArrow: Rect(x: 526, y: 474, width: 18, height: 18)
         )
         scrollBar.pageSize = ServerSelectViewModel.maxVisibleRows / ServerSelectViewModel.rowColumns
         scrollBar.onScroll = { [weak viewModel] position in
