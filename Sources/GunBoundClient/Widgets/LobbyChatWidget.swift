@@ -80,8 +80,8 @@ public final class LobbyChatWidget: Widget {
         inputFrame: Rect = Rect(x: 26, y: 235, width: 484, height: 12),
         scrollTrack: Rect = Rect(x: 526, y: 63, width: 18, height: 154),
         scrollKnobs: (up: Rect, down: Rect)? = (
-            up: Rect(x: 521, y: 33, width: 28, height: 28),
-            down: Rect(x: 521, y: 219, width: 28, height: 28)
+            up: Rect(x: 526, y: 35, width: 18, height: 18),
+            down: Rect(x: 526, y: 227, width: 18, height: 18)
         ),
         visibleRows: Int = LobbyChatWidget.defaultVisibleRows
     ) {
