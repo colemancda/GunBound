@@ -292,6 +292,10 @@ public final class ServerSelectScreen: GameScreen {
             let state: ButtonState
             if button.name == "b_server_choiceserver.img", !viewModel.isConnectEnabled {
                 state = .disabled
+            } else if viewModel.isFilterSelected(button.name) {
+                // View All / Friends are toggles: the current view stays on its
+                // `selected` (yellow) frame rather than flashing `pressed`.
+                state = .selected
             } else if index == viewModel.pressedIndex {
                 state = .pressed
             } else if index == viewModel.hoveredIndex {
