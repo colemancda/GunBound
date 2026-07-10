@@ -26,7 +26,9 @@ public final class ServerSelectScreen: GameScreen {
     private let viewModel: ServerSelectViewModel
     private var backgroundTexture: ClientTexture?
     private var panelTexture: ClientTexture?
-    private var buttonTextures: [ClientTexture?] = []
+    /// Per-button state artwork; the frame is chosen at draw time from each
+    /// button's `ButtonState`.
+    private var buttonSprites: [ButtonSprite] = []
     /// `waitmessage.img`'s four animation frames, cycled while the world
     /// list is loading or a connect attempt is in flight.
     private var waitFrames: [ClientTexture?] = []
@@ -111,7 +113,7 @@ public final class ServerSelectScreen: GameScreen {
 
         textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
-        buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
+        buttonSprites = viewModel.buttons.map { ButtonSprite(name: $0.name, renderer: renderer, assets: assets) }
 
         let waitFrameCount = (try? assets.image(named: viewModel.waitImageName).count) ?? 1
         waitFrames = (0..<waitFrameCount).map { renderer.texture(named: viewModel.waitImageName, frame: $0, assets: assets) }
@@ -170,7 +172,7 @@ public final class ServerSelectScreen: GameScreen {
         viewModel.onExit()
         backgroundTexture = nil
         panelTexture = nil
-        buttonTextures = []
+        buttonSprites = []
         waitFrames = []
         waitElapsed = 0
         rowBaseTexture = nil
@@ -283,15 +285,22 @@ public final class ServerSelectScreen: GameScreen {
         }
 
         for (index, button) in viewModel.buttons.enumerated() {
-            guard let texture = buttonTextures[index] else { continue }
-            var tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredIndex ? (200, 200, 255) : nil
-            // The SERVER button stays dimmed until a row is selected — one
-            // click selects (enabling it), then the button or a
-            // double-click on the row connects.
+            // The SERVER button draws its `disabled` frame until a row is
+            // selected — one click selects (enabling it), then the button or a
+            // double-click on the row connects. Otherwise resolve
+            // pressed/hovered/default from the pointer.
+            let state: ButtonState
             if button.name == "b_server_choiceserver.img", !viewModel.isConnectEnabled {
-                tint = (110, 110, 110)
+                state = .disabled
+            } else if index == viewModel.pressedIndex {
+                state = .pressed
+            } else if index == viewModel.hoveredIndex {
+                state = .hovered
+            } else {
+                state = .normal
             }
-            renderer.draw(texture, in: button.rect, tint: tint)
+            guard let texture = buttonSprites[index].texture(for: state) else { continue }
+            renderer.draw(texture, in: button.rect, tint: nil)
         }
         rootWidget.draw(renderer)
 
