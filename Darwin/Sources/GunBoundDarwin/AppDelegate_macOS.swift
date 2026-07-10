@@ -27,6 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        buildMainMenu()
+
         // The decomp-confirmed fixed 800×600 logical canvas, same as every
         // other GunBound front end.
         let contentRect = NSRect(x: 0, y: 0, width: 800, height: 600)
@@ -49,6 +51,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
+    }
+
+    // MARK: Main menu
+
+    /// Builds the menu bar in code (no storyboard/nib): the app menu with
+    /// Quit, and a Sound menu whose Mute item (⇧⌘M) toggles the persisted
+    /// mute preference and applies it to everything currently playing.
+    private func buildMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenuItem = NSMenuItem()
+        mainMenu.addItem(appMenuItem)
+        let appMenu = NSMenu()
+        appMenu.addItem(
+            withTitle: "Quit GunBound",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        )
+        appMenuItem.submenu = appMenu
+
+        let soundMenuItem = NSMenuItem()
+        mainMenu.addItem(soundMenuItem)
+        let soundMenu = NSMenu(title: "Sound")
+        let mute = NSMenuItem(title: "Mute", action: #selector(toggleMute(_:)), keyEquivalent: "m")
+        mute.keyEquivalentModifierMask = [.command, .shift]
+        mute.target = self
+        mute.state = SpriteKitAudioPlayer.isMuted ? .on : .off
+        soundMenu.addItem(mute)
+        soundMenuItem.submenu = soundMenu
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    @objc private func toggleMute(_ sender: NSMenuItem) {
+        let muted = !SpriteKitAudioPlayer.isMuted
+        SpriteKitAudioPlayer.setMuted(muted)
+        sender.state = muted ? .on : .off
     }
 }
 #endif
