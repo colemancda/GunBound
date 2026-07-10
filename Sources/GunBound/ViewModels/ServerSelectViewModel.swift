@@ -84,6 +84,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
     //   gbview field        →  here
     //   m_viewMode          →  worldListFilter (0 = .all)
     //   m_highlightedSlot   →  selectedIndex   (-1 = nil)
+    //   m_selectedSlot      →  selectedIndex   (the decomp's +0x0c, moves in
+    //                          lockstep with m_highlightedSlot on a row click;
+    //                          we fold both into one field)
     //   m_scrollOffset/A    →  scrollOffset
     //   m_connecting        →  state == .connecting
     //   m_connectingSlot    →  (the slot a connect is in flight for)
