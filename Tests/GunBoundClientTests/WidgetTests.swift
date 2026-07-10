@@ -578,6 +578,31 @@ struct WidgetTests {
         #expect(renderer.frame(at: Rect(x: 287, y: 296, width: 22, height: 22)) == 0)
     }
 
+    @Test func buddyChatWindowSendsClosesAndScrolls() {
+        let window = BuddyChatWindowWidget(recipient: "admin", font: nil)
+        var sent: [String] = []
+        var closed = false
+        window.onSend = { sent.append($0) }
+        window.onClose = { closed = true }
+
+        // Typing a line and pressing Enter sends it and clears the input.
+        window.inputField.focus()
+        _ = window.inputField.dispatch(.text("hi"))
+        _ = window.inputField.dispatch(.activate)
+        #expect(sent == ["hi"])
+        #expect(window.inputField.text.isEmpty)
+
+        // A full log drives the scrollbar and follows the tail.
+        window.messages = (1...30).map { ChatLine(sender: "admin", message: "m\($0)") }
+        #expect(window.scrollBar.contentCount == 30)
+        #expect(window.scrollBar.position == window.scrollBar.maxPosition)
+
+        // Close hides the window and fires the callback.
+        window.closeButton.onClick?()
+        #expect(closed)
+        #expect(window.isHidden)
+    }
+
     @Test func channelUserListScrollsItsRoster() {
         let panel = ChannelUserListWidget(font: nil)
         #expect(panel.frame == Rect(x: 572, y: 287, width: 209, height: 259))
