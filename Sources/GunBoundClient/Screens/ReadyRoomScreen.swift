@@ -21,6 +21,13 @@ public final class ReadyRoomScreen: GameScreen {
     private var characterFrames: [Int: ClientTexture] = [:]
     private var buttonTextures: [ReadyRoomViewModel.ButtonAction: ClientTexture] = [:]
     private var startTexture: ClientTexture?
+    /// Slot furniture from `ready_back.img`'s extra frames (screenshot-mapped):
+    /// frame 1 = team A platform, 2 = team B platform, 3 = the idle pole,
+    /// 6 = the green READY pole, 7 = the host's key icon.
+    private var platformTextures: [Team: ClientTexture] = [:]
+    private var poleTexture: ClientTexture?
+    private var poleReadyTexture: ClientTexture?
+    private var keyTexture: ClientTexture?
     private var font: LoadedFont?
     private var rootWidget = Widget()
     private var chatPanel: LobbyChatWidget?
@@ -63,6 +70,12 @@ public final class ReadyRoomScreen: GameScreen {
         for frame in 0..<characterCount {
             characterFrames[frame] = renderer.texture(named: viewModel.characterImageName, frame: frame, assets: assets)
         }
+
+        platformTextures[.a] = renderer.texture(named: viewModel.backgroundImageName, frame: 1, assets: assets)
+        platformTextures[.b] = renderer.texture(named: viewModel.backgroundImageName, frame: 2, assets: assets)
+        poleTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 3, assets: assets)
+        poleReadyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 6, assets: assets)
+        keyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 7, assets: assets)
 
         buttonTextures[.exit] = renderer.texture(named: viewModel.exitButtonImageName, assets: assets)
         buttonTextures[.buddy] = renderer.texture(named: viewModel.buddyButtonImageName, assets: assets)
@@ -127,6 +140,10 @@ public final class ReadyRoomScreen: GameScreen {
         characterFrames = [:]
         buttonTextures = [:]
         startTexture = nil
+        platformTextures = [:]
+        poleTexture = nil
+        poleReadyTexture = nil
+        keyTexture = nil
         font = nil
         rootWidget = Widget()
         chatPanel = nil
@@ -181,30 +198,56 @@ public final class ReadyRoomScreen: GameScreen {
             font.draw(viewModel.roomName, x: 46, y: 12, using: renderer)
             font.draw("\(viewModel.map)", x: 580, y: 12, using: renderer)
 
-            // Roster: name, team, and the live mobile per occupied slot —
-            // the actual idle-animated tank sprite (as in battle), not the
-            // picker's character card. Readied players are marked.
-            for (index, player) in viewModel.players.enumerated() {
+            // Roster: every open slot (the room capacity) gets a team
+            // platform — the occupant's team, or the side's default for an
+            // empty seat. An occupied platform carries the pole (green READY
+            // when readied), the mobile on the stripe band with the player's
+            // composited avatar riding it (standing alone when the mobile is
+            // random), and the name in the platform's name box — the host's
+            // key after slot 0's name. Closed slots stay the bare boxes baked
+            // into the background. All geometry matched to a live screenshot.
+            let players = viewModel.players
+            for index in 0..<Int(viewModel.capacity.rawValue) where index < ReadyRoomViewModel.maxPlayers {
                 let rect = viewModel.rosterSlotRect(at: index)
+                let player = index < players.count ? players[index] : nil
+                let team = player?.team ?? ReadyRoomViewModel.defaultTeam(forSlot: index)
+                let platform = Rect(x: rect.x + 6, y: rect.y + rect.height - 73, width: 127, height: 72)
+                if let texture = platformTextures[team] {
+                    renderer.draw(texture, in: platform, tint: nil)
+                }
+                guard let player else { continue }
                 let name = String(describing: player.username)
-                font.draw(name, x: rect.x + 8, y: rect.y + 8, using: renderer)
-                font.draw("Team \(player.team)", x: rect.x + 8, y: rect.y + 24, using: renderer)
+
+                // The feet line: the platform's stripe band top surface.
+                let baseline = platform.y + 34
+                let isReady = viewModel.readyPlayers.contains(name)
+                if let pole = isReady ? poleReadyTexture : poleTexture {
+                    renderer.draw(pole, in: Rect(x: platform.x + 101, y: baseline - 40, width: 19, height: 40), tint: nil)
+                }
+
+                // The mobile idles on the stripe band, centered in the space
+                // left of the pole; the avatar rides it (or stands in its
+                // place when there's no tank to ride).
+                var saddle: (x: Float, y: Float) = (platform.x + 50, baseline)
                 if let sprite = mobileSprite(for: player.primaryTank, renderer: renderer) {
                     let (w, h) = renderer.size(of: sprite)
-                    // The tank frames are large; sit the mobile on the slot
-                    // floor, centered, at its natural size (clamped to the slot).
-                    let scale = min(1, (rect.height - 52) / max(1, h))
+                    let scale = min(1, 64 / max(1, h))
                     let dw = w * scale, dh = h * scale
-                    renderer.draw(sprite, in: Rect(x: rect.x + (rect.width - dw) / 2, y: rect.y + rect.height - dh - 12, width: dw, height: dh), tint: nil)
+                    renderer.draw(sprite, in: Rect(x: platform.x + 50 - dw / 2, y: baseline - dh, width: dw, height: dh), tint: nil)
+                    saddle.y = baseline - dh + 14
                 }
                 if let avatar = avatarSprite(equipped: player.avatarEquipped, renderer: renderer) {
-                    // The player's avatar character stands on the slot floor
-                    // beside the mobile, at natural size.
                     let (aw, ah) = renderer.size(of: avatar)
-                    renderer.draw(avatar, in: Rect(x: rect.x + 18, y: rect.y + rect.height - ah - 12, width: aw, height: ah), tint: nil)
+                    renderer.draw(avatar, in: Rect(x: saddle.x - aw / 2, y: saddle.y - ah, width: aw, height: ah), tint: nil)
                 }
-                if viewModel.readyPlayers.contains(name) {
-                    font.draw("READY", x: rect.x + 8, y: rect.y + rect.height - 18, tint: (120, 255, 120), using: renderer)
+
+                // The name in the platform's name box, dark on the light band;
+                // the host (slot 0) gets the key icon right after it.
+                let nameX = platform.x + 10
+                let nameY = platform.y + 48
+                font.draw(name, x: nameX, y: nameY, tint: (30, 30, 30), using: renderer)
+                if index == 0, let keyTexture {
+                    renderer.draw(keyTexture, in: Rect(x: nameX + font.width(of: name) + 4, y: nameY, width: 22, height: 13), tint: nil)
                 }
             }
         }
