@@ -65,6 +65,14 @@ extension GunBoundExtract {
             ("Scroll list",    "0x00557e90", [526, 87, 18, 377]),
             ("Scroll up",      "0x00557da0", [526, 59, 18, 18]),
             ("Scroll down",    "0x00557da0", [526, 474, 18, 18]),
+            // Buddy panel (id 20000) — only present when the panel is open.
+            ("Buddy panel",    "0x00557be4", [568, 11, 211, 267]),
+            ("Buddy Add",      "0x00557da0", [662, 18, 39, 20]),   // id 1
+            ("Buddy Del",      "0x00557da0", [705, 18, 39, 20]),   // id 2
+            ("Buddy close",    "0x00557da0", [748, 18, 22, 20]),   // id 0
+            ("Buddy scroll",   "0x00557e90", [751, 84, 18, 152]),
+            // Add-buddy dialog (id 10000) — present only while it's shown.
+            ("Add-buddy dialog", "0x00557e68", [281, 206, 241, 148]),
         ]
 
         private func runVerify(_ dump: GBViewDump) throws {
@@ -80,9 +88,15 @@ extension GunBoundExtract {
                 case ("0x00557f08", _, _): rects["WorldListPanel"] = r
                 case ("0x00557da0", 0, "0x00557f08"): rects["View All tab"] = r
                 case ("0x00557da0", 1, "0x00557f08"): rects["Friends tab"] = r
-                case ("0x00557e90", _, _): rects["Scroll list"] = r
-                case ("0x00557da0", 0, "0x00557e90"): rects["Scroll up"] = r
-                case ("0x00557da0", 1, "0x00557e90"): rects["Scroll down"] = r
+                case ("0x00557e90", _, "0x00557f08"): rects["Scroll list"] = r
+                case ("0x00557da0", 0, "0x00557e90") where parent?.id == 0: rects["Scroll up"] = r
+                case ("0x00557da0", 1, "0x00557e90") where parent?.id == 0: rects["Scroll down"] = r
+                case ("0x00557be4", _, _): rects["Buddy panel"] = r
+                case ("0x00557da0", 1, "0x00557be4"): rects["Buddy Add"] = r
+                case ("0x00557da0", 2, "0x00557be4"): rects["Buddy Del"] = r
+                case ("0x00557da0", 0, "0x00557be4"): rects["Buddy close"] = r
+                case ("0x00557e90", _, "0x00557be4"): rects["Buddy scroll"] = r
+                case ("0x00557e68", _, _): rects["Add-buddy dialog"] = r
                 default: break
                 }
                 for child in node.children { walk(child, parent: node) }
