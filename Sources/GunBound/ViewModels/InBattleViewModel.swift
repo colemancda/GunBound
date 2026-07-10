@@ -94,6 +94,8 @@ public final class InBattleViewModel: ScreenViewModel {
         /// surface once the mask is loaded).
         public var x: Float
         public var y: Float
+        /// The original spawn column — where score-mode respawns land.
+        public let spawnX: Float
         public let turnOrder: Int
         /// Remaining hit points; the mobile dies at 0. `characterdata.dat`
         /// carries a per-mobile Max HP (and shield) pool — uniform until
@@ -113,6 +115,7 @@ public final class InBattleViewModel: ScreenViewModel {
             self.mobile = mobile
             self.x = x
             self.y = y
+            self.spawnX = x
             self.turnOrder = turnOrder
         }
     }
@@ -250,6 +253,31 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Seconds left on the acting player's turn; expiry forfeits it.
     public private(set) var turnRemaining: Double = InBattleViewModel.turnDuration
 
+    /// The battle's game mode, from the start notification's settings
+    /// (the `settings >> 16` mode word). Solo/Tag play as eliminations;
+    /// Score adds shared team life pools with respawns. Jewel renders its
+    /// identity but plays as an elimination until jewel objects are
+    /// modeled (the decomp's JewelTexture layer and the `0x4200` summary
+    /// flow are documented but the jewel spawn data isn't).
+    public private(set) var gameMode: GunBoundProtocol.GameMode = .solo
+    /// Score mode's shared life pools, `nil` in other modes. Every client
+    /// derives the pool from the same head-count formula the server uses
+    /// and decrements it on each death — deterministic, no score wire
+    /// traffic needed.
+    public private(set) var teamLives: (a: Int, b: Int)?
+    /// How long a score-mode death benches the player before the respawn.
+    public static let respawnDelay: Double = 3
+    /// Slots waiting to respawn, with their due time on the battle clock.
+    private var pendingRespawns: [(slot: UInt8, time: Double)] = []
+
+    /// Score mode's per-team life pool for a head count — the server's
+    /// formula (half the players, rounded up to even, plus one).
+    public static func scoreLives(forPlayerCount count: Int) -> Int {
+        var lives = count / 2
+        if lives % 2 != 0 { lives += 1 }
+        return lives + 1
+    }
+
     /// The match's winning team once one side is wiped — `nil` while the
     /// match runs, and also `nil` on an everyone-dead draw (check
     /// `isMatchOver` to distinguish). Set by the server's game-end push
@@ -337,6 +365,12 @@ public final class InBattleViewModel: ScreenViewModel {
                 turnOrder: Int($0.turnOrder)
             )
         }
+        let settings = delegate.session.battle?.settings ?? 0
+        gameMode = GunBoundProtocol.GameMode(settings: settings) ?? .solo
+        teamLives = gameMode == .score && players.count > 1
+            ? (a: Self.scoreLives(forPlayerCount: players.count), b: Self.scoreLives(forPlayerCount: players.count))
+            : nil
+        pendingRespawns = []
         turnCursor = players.map(\.turnOrder).min() ?? 0
         phase = isMyTurn ? .aiming : .waiting
         aimAngle = 45
@@ -516,9 +550,7 @@ public final class InBattleViewModel: ScreenViewModel {
         switch push {
         case .playerDied(let dead):
             if let index = players.firstIndex(where: { $0.slot == dead.slot }) {
-                players[index].hp = 0
-                players[index].isAlive = false
-                setPose(.dead, at: index)
+                markDead(at: index)
             }
         case .userQuit(let quit):
             players.removeAll { UInt16($0.slot) == quit.slot }
@@ -830,6 +862,7 @@ public final class InBattleViewModel: ScreenViewModel {
             }
             return  // play is frozen under the result banner
         }
+        processRespawns()
         switch phase {
         case .charging:
             tickTurnTimer(deltaTime)
@@ -935,11 +968,56 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Offline the client is its own referee: once every living player is
     /// on one team (or nobody's left), show the result and wind down.
     /// Online the server decides (`checkPlayEnd` → the game-end push).
+    /// Score mode never ends by wipe — the dead respawn; its life pools
+    /// decide instead (see `markDead`).
     private func checkMatchOver() {
-        guard delegate.client == nil, !isMatchOver, players.count > 1 else { return }
+        guard delegate.client == nil, !isMatchOver, players.count > 1,
+              gameMode != .score else { return }
         let livingTeams = Set(players.filter(\.isAlive).map(\.team))
         guard livingTeams.count <= 1 else { return }
         endMatch(winner: livingTeams.first)
+    }
+
+    /// Revives any benched score-mode players whose respawn is due: back
+    /// at their spawn column with a full pool, re-entering the turn
+    /// rotation. Every client runs the same deterministic timer off the
+    /// same death; the local player's own respawn additionally posts the
+    /// `0x4104` resurrect so the server's slot bookkeeping matches.
+    private func processRespawns() {
+        guard !pendingRespawns.isEmpty else { return }
+        var remaining: [(slot: UInt8, time: Double)] = []
+        for entry in pendingRespawns {
+            if entry.time <= clock {
+                respawn(slot: entry.slot)
+            } else {
+                remaining.append(entry)
+            }
+        }
+        pendingRespawns = remaining
+    }
+
+    private func respawn(slot: UInt8) {
+        guard let index = players.firstIndex(where: { $0.slot == slot }),
+              !players[index].isAlive else { return }
+        players[index].hp = Self.maxHP
+        players[index].isAlive = true
+        players[index].x = players[index].spawnX
+        if let surface = terrain?.surfaceLevel(atX: Int(players[index].spawnX), near: Int(players[index].y)) {
+            players[index].y = Float(surface)
+        }
+        // Straight to the idle pose (setPose won't leave `.dead`).
+        players[index].pose = .normal
+        players[index].poseStarted = clock
+        appendChat(ChatLine(message: "\(players[index].name) respawned", type: .notice))
+        if players[index].name == delegate.network.username, let client = delegate.client {
+            Task {
+                do {
+                    try await client.resurrect()
+                } catch {
+                    print("[GunBound] couldn't send resurrect: \(error)")
+                }
+            }
+        }
     }
 
     /// Freezes play and starts the result-banner countdown.
@@ -985,11 +1063,36 @@ public final class InBattleViewModel: ScreenViewModel {
             cause: cause
         ))
         if players[index].hp == 0 {
-            players[index].isAlive = false
-            setPose(.dead, at: index)
+            markDead(at: index)
             reportOwnDeath(players[index])
         } else {
             setPose(.shock, at: index)
+        }
+    }
+
+    /// One death, whichever path found it (local damage or the server's
+    /// death push — guarded so an echoed push can't double-count). Score
+    /// mode charges the team's life pool and benches the player for a
+    /// respawn; running the pool dry decides the match (locally when
+    /// offline; the server's game-end push confirms it online).
+    private func markDead(at index: Int) {
+        guard players[index].isAlive else { return }
+        players[index].hp = 0
+        players[index].isAlive = false
+        setPose(.dead, at: index)
+        guard gameMode == .score, teamLives != nil else { return }
+        switch players[index].team {
+        case .a: teamLives?.a -= 1
+        case .b: teamLives?.b -= 1
+        }
+        if let lives = teamLives, lives.a <= 0 || lives.b <= 0 {
+            // Pool dry: offline this decides the match; online the
+            // server's game-end push carries the same verdict.
+            if delegate.client == nil {
+                endMatch(winner: lives.a <= 0 ? .b : .a)
+            }
+        } else {
+            pendingRespawns.append((slot: players[index].slot, time: clock + Self.respawnDelay))
         }
     }
 
