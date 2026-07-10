@@ -287,6 +287,16 @@ struct WidgetTests {
         #expect(dialog.isHidden)
     }
 
+    /// The dialog carries a separate title (drawn in the title-bar strip)
+    /// alongside its body — both settable, empty by default.
+    @Test func dialogHoldsATitleAndBody() {
+        let dialog = DialogWidget(message: "the body", font: nil)
+        #expect(dialog.title == "")
+        dialog.title = "Access time has expired."
+        #expect(dialog.title == "Access time has expired.")
+        #expect(dialog.message == "the body")
+    }
+
     @Test func dialogEnterConfirms() {
         let dialog = DialogWidget(message: "Boom", font: nil)
         var confirmed = 0

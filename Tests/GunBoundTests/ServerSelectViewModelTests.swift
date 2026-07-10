@@ -299,6 +299,20 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.state.isConnecting)
     }
 
+    /// Network errors map to the localized dialog the original would show —
+    /// a request timeout is "access time expired" (id 201), everything else
+    /// is "server access error" (id 200) — never the raw error text.
+    @Test func networkErrorsMapToLocalizedDialogs() {
+        let timeout = NetworkClient<GunBoundSocketIPv4TCP>.Error.timeout(.joinChannelResponse)
+        #expect(ServerSelectViewModel.dialogMessage(for: timeout) == .accessTimeExpired)
+
+        let refused = NetworkClient<GunBoundSocketIPv4TCP>.Error.disconnected
+        #expect(ServerSelectViewModel.dialogMessage(for: refused) == .serverAccessError)
+
+        struct SomeOtherError: Error {}
+        #expect(ServerSelectViewModel.dialogMessage(for: SomeOtherError()) == .serverAccessError)
+    }
+
     /// Scrolling slides a 12-slot window over the fetched list one grid
     /// line (two servers) at a time, and row clicks select the *absolute*
     /// entry under the slot.
