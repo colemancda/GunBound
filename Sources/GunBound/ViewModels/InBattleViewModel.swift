@@ -263,41 +263,59 @@ public final class InBattleViewModel: ScreenViewModel {
 
     // MARK: - Battle items (visual only)
 
-    /// One loadout entry: a battle consumable's `itemdata.dat` record index
-    /// and how many the player brought in.
+    /// One battle-usable item, keyed by its **ordinal** — the 0–63 index
+    /// used by the server's ownership bitmask, the Ready Room loadout array,
+    /// and the `DAT_0056dc40` icon table alike (decomp `703fd5f`).
     public struct BattleItem: Equatable, Sendable {
-        /// Index into the parsed `itemdata.dat` records (drives the icon).
-        public let record: Int
-        public var count: Int
-        public init(record: Int, count: Int) {
-            self.record = record
-            self.count = count
-        }
+        /// The item's ordinal (0–10 for the battle-usable set).
+        public let ordinal: Int
+        /// Display name, resolved from the catalog.
+        public let name: String
+        /// The packed shelf-icon code (`DAT_0056dc40[ordinal]`) — decode via
+        /// `ItemDataFile.shelfIcon(forCode:)` for its sheet + frame.
+        public let iconCode: UInt16
     }
 
-    /// The player's battle item loadout.
-    ///
-    /// **A fixed stand-in, and deliberately effect-free — which is faithful
-    /// to the client's real role.** The decomp (`ba1715b`; PROTOCOL.md
-    /// "Item availability") confirms there is **no client→server item-use
-    /// action**: item effects (Dual, Power-up, Teleport, …) are resolved
-    /// server-side and broadcast back (action `0x8400`), so the client never
-    /// transmits an item use. The loadout itself arrives as a **server-pushed
-    /// 64-bit ownership bitmask** (bit *i* = owns battle item *i*, ordinals
-    /// 0–10), which the Ready Room builder packs into its loadout array;
-    /// each ordinal indexes `DAT_0056dc40` for the icon. The
-    /// `itemdata.dat`→ordinal mapping lives on the server and is absent from
-    /// the client. With no server pushing a mask here, this is a fixed roster
-    /// of real catalog records (so the icons are genuine), and selecting an
-    /// item is a **visual affordance only** — it changes no shot, damage, or
-    /// wire traffic, exactly as the real client's selection wouldn't.
-    public private(set) var battleItems: [BattleItem] = [
-        BattleItem(record: 0, count: 2),   // Dual
-        BattleItem(record: 2, count: 1),   // Dual+
-        BattleItem(record: 9, count: 2),   // Power up
-        BattleItem(record: 1, count: 1),   // Teleport
-        BattleItem(record: 8, count: 1),   // Change Wind
+    /// The eleven battle-usable items, ordinal-ordered — a **decomp-exact**
+    /// table: names + `DAT_0056dc40[0…10]` icon codes from `703fd5f`
+    /// (every code cross-checks against the matching `itemdata.dat` record's
+    /// `0x30` field).
+    public static let allBattleItems: [BattleItem] = [
+        BattleItem(ordinal: 0, name: "Dual", iconCode: 0xff01),
+        BattleItem(ordinal: 1, name: "Blood", iconCode: 0x0003),
+        BattleItem(ordinal: 2, name: "Energy up 2", iconCode: 0xff07),
+        BattleItem(ordinal: 3, name: "Energy up 1", iconCode: 0x0007),
+        BattleItem(ordinal: 4, name: "Dual+", iconCode: 0xff02),
+        BattleItem(ordinal: 5, name: "Change Wind", iconCode: 0x000f),
+        BattleItem(ordinal: 6, name: "Team Teleport", iconCode: 0xff0b),
+        BattleItem(ordinal: 7, name: "Bunge shot", iconCode: 0x0001),
+        BattleItem(ordinal: 8, name: "Power up", iconCode: 0x0002),
+        BattleItem(ordinal: 9, name: "Thunder", iconCode: 0xff06),
+        BattleItem(ordinal: 10, name: "Teleport", iconCode: 0xff0a),
     ]
+
+    /// The player's owned-item bitmask (bit *i* = owns battle item *i*) — the
+    /// real wire shape.
+    ///
+    /// **Effect-free, and an invented ownership set — both faithful to the
+    /// client's actual role.** The decomp (`ba1715b`/`703fd5f`; PROTOCOL.md
+    /// "Item availability") confirms there is **no client→server item-use
+    /// action**: item effects (Dual, Power-up, Teleport, …) resolve
+    /// server-side and are broadcast back (action `0x8400`), so the client
+    /// never transmits an item use — selecting one is inherently a display
+    /// affordance. Ownership itself arrives as a server-pushed 64-bit
+    /// bitmask, which the Ready Room builder packs into its loadout array by
+    /// ordinal. Offline there's no server pushing it, so this is a fixed
+    /// default set; the item *identities and icons* are decomp-exact.
+    public private(set) var ownedItems: UInt64 = (
+        1 << 0 | 1 << 4 | 1 << 5 | 1 << 8 | 1 << 9 | 1 << 10   // Dual, Dual+, Change Wind, Power up, Thunder, Teleport
+    )
+
+    /// The owned battle items, in ordinal order — what the quick-bar shows
+    /// (mirrors the loadout builder scanning the mask low-bit first).
+    public var battleItems: [BattleItem] {
+        Self.allBattleItems.filter { ownedItems & (1 << $0.ordinal) != 0 }
+    }
 
     /// The highlighted loadout slot, if any — visual selection only.
     public private(set) var selectedItemIndex: Int?

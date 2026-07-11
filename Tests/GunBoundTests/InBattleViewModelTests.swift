@@ -51,6 +51,22 @@ struct InBattleViewModelTests {
         #expect(own.y == InBattleViewModel.halfView.y)
     }
 
+    /// The owned-item bitmask drives the quick-bar: the shown items are the
+    /// owned ordinals in order, with decomp-exact identities.
+    @Test func battleItemsFollowTheOwnershipMask() {
+        let (viewModel, _) = makeViewModel()
+        // The default mask owns Dual(0), Dual+(4), Change Wind(5),
+        // Power up(8), Thunder(9), Teleport(10) — in ordinal order.
+        #expect(viewModel.battleItems.map(\.name) == [
+            "Dual", "Dual+", "Change Wind", "Power up", "Thunder", "Teleport",
+        ])
+        #expect(viewModel.battleItems.first?.ordinal == 0)
+        #expect(viewModel.battleItems.first?.iconCode == 0xff01)
+        // The full ordinal table is the eleven battle-usable items.
+        #expect(InBattleViewModel.allBattleItems.count == 11)
+        #expect(InBattleViewModel.allBattleItems[1].name == "Blood")
+    }
+
     /// The item quick-bar: clicking a slot highlights it (visual only, no
     /// combat effect); clicking it again clears the highlight; a click off
     /// the bar leaves the selection alone.
