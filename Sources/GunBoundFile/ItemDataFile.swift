@@ -106,13 +106,20 @@ public enum ItemDataFile {
         /// `frame - 1` when disabled; the high byte selects sheet
         /// `0x2713` (`sheetIndex 0`) or `0x2714` (`sheetIndex 1`).
         public var shelfIcon: ShelfIcon {
-            let pair = Int(field0x30 & 0xff)
-            return ShelfIcon(
-                sheetIndex: (field0x30 & 0xff00) != 0 ? 1 : 0,
-                enabledFrame: pair * 2 - 2,
-                disabledFrame: pair * 2 - 1
-            )
+            ItemDataFile.shelfIcon(forCode: field0x30)
         }
+    }
+
+    /// Decodes a packed shelf-icon code (an `itemdata.dat` `0x30` field, or a
+    /// `DAT_0056dc40` battle-item-ordinal entry — same encoding) into its
+    /// sheet + frame pair (decomp `fc6a7cb`/`703fd5f`).
+    public static func shelfIcon(forCode code: UInt16) -> ShelfIcon {
+        let pair = Int(code & 0xff)
+        return ShelfIcon(
+            sheetIndex: (code & 0xff00) != 0 ? 1 : 0,
+            enabledFrame: pair * 2 - 2,
+            disabledFrame: pair * 2 - 1
+        )
     }
 
     /// A decoded shelf-icon reference (see `ItemRecord.shelfIcon`).
