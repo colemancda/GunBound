@@ -15,8 +15,10 @@ import GunBound
 @MainActor
 public final class ChannelUserListWidget: Widget {
 
-    /// The decomp's fixed panel rect.
-    public static let defaultFrame = Rect(x: 572, y: 287, width: 209, height: 259)
+    /// The decomp's fixed panel rect. `nonisolated` (and computed, not
+    /// stored) so it stays usable from a nonisolated context, e.g. as a
+    /// default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 572, y: 287, width: 209, height: 259) }
 
     /// Rows visible at once — the decomp scrollbar's page size.
     public static let visibleRows = 7
