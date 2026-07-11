@@ -59,3 +59,23 @@ import Testing
         #expect(standard.spriteName(.head) == "fh00000.img")
     }
 }
+
+@Suite struct AvatarShopItemCodeTests {
+
+    /// Packs and unpacks losslessly for every category.
+    @Test func roundTripsAllCategories() {
+        for category in AvatarEquipment.Category.allCases {
+            let part = AvatarEquipment.Part(rawValue: 0x8005)
+            let code = AvatarShopItemCode(category: category, part: part)
+            #expect(code.category == category)
+            #expect(code.part == part)
+        }
+    }
+
+    /// A code built from a raw value with an out-of-range category index
+    /// fails to resolve rather than aliasing another category.
+    @Test func unknownCategoryIndexResolvesToNil() {
+        let code = AvatarShopItemCode(rawValue: 0x8005 | (0xff << 16))
+        #expect(code.category == nil)
+    }
+}
