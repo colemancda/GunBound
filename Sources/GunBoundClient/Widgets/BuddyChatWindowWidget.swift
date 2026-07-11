@@ -17,7 +17,9 @@ import GunBound
 public final class BuddyChatWindowWidget: Widget {
 
     /// The runtime panel rect (also `buddy_window_back.img`'s size).
-    public static let defaultFrame = Rect(x: 541, y: 272, width: 256, height: 291)
+    /// `nonisolated` (and computed, not stored) so it stays usable from a
+    /// nonisolated context, e.g. as a default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 541, y: 272, width: 256, height: 291) }
 
     /// How many log rows are visible at once (page size).
     public static let visibleRows = 15
