@@ -261,6 +261,63 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Seconds left on the acting player's turn; expiry forfeits it.
     public private(set) var turnRemaining: Double = InBattleViewModel.turnDuration
 
+    // MARK: - Battle items (visual only)
+
+    /// One loadout entry: a battle consumable's `itemdata.dat` record index
+    /// and how many the player brought in.
+    public struct BattleItem: Equatable, Sendable {
+        /// Index into the parsed `itemdata.dat` records (drives the icon).
+        public let record: Int
+        public var count: Int
+        public init(record: Int, count: Int) {
+            self.record = record
+            self.count = count
+        }
+    }
+
+    /// The player's battle item loadout.
+    ///
+    /// **Invented, and deliberately effect-free.** The original stores the
+    /// battle loadout in an undecoded per-client array (`param_1+0x518`)
+    /// whose item identifiers match no decoded `itemdata.dat` field, and the
+    /// item-use battle action and per-item effects are likewise undecoded
+    /// (the client is server-authoritative). So this is a fixed placeholder
+    /// roster, and selecting an item is a **visual affordance only** — it
+    /// changes no shot, damage, or wire traffic. Records chosen from the
+    /// real catalog so the icons are genuine.
+    public private(set) var battleItems: [BattleItem] = [
+        BattleItem(record: 0, count: 2),   // Dual
+        BattleItem(record: 2, count: 1),   // Dual+
+        BattleItem(record: 9, count: 2),   // Power up
+        BattleItem(record: 1, count: 1),   // Teleport
+        BattleItem(record: 8, count: 1),   // Change Wind
+    ]
+
+    /// The highlighted loadout slot, if any — visual selection only.
+    public private(set) var selectedItemIndex: Int?
+
+    /// The item quick-bar's slot strip: a left-to-right row above the bottom
+    /// HUD bar. Uniform slots (the double-wide items are drawn scaled to fit
+    /// by the view); geometry is our own, as the original's bar lives in the
+    /// undecodable `.xtf` interface overlay.
+    public static let itemBarOrigin = (x: Float(548), y: Float(520))
+    public static let itemSlotSize = (width: Float(38), height: Float(33))
+
+    public static func itemSlotRect(at index: Int) -> Rect {
+        Rect(
+            x: itemBarOrigin.x + Float(index) * itemSlotSize.width,
+            y: itemBarOrigin.y,
+            width: itemSlotSize.width,
+            height: itemSlotSize.height
+        )
+    }
+
+    /// Toggles the highlighted loadout slot (visual only). Ignites nothing.
+    public func selectItem(at index: Int) {
+        guard battleItems.indices.contains(index) else { return }
+        selectedItemIndex = (selectedItemIndex == index) ? nil : index
+    }
+
     /// The battle's game mode, from the start notification's settings
     /// (the `settings >> 16` mode word). Solo/Tag play as eliminations;
     /// Score adds shared team life pools with respawns. Jewel renders its
@@ -391,6 +448,7 @@ public final class InBattleViewModel: ScreenViewModel {
         damageLedger = []
         remoteAim = nil
         shotAttacker = nil
+        selectedItemIndex = nil
         moveBudget = Self.moveBudgetPerTurn
         clock = 0
         chatLines = []
@@ -683,7 +741,15 @@ public final class InBattleViewModel: ScreenViewModel {
             camera.y += Float(steps) * 40
             clampCamera()
 
-        case .pointerDown, .pointerUp, .key:
+        case .pointerDown(let x, let y):
+            // The item quick-bar: click a slot to highlight it (visual only).
+            if let index = battleItems.indices.first(where: {
+                Self.itemSlotRect(at: $0).contains(x: x, y: y)
+            }) {
+                selectItem(at: index)
+            }
+
+        case .pointerUp, .key:
             break
         }
     }

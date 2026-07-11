@@ -51,6 +51,28 @@ struct InBattleViewModelTests {
         #expect(own.y == InBattleViewModel.halfView.y)
     }
 
+    /// The item quick-bar: clicking a slot highlights it (visual only, no
+    /// combat effect); clicking it again clears the highlight; a click off
+    /// the bar leaves the selection alone.
+    @Test func itemBarSelectionIsVisualOnly() {
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.selectedItemIndex == nil)
+        #expect(!viewModel.battleItems.isEmpty)
+
+        let slot1 = InBattleViewModel.itemSlotRect(at: 1)
+        viewModel.handle(.pointerDown(x: slot1.x + 4, y: slot1.y + 4))
+        #expect(viewModel.selectedItemIndex == 1)
+
+        // Re-click deselects.
+        viewModel.handle(.pointerDown(x: slot1.x + 4, y: slot1.y + 4))
+        #expect(viewModel.selectedItemIndex == nil)
+
+        // A click nowhere near the bar changes nothing.
+        viewModel.handle(.pointerDown(x: slot1.x + 4, y: slot1.y + 4))
+        viewModel.handle(.pointerDown(x: 5, y: 5))
+        #expect(viewModel.selectedItemIndex == 1)
+    }
+
     /// The camera clamps to the world bounds and pans with the edge bands.
     @Test func cameraClampsAndEdgeScrolls() {
         let (viewModel, _) = makeViewModel()
