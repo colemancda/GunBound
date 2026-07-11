@@ -461,16 +461,19 @@ public final class InBattleScreen: GameScreen {
         return art.textures.last
     }
 
-    /// Loads a weapon's bullet art, preferring its own variant letter
-    /// (shot 1 = `n`, shot 2 = `p`, SS = `s`) and falling back through the
-    /// others — the archive's per-mobile coverage is uneven.
+    /// Loads a weapon's bullet art, preferring its own variant letter and
+    /// falling back through the others — the archive's per-mobile coverage
+    /// is uneven. The letters are decomp-confirmed (`Mobile00_MainAction`
+    /// dispatch): **Shot 1 = `n`** (`SpawnPrimaryShot`, param_4 0), **Shot 2
+    /// = `s`** (`SpawnPrimaryShot`, param_4 1 super), **SS = `p`**
+    /// (`SpawnSuperShot`).
     private func loadBulletArt(mobile: Mobile, weapon: InBattleViewModel.Weapon, renderer: ClientRenderer) -> BulletArt? {
         guard let assets else { return nil }
         let variants: [String]
         switch weapon {
-        case .shot1: variants = ["n", "p", "s"]
-        case .shot2: variants = ["p", "n", "s"]
-        case .special: variants = ["s", "p", "n"]
+        case .shot1: variants = ["n", "s", "p"]
+        case .shot2: variants = ["s", "n", "p"]
+        case .special: variants = ["p", "s", "n"]
         }
         for variant in variants {
             let base = "bullet\(mobile.sheetNumber)\(variant)"
