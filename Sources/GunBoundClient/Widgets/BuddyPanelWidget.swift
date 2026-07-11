@@ -20,7 +20,9 @@ import GunBound
 public final class BuddyPanelWidget: Widget {
 
     /// The decomp's fixed panel rect — also `buddy_back.img`'s natural size.
-    public static let defaultFrame = Rect(x: 568, y: 11, width: 211, height: 267)
+    /// `nonisolated` (and computed, not stored) so it stays usable from a
+    /// nonisolated context, e.g. as a default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 568, y: 11, width: 211, height: 267) }
 
     /// Buddy names shown in the list band; the counter reflects the count.
     public var buddies: [String] = [] {
