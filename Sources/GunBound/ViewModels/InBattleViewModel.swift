@@ -277,14 +277,20 @@ public final class InBattleViewModel: ScreenViewModel {
 
     /// The player's battle item loadout.
     ///
-    /// **Invented, and deliberately effect-free.** The original stores the
-    /// battle loadout in an undecoded per-client array (`param_1+0x518`)
-    /// whose item identifiers match no decoded `itemdata.dat` field, and the
-    /// item-use battle action and per-item effects are likewise undecoded
-    /// (the client is server-authoritative). So this is a fixed placeholder
-    /// roster, and selecting an item is a **visual affordance only** — it
-    /// changes no shot, damage, or wire traffic. Records chosen from the
-    /// real catalog so the icons are genuine.
+    /// **A fixed stand-in, and deliberately effect-free — which is faithful
+    /// to the client's real role.** The decomp (`ba1715b`; PROTOCOL.md
+    /// "Item availability") confirms there is **no client→server item-use
+    /// action**: item effects (Dual, Power-up, Teleport, …) are resolved
+    /// server-side and broadcast back (action `0x8400`), so the client never
+    /// transmits an item use. The loadout itself arrives as a **server-pushed
+    /// 64-bit ownership bitmask** (bit *i* = owns battle item *i*, ordinals
+    /// 0–10), which the Ready Room builder packs into its loadout array;
+    /// each ordinal indexes `DAT_0056dc40` for the icon. The
+    /// `itemdata.dat`→ordinal mapping lives on the server and is absent from
+    /// the client. With no server pushing a mask here, this is a fixed roster
+    /// of real catalog records (so the icons are genuine), and selecting an
+    /// item is a **visual affordance only** — it changes no shot, damage, or
+    /// wire traffic, exactly as the real client's selection wouldn't.
     public private(set) var battleItems: [BattleItem] = [
         BattleItem(record: 0, count: 2),   // Dual
         BattleItem(record: 2, count: 1),   // Dual+
