@@ -13,12 +13,14 @@ import GunBound
 @MainActor
 public final class AddBuddyDialogWidget: Widget {
 
-    /// The runtime panel rect (also `buddy2.img`'s size).
-    public static let defaultFrame = Rect(x: 281, y: 206, width: 242, height: 157)
+    /// The runtime panel rect (also `buddy2.img`'s size). `nonisolated` (and
+    /// computed, not stored) so it stays usable from a nonisolated context,
+    /// e.g. as a default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 281, y: 206, width: 242, height: 157) }
 
     /// The default prompt (localized id ~`0x2718` in the original); the screen
     /// can pass the `Language.txt` string instead.
-    public static let defaultMessage = "To add your friends' ID, click his/her ID in the channel."
+    public nonisolated static var defaultMessage: String { "To add your friends' ID, click his/her ID in the channel." }
 
     public let nameField: TextFieldWidget
     public let addButton: ButtonWidget
