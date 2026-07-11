@@ -266,11 +266,10 @@ public final class AvatarShopScreen: GameScreen {
             )
         }
 
-        // Owned-item IDs down the inventory rows until the id→name mapping
-        // is decoded.
+        // Owned items, resolved to real catalog names via AvatarShopItemCode.
         if let font {
-            for (row, id) in viewModel.inventory.prefix(11).enumerated() {
-                font.draw("\(id)", x: AvatarShopViewModel.myAvatarPanelRect.x + 18, y: AvatarShopViewModel.myAvatarPanelRect.y + 10 + Float(row) * 19, using: renderer)
+            for (row, item) in viewModel.ownedItems.prefix(11).enumerated() {
+                font.draw(item.name, x: AvatarShopViewModel.myAvatarPanelRect.x + 18, y: AvatarShopViewModel.myAvatarPanelRect.y + 10 + Float(row) * 19, using: renderer)
             }
             // The top info bar: account name, rank, and the currency wells.
             // Rank/GP/GOLD/CASH have no wire source yet, so they read 0 —
