@@ -7,13 +7,11 @@
 /// `{gender}{category}.dat` catalog); `0xffff` means nothing is worn in
 /// that slot.
 ///
-/// **Word-order caveat:** Body (word 0) and Glasses (word 2) are confirmed;
-/// which of words 1/3 is Head vs Flag is **unresolved from static
-/// analysis** — `LoadRoomSlotAvatar` (`0x4dc5c0`) reads word 1 = Head,
-/// `LoadReadyRoomSlotAvatar` (`0x4431a0`) reads the opposite, exactly one
-/// is transposed, and the `0x2105` writer only pins Body/Glasses. This
-/// follows `LoadRoomSlotAvatar` until the decomp's live equip probe
-/// (`tools/debug/avatar-probe.sh`) settles it.
+/// **Word order (all four confirmed):** word 0 = Body, word 1 = Head,
+/// word 2 = Glasses, word 3 = Flag — resolved from `ComposeAvatarSprites`
+/// (`0x4d1500`), which builds each part's filename `%c{b,h,g}%05d.img`
+/// from words 0/1/2 in order (the flag flies as a separate banner, not
+/// composited). This matches `LoadRoomSlotAvatar`'s reading.
 public struct AvatarEquipment: RawRepresentable, Equatable, Hashable, Sendable {
 
     public let rawValue: UInt64

@@ -3,9 +3,9 @@ import Testing
 
 @Suite struct AvatarEquipmentTests {
 
-    /// The four little-endian u16 words map body / head / glasses / flag
-    /// (word 1 = Head, word 3 = Flag per `LoadRoomSlotAvatar` `0x4dc5c0`;
-    /// the Head/Flag order is provisional — see `AvatarEquipment`'s note).
+    /// The four little-endian u16 words map body / head / glasses / flag —
+    /// order confirmed from `ComposeAvatarSprites` (`0x4d1500`): word 0 body,
+    /// word 1 head, word 2 glasses, word 3 flag.
     @Test func unpacksTheFourWords() {
         let outfit = AvatarEquipment(rawValue: 0x0001_8001_8000_8005)
         #expect(outfit.body.rawValue == 0x8005)
