@@ -100,9 +100,10 @@ struct InBattleViewModelTests {
         viewModel.handle(.scroll(x: 400, y: 300, steps: 200))
         #expect(viewModel.camera.y == 1800 - InBattleViewModel.halfView.y)
 
-        // Pointer in the left edge band pans the camera left over time.
+        // Pointer in the left edge band (decomp-exact: within 5px of the
+        // screen edge) pans the camera left over time.
         let before = viewModel.camera.x
-        viewModel.handle(.pointerMoved(x: 5, y: 300))
+        viewModel.handle(.pointerMoved(x: 2, y: 300))
         viewModel.update(deltaTime: 0.5)
         #expect(viewModel.camera.x < before)
         #expect(viewModel.camera.x >= InBattleViewModel.halfView.x)

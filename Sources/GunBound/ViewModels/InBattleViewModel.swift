@@ -198,7 +198,10 @@ public final class InBattleViewModel: ScreenViewModel {
     /// Half the 800×600 view — the original biases world→screen by
     /// (+400, +0x12a) after subtracting the camera.
     public static let halfView = (x: Float(400), y: Float(0x12a))
-    public static let edgeBand: Float = 24
+    /// Decomp-exact edge-scroll trigger band (`State11_InBattle_OnTick`):
+    /// the cursor triggers scroll within 5px of the 800×600 screen edge
+    /// (`<5` / `>0x31b`=795 for X, `<5` / `>0x253`=595 for Y).
+    public static let edgeBand: Float = 5
     public static let edgeScrollSpeed: Float = 480
     /// Elevation limits (degrees) and the per-keypress step.
     public static let aimRange: ClosedRange<Float> = 10...80
