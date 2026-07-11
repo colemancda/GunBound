@@ -105,9 +105,9 @@ struct ReadyRoomViewModelTests {
         #expect(buttons[1].name == "b_ready_3vs3.img")
         #expect(buttons[2].name == "b_ready_aside.img")
         #expect(buttons[5].name == "b_ready_death72.img")
-        #expect(buttons[0].rect == Rect(x: 317, y: 228, width: 81, height: 24))
+        #expect(buttons[0].rect == Rect(x: 317, y: 225, width: 81, height: 24))
         #expect(buttons[1].rect.x == 403)
-        #expect(buttons[4].rect == Rect(x: 317, y: 288, width: 81, height: 24))
+        #expect(buttons[4].rect == Rect(x: 317, y: 285, width: 81, height: 24))
     }
 
     /// The item shelf's 3×3 grid is decomp-exact: 70×45 cells at (528,403).

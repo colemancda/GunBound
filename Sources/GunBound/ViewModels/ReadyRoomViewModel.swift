@@ -163,11 +163,16 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         )
     }
 
-    /// The six option-value buttons under the map panel (81×24, two columns
-    /// × three rows — screenshot-measured). Mode and capacity render live
-    /// (both decoded); the A SIDE / SSDEATH / ATTACK / DEATH72 slots belong
-    /// to the undecoded option groups A–D and show the fresh-room defaults
-    /// until their bitfield semantics are cracked.
+    /// The six option-value buttons under the map panel — **decomp-exact
+    /// geometry** (`ApplyRoomSettings` `0x4daa60` `CreateButtonWidget` calls:
+    /// 0x51×0x18 = 81×24, columns x 0x13d/0x193 = 317/403, rows y
+    /// 0xe1/0xff/0x11d = 225/255/285). Mode (settings bits 18–19) and
+    /// capacity (`JoinRoomResponse.capacity`) render live. The A SIDE /
+    /// SSDEATH / ATTACK / DEATH72 slots map to specific settings fields —
+    /// A-SIDE = bit 4, group B = bits 8–11, group C = bits 12–13, ATTACK =
+    /// bit 7 / group D = bits 14–15 — but the original draws each via a
+    /// shared `b_ready_option` toggle whose per-value label art isn't yet
+    /// pinned, so these still show fixed default labels.
     public var optionButtons: [(name: String, rect: Rect)] {
         let modeNames = ["b_ready_solo.img", "b_ready_score.img", "b_ready_tag.img", "b_ready_jewel.img"]
         let capacityNames: [RoomCapacity: String] = [
@@ -187,7 +192,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         return names.enumerated().map { (index, name) in
             (name, Rect(
                 x: index % 2 == 0 ? 317 : 403,
-                y: 228 + Float(index / 2) * 30,
+                y: 225 + Float(index / 2) * 30,
                 width: 81,
                 height: 24
             ))
