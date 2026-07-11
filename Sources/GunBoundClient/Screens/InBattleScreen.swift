@@ -54,6 +54,8 @@ public final class InBattleScreen: GameScreen {
     /// offsets — the vtable only pins which function renders this, not its
     /// pixel layout).
     private var hudBarTexture: ClientTexture?
+    /// Item quick-bar icons, parallel to `viewModel.battleItems`.
+    private var itemBarTextures: [ClientTexture?] = []
     /// The movement gauge chrome (`play_back.img` frame 6, 485×26): the
     /// "MOVE" label plus its empty track.
     private var moveBarTexture: ClientTexture?
@@ -96,6 +98,17 @@ public final class InBattleScreen: GameScreen {
         moveBarTexture = renderer.texture(named: "play_back.img", frame: 6, assets: assets)
         font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
+        // The item quick-bar icons: each loadout record's own field0x30
+        // shelf-icon code selects a frame in the in-battle item sheets
+        // (`ready_item1.img` single-slot / `ready_item2.img` double-slot).
+        let itemRecords = (try? assets.itemData()) ?? []
+        itemBarTextures = viewModel.battleItems.map { item in
+            guard itemRecords.indices.contains(item.record) else { return nil }
+            let icon = itemRecords[item.record].shelfIcon
+            let sheet = icon.sheetIndex == 1 ? "ready_item2.img" : "ready_item1.img"
+            return renderer.texture(named: sheet, frame: icon.enabledFrame, assets: assets)
+        }
+
         // Battle music: `stage%d.mp3` by stage id, or one of the six tracks
         // at random for the random stage — the decompiled `PlayMusicTrack`
         // behaviour (`stage id or rand()%6 + 1`).
@@ -118,6 +131,7 @@ public final class InBattleScreen: GameScreen {
         assets = nil
         dotTexture = nil
         hudBarTexture = nil
+        itemBarTextures = []
         moveBarTexture = nil
         font = nil
         audio?.stop()
@@ -396,6 +410,30 @@ public final class InBattleScreen: GameScreen {
         if let dotTexture, viewModel.phase == .charging {
             let width = 401 * viewModel.power
             renderer.draw(dotTexture, in: Rect(x: 243, y: 568, width: width, height: 23), tint: (255, UInt8(220 - viewModel.power * 160), 80))
+        }
+
+        // The item quick-bar: the player's loadout icons in a strip above
+        // the bottom HUD bar, the selected slot lit. Visual only — the
+        // items have no combat effect (their wire action/behaviors are
+        // undecoded; see `InBattleViewModel.battleItems`).
+        for (index, item) in viewModel.battleItems.enumerated() {
+            let slot = InBattleViewModel.itemSlotRect(at: index)
+            if let dotTexture {
+                // A dark slot backing, brighter when selected.
+                let shade: UInt8 = index == viewModel.selectedItemIndex ? 60 : 25
+                renderer.draw(dotTexture, in: slot, tint: (shade, shade, shade))
+            }
+            if index < itemBarTextures.count, let icon = itemBarTextures[index] {
+                let (w, h) = renderer.size(of: icon)
+                let scale = min(1, min((slot.width - 2) / max(1, w), (slot.height - 2) / max(1, h)))
+                let dw = w * scale, dh = h * scale
+                renderer.draw(icon, in: Rect(x: slot.x + (slot.width - dw) / 2, y: slot.y + (slot.height - dh) / 2, width: dw, height: dh), tint: nil)
+            }
+            if index == viewModel.selectedItemIndex, let dotTexture {
+                renderer.draw(dotTexture, in: slot, tint: (255, 220, 120), blend: .additive)
+            }
+            // The carried count in the slot corner.
+            font.draw("\(item.count)", x: slot.x + slot.width - 9, y: slot.y + slot.height - 12, tint: (255, 255, 255), using: renderer)
         }
 
         // The battle chat overlay: the rotating history drawn over the
