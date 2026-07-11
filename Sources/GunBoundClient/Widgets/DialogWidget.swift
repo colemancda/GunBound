@@ -16,12 +16,14 @@ import GunBound
 public final class DialogWidget: Widget {
 
     /// The decomp's fixed dialog rect — also `error_back.img`'s natural size.
-    public static let defaultFrame = Rect(x: 249, y: 193, width: 304, height: 176)
+    /// `nonisolated` (and computed, not stored) so it stays usable from a
+    /// nonisolated context, e.g. as a default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 249, y: 193, width: 304, height: 176) }
 
     /// The OK button's decomp position (`b_error_confirm` at (0x1c6, 0x14b),
     /// size 0x4a×0x1a). Callers usually override the size with the loaded
     /// texture's own dimensions.
-    public static let defaultConfirmFrame = Rect(x: 454, y: 331, width: 74, height: 26)
+    public nonisolated static var defaultConfirmFrame: Rect { Rect(x: 454, y: 331, width: 74, height: 26) }
 
     /// The full message. Following the original (`ShowErrorDialog` renders
     /// one wrapped string, `GameTick` blits its first line into the title
