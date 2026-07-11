@@ -93,7 +93,11 @@ func runClient(assetsDirectory: URL, fullscreen: Bool, network: NetworkConfig) t
         SDL2AudioPlayer(coordinator: music)
     }
 
-    let stateMachine = try GameStateMachine(context: context, initialMode: .logo1) { [unowned context] mode in
+    // Decomp-confirmed normal boot path: InitGame -> ChangeGameState(6) =
+    // Logo2 -> Title -> ServerSelect. Logo1(5) is an InitGame-failure
+    // fallback only (ARCHITECTURE.md "Screen flow"), not part of a normal
+    // cold boot, so it's reachable but not the entry point.
+    let stateMachine = try GameStateMachine(context: context, initialMode: .logo2) { [unowned context] mode in
         makeGameScreen(for: mode, delegate: context)
     }
 
