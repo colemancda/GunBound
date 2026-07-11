@@ -399,6 +399,19 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         return Self.parseAvatar(plaintext)
     }
 
+    /// Purchases an avatar part (`0x6010` gold / `0x6011` cash) and awaits
+    /// the server's acknowledgement (`0x6017`). The item code is our own
+    /// packed scheme (see `AvatarShopItemCode`) — the store appends it
+    /// verbatim to `avatarInventory`, and a follow-up `fetchAvatar()` will
+    /// see it.
+    public func buyAvatarItem(_ code: AvatarShopItemCode, withGold: Bool) async throws {
+        if withGold {
+            _ = try await request(BuyGoldRequest(avatar: code.rawValue), response: BuyResponse.self)
+        } else {
+            _ = try await request(BuyCashRequest(avatar: code.rawValue), response: BuyResponse.self)
+        }
+    }
+
     /// Parses a decrypted avatar plaintext (`equipped` u64 LE, `count` u16 LE,
     /// then `count` × u32 LE item IDs). Truncated/partial data yields whatever
     /// parsed cleanly rather than throwing.
