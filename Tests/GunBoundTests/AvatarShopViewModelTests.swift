@@ -120,6 +120,22 @@ struct AvatarShopViewModelTests {
         #expect(viewModel.previewStats == [.init(stat: .defense, value: 6)])
     }
 
+    /// Owned-item codes resolve to real catalog names via
+    /// `AvatarShopItemCode`; a code from an unloaded/unknown category falls
+    /// back to a numeric label instead of crashing or showing garbage.
+    @Test func ownedItemsResolveNamesFromCatalog() {
+        let (viewModel, delegate) = makeViewModel()
+        viewModel.setCatalog([item(6, "Rome Helmet")], for: .head)
+
+        let helmetCode = AvatarShopItemCode(category: .head, part: AvatarEquipment.Part(rawValue: 0x8006))
+        delegate.session.avatar = PlayerAvatar(equipped: 0, inventory: [helmetCode.rawValue, 0xdead_beef])
+
+        let owned = viewModel.ownedItems
+        #expect(owned.count == 2)
+        #expect(owned[0].name == "Rome Helmet")
+        #expect(owned[1].name == "Item 3735928559")
+    }
+
     @Test func exitReturnsToLobby() {
         let (viewModel, delegate) = makeViewModel()
         let exit = AvatarShopViewModel.exitRect

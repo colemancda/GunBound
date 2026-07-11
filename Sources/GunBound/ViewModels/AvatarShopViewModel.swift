@@ -169,6 +169,28 @@ public final class AvatarShopViewModel: ScreenViewModel {
     /// Owned item IDs for the inventory list.
     public var inventory: [UInt32] { delegate.session.avatar?.inventory ?? [] }
 
+    /// One owned item, resolved back to a display name where possible.
+    public struct OwnedItem: Equatable, Sendable {
+        public let code: UInt32
+        public let name: String
+    }
+
+    /// The inventory list, with each code resolved to a name via
+    /// `AvatarShopItemCode` + the matching category's catalog — works for
+    /// anything bought through this client's own `Buy` (see
+    /// `AvatarShopItemCode`'s doc for why an arbitrary server-origin code
+    /// might not resolve).
+    public var ownedItems: [OwnedItem] {
+        inventory.map { raw in
+            let code = AvatarShopItemCode(rawValue: raw)
+            guard let category = code.category,
+                  let match = catalog(for: category).first(where: { $0.id == code.part.id }) else {
+                return OwnedItem(code: raw, name: "Item \(raw)")
+            }
+            return OwnedItem(code: raw, name: match.name)
+        }
+    }
+
     /// The account name shown in the top info bar.
     public var username: String { delegate.network.username }
 
@@ -275,8 +297,7 @@ public final class AvatarShopViewModel: ScreenViewModel {
             } else if Self.tryRect.contains(x: x, y: y) {
                 tryOnSelected()
             } else if Self.buyRect.contains(x: x, y: y) {
-                // Purchase needs the 0x6017 confirm → 0x6037 commit round-trip.
-                print("[GunBound] avatar-shop buy: \(selectedItem?.name ?? "no selection")")
+                buySelected()
             } else if Self.scrollUpRect.contains(x: x, y: y) {
                 turnPage(-1)
             } else if Self.scrollDownRect.contains(x: x, y: y) {
@@ -297,9 +318,16 @@ public final class AvatarShopViewModel: ScreenViewModel {
     }
 
     /// Fetches the player's avatar/inventory (opcode `0x6000`) into the
-    /// session so the preview and inventory list reflect the account.
+    /// session so the preview and inventory list reflect the account —
+    /// skipped once already fetched (use `refreshInventory()` to force it).
     private func loadInventory() {
-        guard delegate.session.avatar == nil, let client = delegate.client else { return }
+        guard delegate.session.avatar == nil else { return }
+        refreshInventory()
+    }
+
+    /// Always re-fetches the avatar/inventory, e.g. after a purchase.
+    private func refreshInventory() {
+        guard let client = delegate.client else { return }
         isLoading = true
         Task {
             defer { isLoading = false }
@@ -309,6 +337,23 @@ public final class AvatarShopViewModel: ScreenViewModel {
                 print("[GunBound] avatar inventory: \(avatar.inventory.count) item(s)")
             } catch {
                 print("[GunBound] couldn't fetch avatar: \(error)")
+            }
+        }
+    }
+
+    /// Buy: purchases the selected part with gold (the store shows both a
+    /// gold and cash price, but our single Buy button doesn't distinguish —
+    /// gold is the free-currency default) and refreshes the inventory on
+    /// success.
+    private func buySelected() {
+        guard let item = selectedItem, let client = delegate.client else { return }
+        let code = AvatarShopItemCode(category: selectedCategory, part: item.partCode)
+        Task {
+            do {
+                try await client.buyAvatarItem(code, withGold: true)
+                refreshInventory()
+            } catch {
+                print("[GunBound] couldn't buy \(item.name): \(error)")
             }
         }
     }
