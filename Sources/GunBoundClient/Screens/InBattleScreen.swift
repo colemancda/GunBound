@@ -98,13 +98,11 @@ public final class InBattleScreen: GameScreen {
         moveBarTexture = renderer.texture(named: "play_back.img", frame: 6, assets: assets)
         font = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
-        // The item quick-bar icons: each loadout record's own field0x30
-        // shelf-icon code selects a frame in the in-battle item sheets
-        // (`ready_item1.img` single-slot / `ready_item2.img` double-slot).
-        let itemRecords = (try? assets.itemData()) ?? []
+        // The item quick-bar icons: each owned item's ordinal icon code
+        // (`DAT_0056dc40[ordinal]`) decodes to a frame in the in-battle item
+        // sheets (`ready_item1.img` single-slot / `ready_item2.img` double).
         itemBarTextures = viewModel.battleItems.map { item in
-            guard itemRecords.indices.contains(item.record) else { return nil }
-            let icon = itemRecords[item.record].shelfIcon
+            let icon = ItemDataFile.shelfIcon(forCode: item.iconCode)
             let sheet = icon.sheetIndex == 1 ? "ready_item2.img" : "ready_item1.img"
             return renderer.texture(named: sheet, frame: icon.enabledFrame, assets: assets)
         }
@@ -412,11 +410,11 @@ public final class InBattleScreen: GameScreen {
             renderer.draw(dotTexture, in: Rect(x: 243, y: 568, width: width, height: 23), tint: (255, UInt8(220 - viewModel.power * 160), 80))
         }
 
-        // The item quick-bar: the player's loadout icons in a strip above
-        // the bottom HUD bar, the selected slot lit. Visual only — the
-        // items have no combat effect (their wire action/behaviors are
-        // undecoded; see `InBattleViewModel.battleItems`).
-        for (index, item) in viewModel.battleItems.enumerated() {
+        // The item quick-bar: the player's owned items in a strip above the
+        // bottom HUD bar, the selected slot lit. Visual only — items have no
+        // combat effect (the client has no item-use action; effects resolve
+        // server-side — see `InBattleViewModel.ownedItems`).
+        for index in viewModel.battleItems.indices {
             let slot = InBattleViewModel.itemSlotRect(at: index)
             if let dotTexture {
                 // A dark slot backing, brighter when selected.
@@ -432,8 +430,6 @@ public final class InBattleScreen: GameScreen {
             if index == viewModel.selectedItemIndex, let dotTexture {
                 renderer.draw(dotTexture, in: slot, tint: (255, 220, 120), blend: .additive)
             }
-            // The carried count in the slot corner.
-            font.draw("\(item.count)", x: slot.x + slot.width - 9, y: slot.y + slot.height - 12, tint: (255, 255, 255), using: renderer)
         }
 
         // The battle chat overlay: the rotating history drawn over the
