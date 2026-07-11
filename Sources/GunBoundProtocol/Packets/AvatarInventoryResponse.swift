@@ -5,75 +5,75 @@
 /// rentals rather than permanent purchases). Sent in response to
 /// `GetAvatarRequest` (`0x6000`), one packet per owned item.
 ///
-/// **Note:** Reconstructed from static analysis of the original client's
-/// `0x6002` handler, not a live packet capture or verified traffic. Field
-/// sizes/order/the length-prefix mechanism are confirmed; individual id
-/// fields' semantics (item ID vs. price, etc.) and `itemData`'s internal
-/// contents are not.
+/// **Decoded** (decomp `ab39248`, from `RenderInventoryItemDetail`
+/// `0x44b900`): a 25-byte (`0x19`) fixed head then a length-prefixed
+/// description blob. Wire layout —
+/// `id` (`u32`), **`name` (`char[12]` inline ASCII)**, `expirationDate`
+/// (`u32` `time_t`), `field` (`u32`, still unnamed), `descriptionLength`
+/// (`u8`), `description` (`u8[length]` ASCII). So the item **name ships
+/// inline** — the detail panel draws name + expiration + wrapped
+/// description + the `%05d.img` icon straight from the packet, with no
+/// separate id→name table needed. (An earlier pass mis-read the 12 name
+/// bytes as three `u32` id fields and the description as an opaque blob.)
 public struct AvatarInventoryResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .avatarInventoryResponse }
 
-    public let id0: UInt32
+    /// The item ID (drives the `%05d.img` icon), tracked as a running
+    /// min/max by the handler.
+    public let id: UInt32
 
-    public let id1: UInt32
-
-    public let id2: UInt32
-
-    public let id3: UInt32
+    /// The item's display name — 12-byte inline ASCII (`+0x04`).
+    public let name: String
 
     /// Unix timestamp (seconds since epoch) the item expires, parsed
     /// client-side into separate year/month/day fields via `_localtime`
     /// (not stored raw) — represented here as the raw wire value.
     public let expirationDate: UInt32
 
-    /// A 5th id field, distinct from `id0`-`id3`; fed to the same
-    /// outgoing-packet-checksum accumulator as `id0`, suggesting the two
-    /// form some kind of transaction/verification pair.
-    public let id4: UInt32
+    /// A 4-byte field at `+0x14`, fed to the same outgoing-packet-checksum
+    /// accumulator as `id` (suggesting the two form a transaction/
+    /// verification pair); its meaning is still unconfirmed.
+    public let field: UInt32
 
-    /// Variable-length trailing item data (item name string? serialized
-    /// equip-slot/color data? not decoded), length-prefixed by a single
-    /// byte on the wire.
-    public let itemData: [UInt8]
+    /// The item's description text — the length-prefixed blob, drawn
+    /// word-wrapped in the detail panel.
+    public let description: String
+
+    /// The name field's fixed on-wire width.
+    static let nameFieldLength = 12
 
     public init(
-        id0: UInt32,
-        id1: UInt32,
-        id2: UInt32,
-        id3: UInt32,
+        id: UInt32,
+        name: String,
         expirationDate: UInt32,
-        id4: UInt32,
-        itemData: [UInt8] = []
+        field: UInt32,
+        description: String = ""
     ) {
-        self.id0 = id0
-        self.id1 = id1
-        self.id2 = id2
-        self.id3 = id3
+        self.id = id
+        self.name = name
         self.expirationDate = expirationDate
-        self.id4 = id4
-        self.itemData = itemData
+        self.field = field
+        self.description = description
     }
 
     public init(parsing input: inout ParserSpan) throws {
-        self.id0 = try UInt32(parsingLittleEndian: &input)
-        self.id1 = try UInt32(parsingLittleEndian: &input)
-        self.id2 = try UInt32(parsingLittleEndian: &input)
-        self.id3 = try UInt32(parsingLittleEndian: &input)
+        self.id = try UInt32(parsingLittleEndian: &input)
+        self.name = try String(parsingFixedLengthASCII: &input, length: Self.nameFieldLength)
         self.expirationDate = try UInt32(parsingLittleEndian: &input)
-        self.id4 = try UInt32(parsingLittleEndian: &input)
+        self.field = try UInt32(parsingLittleEndian: &input)
         let length = try Int(UInt8(parsing: &input))
-        self.itemData = try [UInt8](parsing: &input, byteCount: length)
+        let bytes = try [UInt8](parsing: &input, byteCount: length)
+        self.description = String(decoding: bytes, as: UTF8.self)
     }
 
     public func encode(to output: inout ByteWriter) {
-        output.write(id0, endianness: .little)
-        output.write(id1, endianness: .little)
-        output.write(id2, endianness: .little)
-        output.write(id3, endianness: .little)
+        output.write(id, endianness: .little)
+        output.write(ascii: name, fixedLength: Self.nameFieldLength)
         output.write(expirationDate, endianness: .little)
-        output.write(id4, endianness: .little)
-        output.write(UInt8(itemData.count))
-        output.write(itemData)
+        output.write(field, endianness: .little)
+        let descriptionBytes = Array(description.utf8)
+        output.write(UInt8(descriptionBytes.count))
+        output.write(descriptionBytes)
     }
 }

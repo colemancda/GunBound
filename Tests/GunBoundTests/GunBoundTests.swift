@@ -190,24 +190,24 @@ import Testing
         #expect(decodedValue == value)
     }
 
-    /// No real packet capture is available for `0x6002` yet; this instead
-    /// verifies encode/decode agree with each other for the field layout
-    /// static analysis confirmed (see `AvatarInventoryResponse`'s doc comment).
+    /// No real packet capture is available for `0x6002` yet; this verifies
+    /// encode/decode agree for the decoded field layout (inline 12-byte name
+    /// + length-prefixed description — see `AvatarInventoryResponse`'s doc).
     @Test func avatarInventoryResponse_roundTrip() throws {
         let value = AvatarInventoryResponse(
-            id0: 1,
-            id1: 2,
-            id2: 3,
-            id3: 4,
+            id: 1,
+            name: "Space Marine",
             expirationDate: 1_800_000_000,
-            id4: 5,
-            itemData: [0xAA, 0xBB, 0xCC]
+            field: 5,
+            description: "Space marine uniform"
         )
         var encoder = GunBoundEncoder()
         let packet = encoder.encode(value, id: 0x0001)
         var decoder = GunBoundDecoder()
         let decodedValue = try decoder.decodePacket(AvatarInventoryResponse.self, from: packet.data)
         #expect(decodedValue == value)
+        #expect(decodedValue.name == "Space Marine")
+        #expect(decodedValue.description == "Space marine uniform")
     }
 
     @Test func loginRequest() throws {
