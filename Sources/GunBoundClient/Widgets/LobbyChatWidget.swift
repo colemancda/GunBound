@@ -19,12 +19,14 @@ import GunBound
 @MainActor
 public final class LobbyChatWidget: Widget {
 
-    /// The decomp's fixed lobby panel rect.
-    public static let defaultFrame = Rect(x: 23, y: 287, width: 549, height: 259)
+    /// The decomp's fixed lobby panel rect. `nonisolated` (and computed, not
+    /// stored) so it stays usable from a nonisolated context, e.g. as a
+    /// default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 23, y: 287, width: 549, height: 259) }
 
     /// The lobby panel's scrollbar page size (rows visible at once). The
     /// Ready Room variant passes 9.
-    public static let defaultVisibleRows = 13
+    public nonisolated static var defaultVisibleRows: Int { 13 }
 
     /// History rows visible at once — the panel's scrollbar page size.
     public let visibleRows: Int
