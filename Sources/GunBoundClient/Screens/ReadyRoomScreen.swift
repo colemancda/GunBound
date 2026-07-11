@@ -27,23 +27,17 @@ public final class ReadyRoomScreen: GameScreen {
     private var shelfArrowUp: ClientTexture?
     private var shelfArrowDown: ClientTexture?
 
-    /// The shelf's first page, in the original's on-screen order (from a
-    /// live screenshot), each entry naming its `itemdata.dat` record and
-    /// its icon's sheet/frame. The icon sheets pair a color frame with a
-    /// gray disabled frame per item; the record→frame table
-    /// (`DAT_0056dc40`) is undecoded, so this mapping was matched visually
-    /// (shovel = Bunge shot, bandage = Energy up 1, winged fish = Dual…).
-    private static let shelfCatalog: [(record: Int, image: String, frame: Int)] = [
-        (0, "ready_itemshop2.img", 0),    // Dual (600)
-        (4, "ready_itemshop1.img", 4),    // Blood (0)
-        (6, "ready_itemshop2.img", 12),   // Energy up 2 (300)
-        (5, "ready_itemshop1.img", 12),   // Energy up 1 (100)
-        (2, "ready_itemshop2.img", 2),    // Dual+ (250)
-        (8, "ready_itemshop1.img", 28),   // Change Wind (150)
-        (7, "ready_itemshop2.img", 20),   // Team Teleport (50)
-        (11, "ready_itemshop1.img", 0),   // Bunge shot (50)
-        (9, "ready_itemshop1.img", 2),    // Power up (150)
-    ]
+    /// The shelf's first page as `itemdata.dat` record indices, in the
+    /// original's on-screen order (from a live screenshot). Which records
+    /// populate the shelf at runtime — and their order — is still open in
+    /// the decomp (the `DAT_0056dc40` index is unresolved), so this list is
+    /// screenshot-derived; the *icons*, however, are now computed from each
+    /// record's own `field0x30` shelf-icon code (decomp `fc6a7cb`), not
+    /// hand-picked frames.
+    private static let shelfRecords = [0, 4, 6, 5, 2, 8, 7, 11, 9]
+    /// The two Ready Room item-shop icon sheets, indexed by the shelf code's
+    /// sheet flag (`0x2713`/`0x2714`).
+    private static let shelfSheets = ["ready_itemshop1.img", "ready_itemshop2.img"]
 
     /// Slot furniture from `ready_back.img`'s extra frames (screenshot-mapped):
     /// frame 1 = team A platform, 2 = team B platform, 3 = the idle pole,
@@ -100,12 +94,18 @@ public final class ReadyRoomScreen: GameScreen {
         poleReadyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 6, assets: assets)
         keyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 7, assets: assets)
 
-        // The item shelf: icon + itemdata.dat price per slot.
+        // The item shelf: each record's icon is decoded from its own
+        // field0x30 shelf-icon code (sheet + enabled frame), price from the
+        // record.
         let itemRecords = (try? assets.itemData()) ?? []
-        shelfItems = Self.shelfCatalog.compactMap { entry in
-            guard let texture = renderer.texture(named: entry.image, frame: entry.frame, assets: assets),
-                  itemRecords.indices.contains(entry.record) else { return nil }
-            return (texture, itemRecords[entry.record].price)
+        shelfItems = Self.shelfRecords.compactMap { index in
+            guard itemRecords.indices.contains(index) else { return nil }
+            let record = itemRecords[index]
+            let icon = record.shelfIcon
+            guard Self.shelfSheets.indices.contains(icon.sheetIndex),
+                  let texture = renderer.texture(named: Self.shelfSheets[icon.sheetIndex], frame: icon.enabledFrame, assets: assets)
+            else { return nil }
+            return (texture, record.price)
         }
         shelfArrowUp = renderer.texture(named: "b_ready_shopup.img", frame: 0, assets: assets)
         shelfArrowDown = renderer.texture(named: "b_ready_shopdown.img", frame: 0, assets: assets)
