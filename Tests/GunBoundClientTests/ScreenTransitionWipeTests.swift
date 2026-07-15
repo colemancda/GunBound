@@ -47,13 +47,23 @@ struct ScreenTransitionWipeTests {
 
     /// The wipe advances through its 11-step table on a wall-clock cadence
     /// and turns itself off (stops drawing) once the table is exhausted.
-    @Test func advancesAndThenStops() {
+    /// Each `update` call advances at most one table step — even a single
+    /// wildly inflated `deltaTime` (e.g. a stalled frame right after the new
+    /// screen's `onEnter` does synchronous loading) can't skip the whole
+    /// animation in one shot; it takes one call per step, 11 calls to finish.
+    @Test func advancesOneStepPerCallAndThenStops() {
         let wipe = ScreenTransitionWipe()
         wipe.begin()
         let renderer = RecordingRenderer()
 
-        // Well past 11 steps at the tuned per-step duration.
+        // A single, huge deltaTime only advances one step — still drawing.
         wipe.update(deltaTime: 1.0)
+        renderer.draws = []
+        wipe.draw(renderer)
+        #expect(!renderer.draws.isEmpty)
+
+        // Ten more calls (11 total) exhaust the table.
+        for _ in 0..<10 { wipe.update(deltaTime: 1.0) }
         renderer.draws = []
         wipe.draw(renderer)
         #expect(renderer.draws.isEmpty)

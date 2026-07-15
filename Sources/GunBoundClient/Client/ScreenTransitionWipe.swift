@@ -28,9 +28,9 @@ import GunBoundFile
 final class ScreenTransitionWipe {
 
     private static let table: [Float] = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 2]
-    /// Tuned for a snappy transition; the original's real per-tick rate
-    /// isn't recovered from the decomp.
-    private static let stepDuration = 0.02
+    /// Tuned for a snappy but clearly visible transition (~0.55s total);
+    /// the original's real per-tick rate isn't recovered from the decomp.
+    private static let stepDuration = 0.05
     private static let staircaseSteps = 48
     private static let canvasSize = (width: Float(800), height: Float(600))
 
@@ -44,15 +44,19 @@ final class ScreenTransitionWipe {
         elapsed = 0
     }
 
+    /// Advances at most one table step per call, matching the original's
+    /// real semantics (`GameTick` advances its counter by exactly 1 per
+    /// tick, never more). This also guards against a stalled frame (e.g.
+    /// the new screen's `onEnter` doing synchronous texture loads) reporting
+    /// one inflated `deltaTime` that would otherwise fast-forward through
+    /// the whole table before a single frame ever got drawn.
     func update(deltaTime: Double) {
-        guard index != nil else { return }
+        guard let currentIndex = index else { return }
         elapsed += deltaTime
-        while elapsed >= Self.stepDuration, let currentIndex = index {
-            elapsed -= Self.stepDuration
-            let next = currentIndex + 1
-            index = next < Self.table.count ? next : nil
-            if index == nil { break }
-        }
+        guard elapsed >= Self.stepDuration else { return }
+        elapsed = 0
+        let next = currentIndex + 1
+        index = next < Self.table.count ? next : nil
     }
 
     func draw(_ renderer: ClientRenderer) {
