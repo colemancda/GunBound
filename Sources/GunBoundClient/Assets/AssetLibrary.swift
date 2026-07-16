@@ -98,6 +98,34 @@ public final class AssetLibrary {
         return frames[index]
     }
 
+    /// Decodes a `.xtf` raw D3D texture surface (e.g. `TornadoTexture.xtf`,
+    /// `FirewallTexture.xtf`, `LightningTexture.xtf` — the weather-hazard
+    /// render textures `RenderWeatherHazards` binds by name via
+    /// `FindTextureCacheEntryByName`). Unlike `.img`, this isn't a sprite
+    /// sheet with a frame table: it's a single flat surface — empirically,
+    /// every shipped hazard `.xtf` is a fixed 9-byte header (unparsed;
+    /// purpose unconfirmed) followed by a flat 256×256 ARGB4444 body, the
+    /// same pixel encoding `.img`'s `.alpha` transparency type already
+    /// decodes. Not hand-verified beyond that byte-count match.
+    public func xtfTexture(named name: String) throws -> ImgFile.Frame {
+        let bytes = try entryData(name, in: "graphics.xfs")
+        let headerSize = 9
+        let side = 256
+        let expected = headerSize + side * side * 2
+        guard bytes.count == expected else {
+            throw Error.missingEntry(name)
+        }
+        var pixels: [ImgFile.Pixel] = []
+        pixels.reserveCapacity(side * side)
+        var offset = headerSize
+        for _ in 0..<(side * side) {
+            let raw = UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+            pixels.append(ImgFile.Pixel(argb4444: raw))
+            offset += 2
+        }
+        return ImgFile.Frame(transparencyType: .alpha, width: Int32(side), height: Int32(side), pixels: pixels)
+    }
+
     /// A playable file URL for a named `.mp3` track stored in `sound.xfs`.
     /// `.mp3` entries are byte-for-byte standard MPEG data (per
     /// `FILEFORMATS.md`), so this just writes the raw entry bytes to a cache

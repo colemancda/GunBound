@@ -61,6 +61,11 @@ public final class InBattleScreen: GameScreen {
     private var moveBarTexture: ClientTexture?
     private var font: LoadedFont?
     private var audio: ClientAudioPlayer?
+    /// The three weather-hazard textures (`.xtf` surfaces, not `.img`
+    /// sprite sheets — see `AssetLibrary.xtfTexture(named:)`), loaded once
+    /// on first use. `.some(nil)` records a load failure so it isn't
+    /// retried every frame.
+    private var hazardTextures: [InBattleViewModel.WeatherHazardKind: ClientTexture?] = [:]
 
     public init(viewModel: InBattleViewModel) {
         self.viewModel = viewModel
@@ -202,6 +207,24 @@ public final class InBattleScreen: GameScreen {
         if let terrainTexture {
             let (width, height) = renderer.size(of: terrainTexture)
             renderer.draw(terrainTexture, in: Rect(x: worldOrigin.x, y: worldOrigin.y, width: width, height: height), tint: nil)
+        }
+
+        // Terrain hazards, drawn over the stage but under the mobiles —
+        // matches `RenderWeatherHazards`'s slot-12 render-tail position in
+        // the original's per-frame draw order.
+        for hazard in viewModel.weatherHazards {
+            guard let texture = hazardTexture(for: hazard.kind, renderer: renderer) else { continue }
+            let groundY = viewModel.groundLevel(atX: hazard.x, below: 0) ?? 300
+            let position = viewModel.screenPosition(x: hazard.x, y: groundY)
+            let span = hazard.width * 2
+            let blend: ClientBlendMode = hazard.kind == .lightning ? .additive : .alpha
+            renderer.draw(
+                texture,
+                in: Rect(x: position.x - span / 2, y: position.y - span, width: span, height: span),
+                tint: nil,
+                blend: blend,
+                opacity: 1
+            )
         }
 
         guard let font else { return }
@@ -475,6 +498,29 @@ public final class InBattleScreen: GameScreen {
     /// The current frame of the in-flight shot's bullet art (`bullet<N>n/p/s`
     /// per the shooter's mobile and weapon slot), its `.epa` run looping at
     /// the sheet tick rate. `nil` when the archive has no art to offer.
+    /// Loads (and caches) a weather-hazard's texture — a single flat `.xtf`
+    /// surface, not a `.epa`-driven sprite sheet (see `AssetLibrary.
+    /// xtfTexture(named:)`). Drawn unrotated: `ClientRenderer` has no
+    /// rotation parameter, so the decomp's per-frame swirl rotation
+    /// ((frame%64)*-6°, `InitTornadoHazard.c`) isn't reproduced — the same
+    /// class of approximation as the screen-transition wipe's triangle-via-
+    /// rects.
+    private func hazardTexture(for kind: InBattleViewModel.WeatherHazardKind, renderer: ClientRenderer) -> ClientTexture? {
+        if let cached = hazardTextures[kind] {
+            return cached
+        }
+        guard let assets else { return nil }
+        let name: String
+        switch kind {
+        case .tornado: name = "TornadoTexture.xtf"
+        case .firewall: name = "FirewallTexture.xtf"
+        case .lightning: name = "LightningTexture.xtf"
+        }
+        let texture = (try? assets.xtfTexture(named: name)).flatMap { renderer.texture(from: $0) }
+        hazardTextures[kind] = texture
+        return texture
+    }
+
     private func bulletSprite(renderer: ClientRenderer) -> ClientTexture? {
         guard let shot = viewModel.activeShot else { return nil }
         let key = "\(shot.mobile.rawValue)-\(shot.weapon.rawValue)"

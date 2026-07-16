@@ -193,6 +193,36 @@ public final class InBattleViewModel: ScreenViewModel {
         }
     }
 
+    /// The three terrain-hazard effects the decomp's `SpawnWeatherHazards`
+    /// dispatches (`RenderWeatherHazards`'s layer keys 500/0x1f5/0x1f6).
+    public enum WeatherHazardKind: Sendable {
+        case tornado, firewall, lightning
+    }
+
+    /// A server-spawned terrain hazard: sits at a fixed world-X on the
+    /// ground (Y is derived from terrain at render time, matching the
+    /// decomp — the object itself never stores Y), animates in place, and
+    /// expires after `lifetime`. Decomp-decoded fields (`InitTornadoHazard.c`):
+    /// `x` = the spawn descriptor's world-X, `width` = the descriptor's
+    /// strength (draw span = `width * 2`), `age` drives both the animation
+    /// frame counter and the lifetime countdown.
+    public struct WeatherHazard: Equatable, Sendable {
+        public let kind: WeatherHazardKind
+        public let x: Float
+        public let width: Float
+        public var age: Double = 0
+        /// The decomp's spawn lifetime is always 10000 ticks; its real
+        /// tick rate isn't recovered (same open question as the
+        /// screen-transition wipe), so this is a tuned wall-clock stand-in.
+        public let lifetime: Double = 12
+
+        public init(kind: WeatherHazardKind, x: Float, width: Float) {
+            self.kind = kind
+            self.x = x
+            self.width = width
+        }
+    }
+
     // MARK: Tuning
 
     /// Half the 800×600 view — the original biases world→screen by
@@ -247,6 +277,8 @@ public final class InBattleViewModel: ScreenViewModel {
     public private(set) var terrain: (any BattleTerrain)?
     /// Blast holes carved so far (collision + visuals).
     public private(set) var craters: [Crater] = []
+    /// Active terrain hazards (server-spawned via `applyTunnel`'s hazard tag).
+    public private(set) var weatherHazards: [WeatherHazard] = []
     /// This turn's wind (px/s² horizontal). Positive blows right.
     public private(set) var wind: Float = 0
     /// The wind the in-flight shot was fired under (the shooter's roll).
@@ -591,7 +623,11 @@ public final class InBattleViewModel: ScreenViewModel {
 
     /// The first solid cell at column `x` scanning down from `y`, craters
     /// included; `nil` when the column is blown through to the void.
-    private func groundLevel(atX x: Float, below y: Float) -> Float? {
+    /// The first solid-ground Y at `x`, scanning down from `y` — used to
+    /// place anything that sits "on the terrain" without its own stored Y
+    /// (mobile spawn snapping, and weather hazards, whose decomp object
+    /// only stores an X: `InitTornadoHazard.c`'s field map).
+    public func groundLevel(atX x: Float, below y: Float) -> Float? {
         var scan = max(0, y)
         while scan < worldSize.height {
             if isSolidGround(x: x, y: scan) { return scan }
@@ -638,6 +674,13 @@ public final class InBattleViewModel: ScreenViewModel {
     /// position (u16 LE each), the `0xc304` movement action's analogue.
     /// Absolute so remote positions can't drift from missed steps.
     static let moveTag: UInt8 = 0x03
+    /// The tunnel payload tag for a weather-hazard spawn:
+    /// `[0x04, kind, xLo, xHi, width]` — the decomp's `SpawnWeatherHazards`
+    /// 3-slot Firewall/Tornado/Lightning descriptor (`packet+0x22`),
+    /// relayed one hazard at a time. `kind`: `0` = tornado, `1` = firewall,
+    /// `2` = lightning. `x` is a signed i16 LE world-X; `width` is the
+    /// spawn descriptor's strength byte.
+    static let hazardTag: UInt8 = 0x04
 
     /// Applies one server push — split out so tests can drive it directly.
     public func apply(_ push: ServerPush) {
@@ -697,6 +740,17 @@ public final class InBattleViewModel: ScreenViewModel {
             // Follow the walker (it's the acting player).
             camera = (players[index].x, players[index].y)
             clampCamera()
+        case Self.hazardTag:
+            guard forward.payload.count >= 5 else { return }
+            let kind: WeatherHazardKind
+            switch forward.payload[1] {
+            case 0: kind = .tornado
+            case 1: kind = .firewall
+            default: kind = .lightning
+            }
+            let x = Float(Int16(bitPattern: UInt16(forward.payload[2]) | UInt16(forward.payload[3]) << 8))
+            let width = Float(forward.payload[4])
+            weatherHazards.append(WeatherHazard(kind: kind, x: x, width: width))
         default:
             break
         }
@@ -953,6 +1007,7 @@ public final class InBattleViewModel: ScreenViewModel {
     public func update(deltaTime: Double) {
         clock += deltaTime
         expirePoses()
+        updateWeatherHazards(deltaTime)
         // The match result lingers, then hands control back to the room.
         if var countdown = matchEndCountdown {
             countdown -= deltaTime
@@ -1257,6 +1312,16 @@ public final class InBattleViewModel: ScreenViewModel {
                 setPose(.normal, at: index)
             }
         }
+    }
+
+    /// Ages every active hazard and prunes expired ones — decomp's
+    /// per-tick vtable slot4 decrementing the lifetime cell and setting
+    /// the dead-flag once it goes negative (`InitTornadoHazard.c`).
+    private func updateWeatherHazards(_ deltaTime: Double) {
+        for index in weatherHazards.indices {
+            weatherHazards[index].age += deltaTime
+        }
+        weatherHazards.removeAll { $0.age >= $0.lifetime }
     }
 
     private func edgeScroll(_ deltaTime: Double) {
