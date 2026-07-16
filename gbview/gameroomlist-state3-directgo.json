@@ -1,0 +1,399 @@
+{
+  "gameState": {
+    "id": 3,
+    "name": "GameRoomList",
+    "object": "0x02f73618",
+    "vtable": "0x00553670",
+    "fields": {
+      "m_selectedRoom": -1,
+      "m_hoveredRoom": -1,
+      "m_unk11c": 0,
+      "m_unk288": 1
+    }
+  },
+  "view": {
+    "manager": "0x00e53c40",
+    "head": "0x032bdd64",
+    "panels": [
+      {
+        "addr": "0x032bdf80",
+        "vtable": "0x00557df0",
+        "typeId": 0,
+        "id": 1,
+        "rect": {
+          "x": 243,
+          "y": 202,
+          "w": 314,
+          "h": 160
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 4,
+        "children": [
+          {
+            "addr": "0x032be020",
+            "vtable": "0x00557c84",
+            "typeId": 2,
+            "id": 0,
+            "rect": {
+              "x": 342,
+              "y": 252,
+              "w": 180,
+              "h": 12
+            },
+            "focused": true,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032be170",
+            "vtable": "0x00557c84",
+            "typeId": 2,
+            "id": 1,
+            "rect": {
+              "x": 342,
+              "y": 286,
+              "w": 180,
+              "h": 12
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x0e240188",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 0,
+            "rect": {
+              "x": 456,
+              "y": 320,
+              "w": 82,
+              "h": 34
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x0e2401d8",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 1,
+            "rect": {
+              "x": 371,
+              "y": 320,
+              "w": 82,
+              "h": 34
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          }
+        ]
+      },
+      {
+        "addr": "0x032bd708",
+        "vtable": "0x00557cd4",
+        "typeId": 0,
+        "id": 9001,
+        "rect": {
+          "x": 23,
+          "y": 287,
+          "w": 549,
+          "h": 259
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 10,
+        "children": [
+          {
+            "addr": "0x032bd7b0",
+            "vtable": "0x00557c84",
+            "typeId": 2,
+            "id": 0,
+            "rect": {
+              "x": 49,
+              "y": 522,
+              "w": 484,
+              "h": 12
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bd918",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 0,
+            "rect": {
+              "x": 287,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bd990",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 1,
+            "rect": {
+              "x": 319,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bd9e0",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 2,
+            "rect": {
+              "x": 351,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bda30",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 3,
+            "rect": {
+              "x": 383,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bda80",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 4,
+            "rect": {
+              "x": 415,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bdb08",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 5,
+            "rect": {
+              "x": 447,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bdb58",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 6,
+            "rect": {
+              "x": 479,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bdba8",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 7,
+            "rect": {
+              "x": 511,
+              "y": 296,
+              "w": 22,
+              "h": 22
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032bdbf8",
+            "vtable": "0x00557e90",
+            "typeId": 4,
+            "id": 0,
+            "rect": {
+              "x": 549,
+              "y": 350,
+              "w": 18,
+              "h": 154
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 2,
+            "children": [
+              {
+                "addr": "0x032bdc60",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 0,
+                "rect": {
+                  "x": 549,
+                  "y": 322,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": true,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              },
+              {
+                "addr": "0x032bdcb0",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 1,
+                "rect": {
+                  "x": 549,
+                  "y": 514,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": true,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "addr": "0x032bddd8",
+        "vtable": "0x00557cac",
+        "typeId": 0,
+        "id": 9002,
+        "rect": {
+          "x": 572,
+          "y": 287,
+          "w": 209,
+          "h": 259
+        },
+        "focused": false,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 1,
+        "children": [
+          {
+            "addr": "0x032bde78",
+            "vtable": "0x00557e90",
+            "typeId": 4,
+            "id": 0,
+            "rect": {
+              "x": 751,
+              "y": 350,
+              "w": 18,
+              "h": 154
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 2,
+            "children": [
+              {
+                "addr": "0x032bdee0",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 0,
+                "rect": {
+                  "x": 751,
+                  "y": 322,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": true,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              },
+              {
+                "addr": "0x032bdf30",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 1,
+                "rect": {
+                  "x": 751,
+                  "y": 514,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": true,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -205,6 +205,24 @@ struct GameRoomListViewModelTests {
         #expect(!viewModel.isBuddyPanelVisible)
     }
 
+    /// The current filter's toggle button reports "active" (the decomp's
+    /// yellow 5th-frame state); the other never does. Default is View All.
+    @Test func filterToggleReportsTheActiveButton() {
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.filter == .all)
+        #expect(viewModel.isFilterActive(.viewAll))
+        #expect(!viewModel.isFilterActive(.waitingOnly))
+        #expect(!viewModel.isFilterActive(.findFriend))  // mode 6 not modeled
+
+        click(.waitingOnly, in: viewModel)
+        #expect(viewModel.isFilterActive(.waitingOnly))
+        #expect(!viewModel.isFilterActive(.viewAll))
+
+        click(.viewAll, in: viewModel)
+        #expect(viewModel.isFilterActive(.viewAll))
+        #expect(!viewModel.isFilterActive(.waitingOnly))
+    }
+
     /// Prev/Next page a 6-card window over the filtered list, clamped at both
     /// ends; changing the filter re-paginates from page 0.
     @Test func pagingWindowsTheRoomList() {

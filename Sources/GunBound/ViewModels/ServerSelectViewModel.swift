@@ -64,15 +64,61 @@ public final class ServerSelectViewModel: ScreenViewModel {
         Button(name: "b_server_exitgame.img", rect: Rect(x: 40, y: 551, width: 107, height: 45)),
         Button(name: "b_server_buddygame.img", rect: Rect(x: 163, y: 551, width: 107, height: 45)),
         Button(name: "b_server_choiceserver.img", rect: Rect(x: 409, y: 551, width: 107, height: 45)),
-        Button(name: "b_server_all.img", rect: Rect(x: 336, y: 504, width: 81, height: 33)),
-        Button(name: "b_server_friend.img", rect: Rect(x: 430, y: 504, width: 80, height: 33)),
+        // View All / Friends tab widget rects — the runtime `gbview` dump
+        // reports both as 74×26 at (336,504)/(430,504), matching the decomp
+        // builder. (The `b_server_*.img` art is 81×33; the sprite is drawn
+        // into the smaller widget rect.)
+        Button(name: "b_server_all.img", rect: Rect(x: 336, y: 504, width: 74, height: 26)),
+        Button(name: "b_server_friend.img", rect: Rect(x: 430, y: 504, width: 74, height: 26)),
     ]
 
     /// Not decomp-confirmed — see the type-level doc comment. Set by the
     /// view once it knows `server_list.img`'s loaded size.
     public var panelRect: Rect = .zero
 
+    // MARK: Runtime state mapping
+    //
+    // A runtime memory dump of the live `State02` object (`gbview`) confirms
+    // this model and names the fields the decomp left as `m_unkXX`:
+    //
+    //   gbview field        →  here
+    //   m_viewMode          →  worldListFilter (0 = .all)
+    //   m_highlightedSlot   →  selectedIndex   (-1 = nil)
+    //   m_selectedSlot      →  selectedIndex   (the decomp's +0x0c, moves in
+    //                          lockstep with m_highlightedSlot on a row click;
+    //                          we fold both into one field)
+    //   m_scrollOffset/A    →  scrollOffset
+    //   m_connecting        →  state == .connecting
+    //   m_connectingSlot    →  (the slot a connect is in flight for)
+    //   m_inputEnabled      →  isConnectEnabled (0 until a row is selected)
+    //   m_uiDirty           →  the "interactable" gate (row clicks apply only
+    //                          when set) — we gate on `state` instead
+    //   m_wantInitialList   →  reload()-on-enter
+    //   m_tickCounter       →  (a free-running frame counter; unmodelled)
+
     public private(set) var hoveredIndex: Int?
+    /// The button currently held down — drives the `pressed` button frame.
+    public private(set) var pressedIndex: Int?
+
+    /// Which world-list view the panel's View All / Friends toggle is on.
+    /// These are 5-frame toggle buttons: the current one shows its `selected`
+    /// (yellow) frame. `all` is the default; `friends` (worlds where buddies
+    /// are online) isn't filtered yet, so it only drives the toggle highlight.
+    public enum WorldListFilter: Equatable, Sendable {
+        case all
+        case friends
+    }
+    public private(set) var worldListFilter: WorldListFilter = .all
+
+    /// Whether a panel toggle button (`b_server_all` / `b_server_friend`) is
+    /// the current world-list view — the button's `selected` state.
+    public func isFilterSelected(_ buttonName: String) -> Bool {
+        switch buttonName {
+        case "b_server_all.img": return worldListFilter == .all
+        case "b_server_friend.img": return worldListFilter == .friends
+        default: return false
+        }
+    }
 
     /// Whether the shared buddy-list panel is open — the BUDDY button
     /// toggles it, matching the singleton `BuildBuddyPanel` shown across
@@ -152,7 +198,11 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// The servers actually drawn/hit-tested — the scroll window over the
     /// fetched list, capped to the 12 on-screen row slots.
     public var visibleServers: ArraySlice<ServerDirectoryResponse.Server> {
-        availableServers
+        // The Friends view lists only worlds where buddies are online; with no
+        // buddy data wired the decomp clears the server count outright — a
+        // live capture (`gbview`, m_viewMode 2) shows the empty panel.
+        guard worldListFilter == .all else { return [] }
+        return availableServers
             .dropFirst(scrollOffset * Self.rowColumns)
             .prefix(Self.maxVisibleRows)
     }
@@ -169,6 +219,19 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// selected, connecting auto-picks the first joinable server — the
     /// decompiled Enter-key behaviour.
     public private(set) var selectedIndex: Int?
+
+    /// Whether the SERVER button is live: one click selects a row (which
+    /// enables the button), then the button — or a double-click on the
+    /// selected row — connects. Disabled until then, and while the list
+    /// loads or a connect attempt is in flight.
+    public var isConnectEnabled: Bool {
+        selectedIndex != nil && !state.isLoading && !state.isConnecting
+    }
+
+    /// Two clicks on the already-selected row within this window connect.
+    public static let doubleClickInterval: Double = 0.4
+    private var clock: Double = 0
+    private var lastRowClick: (index: Int, time: Double)?
 
     private let delegate: ViewModelDelegate
     
@@ -210,6 +273,8 @@ public final class ServerSelectViewModel: ScreenViewModel {
 
     public func onEnter() {
         hoveredIndex = nil
+        pressedIndex = nil
+        worldListFilter = .all
         selectedIndex = nil  // the real client resets +0x08 to -1 on enter
         scrollOffset = 0
         // Populate the WORLD LIST up front, like the real client.
@@ -218,21 +283,73 @@ public final class ServerSelectViewModel: ScreenViewModel {
 
     public func onExit() {
         hoveredIndex = nil
+        pressedIndex = nil
         selectedIndex = nil
         task?.cancel()
         task = nil  // let a later re-entry start a fresh reload
     }
 
-    /// Dismisses the error dialog (its OK button) — clears `.error` back to
-    /// `.loaded` so the world list is interactive again, matching the
-    /// original's dialog closing without re-fetching.
-    public func dismissError() {
-        if state.error != nil {
-            state = .loaded
+    /// The error dialog's OK button. On Server Select the errors are all
+    /// connection failures whose sockets are already torn down ("The
+    /// connection will close automatically."), so confirming exits the
+    /// client — the same action as the EXIT button — rather than returning
+    /// to a dead world list.
+    public func confirmError() {
+        delegate.requestQuit()
+    }
+
+    public func update(deltaTime: Double) {
+        clock += deltaTime  // the double-click window's timebase
+    }
+
+    /// Switches the world-list view tab (`WorldListPanelWidget`'s View All /
+    /// Friends). Ignored while the list is loading or a connect is in flight,
+    /// matching the pointer guard. `all` re-requests the full list; `friends`
+    /// only moves the toggle highlight (friend-server filtering isn't wired).
+    public func selectWorldListView(_ filter: WorldListFilter) {
+        guard !state.isLoading, !state.isConnecting else { return }
+        // Either tab clears the row highlight (the decomp's OnCommand sets
+        // m_highlightedSlot = -1 and disables the connect button; confirmed by
+        // a live capture with m_highlightedSlot -1 / m_inputEnabled 0 right
+        // after a tab switch).
+        selectedIndex = nil
+        switch filter {
+        case .all:
+            worldListFilter = .all
+            reload()
+        case .friends:
+            worldListFilter = .friends
         }
     }
 
-    public func update(deltaTime: Double) {}
+    /// Handles a pointer press over the world-list row grid — the panel
+    /// widget's row hit-test. Selects the online row under `(x, y)`, or
+    /// connects on a double-click of the already-selected row (mirroring
+    /// `WorldListRowHitTest` + the decomp's row select). Returns whether a row
+    /// cell was hit. Ignored while the screen is busy.
+    @discardableResult
+    public func selectRow(atPoint x: Float, y: Float) -> Bool {
+        guard !state.isLoading, !state.isConnecting else { return false }
+        guard let slot = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) else {
+            return false
+        }
+        let index = absoluteIndex(forVisibleSlot: slot)
+        guard availableServers.indices.contains(index), availableServers[index].isEnabled else {
+            return true  // landed on a row cell, just not a selectable one
+        }
+        // A second click on the selected row inside the window is a
+        // double-click: connect straight away.
+        if selectedIndex == index,
+           let last = lastRowClick, last.index == index,
+           clock - last.time <= Self.doubleClickInterval {
+            lastRowClick = nil
+            connect()
+        } else {
+            selectedIndex = index
+            lastRowClick = (index: index, time: clock)
+        }
+        return true
+    }
 
     public func handle(_ event: ScreenInputEvent) {
         switch event {
@@ -248,9 +365,17 @@ public final class ServerSelectViewModel: ScreenViewModel {
             // `WorldListRowHitTest` maps the click through the same grid
             // geometry as the renderer and only accepts online rows
             // (fullness is checked later, at connect time).
+            // In the running client `WorldListPanelWidget` consumes the panel's
+            // View All / Friends tabs and the row grid (calling
+            // `selectWorldListView` / `selectRow`) before this runs. This full
+            // routing is kept so the view model stays usable standalone (tests,
+            // previews) — the tab/row cases just forward to the same methods.
             if let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) {
+                pressedIndex = index
                 switch buttons[index].name {
                 case "b_server_choiceserver.img":
+                    // Live only once a row is selected.
+                    guard isConnectEnabled else { return }
                     connect()
                 case "b_server_exitgame.img":
                     delegate.requestQuit()
@@ -260,18 +385,15 @@ public final class ServerSelectViewModel: ScreenViewModel {
                     // the lobby and Avatar Store dispatchers.
                     setBuddyPanelVisible(!isBuddyPanelVisible)
                 case "b_server_all.img":
-                    reload()
+                    selectWorldListView(.all)
+                case "b_server_friend.img":
+                    selectWorldListView(.friends)
                 default:
                     print("[GunBound] clicked server-select button: \(buttons[index].name)")
                 }
                 return
             }
-            if let slot = (0..<visibleServers.count).first(where: { rowRect(at: $0).contains(x: x, y: y) }) {
-                let index = absoluteIndex(forVisibleSlot: slot)
-                if availableServers.indices.contains(index), availableServers[index].isEnabled {
-                    selectedIndex = index
-                }
-            }
+            selectRow(atPoint: x, y: y)
 
         case .activate:
             // Enter/return — mirrors the decomp keydown handler, which
@@ -292,6 +414,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
                   panelRect.contains(x: x, y: y) else { return }
             setScrollOffset(scrollOffset + steps)
 
+        case .pointerUp:
+            pressedIndex = nil
+
         case .text, .key:
             break
         }
@@ -311,7 +436,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
                 try await fetchDirectory()
             } catch {
                 print("[GunBound] couldn't reach broker: \(error)")
-                self.state = .error("Couldn't reach the server broker: \(error.localizedDescription)")
+                self.state = .error(Self.dialogMessage(for: error))
             }
         }
     }
@@ -342,7 +467,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
             guard response.status == .success else {
                 print("[GunBound] authentication failed: \(response.status)")
                 await client.close()
-                finishConnecting(client: nil, success: false)
+                finishConnecting(client: nil, failure: .loginError)
                 return
             }
             print("[GunBound] authenticated as \(network.username)")
@@ -355,16 +480,28 @@ public final class ServerSelectViewModel: ScreenViewModel {
             guard joinResponse.isSuccess else {
                 print("[GunBound] channel join rejected (status non-zero)")
                 await client.close()
-                finishConnecting(client: nil, success: false)
+                finishConnecting(client: nil, failure: .serverAccessError)
                 return
             }
             print("[GunBound] joined channel \(joinResponse.channel) (\(joinResponse.users.count) user(s) present)")
             delegate.session.channel = joinResponse
-            finishConnecting(client: client, success: true)
+            finishConnecting(client: client, failure: nil)
         } catch {
             print("[GunBound] connection failed: \(error)")
-            finishConnecting(client: nil, success: false)
+            finishConnecting(client: nil, failure: Self.dialogMessage(for: error))
         }
+    }
+
+    /// Maps a networking error to the dialog message the original would
+    /// show: a request timeout (a slow/dead connection) is "access time
+    /// expired" (id 201); anything else — connection refused, EOF, a bad
+    /// address — is the "server access error" (id 200). Never leaks the
+    /// underlying `Error`'s text.
+    static func dialogMessage(for error: Swift.Error) -> DialogMessage {
+        if case NetworkClient<GunBoundSocketIPv4TCP>.Error.timeout = error {
+            return .accessTimeExpired
+        }
+        return .serverAccessError
     }
 
     /// Ensures the directory has been fetched (refreshing it if the eager
@@ -376,7 +513,7 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// Not `private` so tests can verify `availableServers` population with
     /// a mock `directoryFetcher` without also exercising the real network
     /// connect `performConnect()` does afterward.
-    func fetchDirectoryAndChooseServer() async -> (address: String, port: UInt16) {
+    public func fetchDirectoryAndChooseServer() async -> (address: String, port: UInt16) {
         if availableServers.isEmpty {
             // Broker unreachable is non-fatal here — fall through to the
             // manually configured server/port below.
@@ -415,15 +552,17 @@ public final class ServerSelectViewModel: ScreenViewModel {
         print("Broker returned \(directory.count) server(s): \(directory.map(\.name)) (keeping \(availableServers.count))")
     }
 
-    private func finishConnecting(client: NetworkClient<GunBoundSocketIPv4TCP>?, success: Bool) {
+    /// Finishes a connect attempt: `failure == nil` means success (advance
+    /// to the lobby); otherwise show that dialog message.
+    private func finishConnecting(client: NetworkClient<GunBoundSocketIPv4TCP>?, failure: DialogMessage?) {
         if let client {
             delegate.client = client
         }
-        if success {
+        if let failure {
+            state = .error(failure)
+        } else {
             state = .loaded
             delegate.requestTransition(to: .gameRoomList)
-        } else {
-            state = .error("Couldn't connect to the server — check the address and try again.")
         }
     }
 }
@@ -435,7 +574,7 @@ public extension ServerSelectViewModel {
         case loading
         case loaded
         case connecting
-        case error(String)
+        case error(DialogMessage)
     }
 }
 
@@ -461,10 +600,10 @@ public extension ServerSelectViewModel.State {
         }
     }
 
-    var error: String? {
+    var error: DialogMessage? {
         switch self {
-        case let .error(error):
-            return error
+        case let .error(message):
+            return message
         default:
             return nil
         }

@@ -28,6 +28,9 @@
 		6E0D609A2FFEFD9D00BF6558 /* specialdata.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60852FFEFD9D00BF6558 /* specialdata.dat */; };
 		6E0D609B2FFEFD9D00BF6558 /* stage.dat in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60862FFEFD9D00BF6558 /* stage.dat */; };
 		6E0D609C2FFEFD9D00BF6558 /* avatar.xfs in Resources */ = {isa = PBXBuildFile; fileRef = 6E0D60802FFEFD9D00BF6558 /* avatar.xfs */; };
+		6E0D609E3000E0A300BF6558 /* WorldListPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0D609D3000E0A200BF6558 /* WorldListPanelWidget.swift */; };
+		6E0D609F3000E0A300BF6558 /* WorldListPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0D609D3000E0A200BF6558 /* WorldListPanelWidget.swift */; };
+		6E0D60A03000E0A300BF6558 /* WorldListPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0D609D3000E0A200BF6558 /* WorldListPanelWidget.swift */; };
 		D00000000000000000000201 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
 		D00000000000000000000202 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
 		D00000000000000000000203 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
@@ -47,6 +50,16 @@
 		D00000000000000000000219 /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
 		D0000000000000000000021A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000120 /* LoginView.swift */; };
 		D0000000000000000000021B /* GameSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000121 /* GameSceneView.swift */; };
+		D00000000000000000000230 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D000000000000000000002321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D000000000000000000002331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D000000000000000000002341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D000000000000000000002351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D000000000000000000002361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D000000000000000000002371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D000000000000000000002381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D000000000000000000002391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
+		D0000000000000000000023A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
 		D00000000000000000000301 /* SpriteKitRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000101 /* SpriteKitRenderer.swift */; };
 		D00000000000000000000302 /* SpriteKitAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000102 /* SpriteKitAudioPlayer.swift */; };
 		D00000000000000000000303 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000103 /* GameScene.swift */; };
@@ -66,6 +79,16 @@
 		D00000000000000000000319 /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
 		D0000000000000000000031A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000120 /* LoginView.swift */; };
 		D0000000000000000000031B /* GameSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000121 /* GameSceneView.swift */; };
+		D00000000000000000000330 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
+		D000000000000000000003321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
+		D000000000000000000003331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
+		D000000000000000000003341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
+		D000000000000000000003351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
+		D000000000000000000003361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
+		D000000000000000000003371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
+		D000000000000000000003381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D000000000000000000003391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
+		D0000000000000000000033A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
 		D00000000000000000000C10 /* GunBound in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0A /* GunBound */; };
 		D00000000000000000000C11 /* GunBoundProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0B /* GunBoundProtocol */; };
 		D00000000000000000000C12 /* GunBoundFile in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000A0C /* GunBoundFile */; };
@@ -85,46 +108,27 @@
 		D0000000000000000000C0D /* AvatarShopScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000117 /* AvatarShopScreen.swift */; };
 		D0000000000000000000C0E /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000118 /* LoadingScreen.swift */; };
 		D0000000000000000000C0F /* InBattleScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000119 /* InBattleScreen.swift */; };
-		D00000000000000000000230 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
-		D00000000000000000000330 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
-		D0000000000000000000C30 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
-		D0000000000000000000023A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
-		D0000000000000000000033A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
-		D0000000000000000000C23A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
-		D000000000000000000002391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
-		D000000000000000000003391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
-		D0000000000000000000C2391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
-		D000000000000000000002321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
-		D000000000000000000003321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
 		D0000000000000000000C2321 /* ButtonWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000132 /* ButtonWidget.swift */; };
-		D000000000000000000002331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
-		D000000000000000000003331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
 		D0000000000000000000C2331 /* ScrollBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000133 /* ScrollBarWidget.swift */; };
-		D000000000000000000002341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
-		D000000000000000000003341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
 		D0000000000000000000C2341 /* TextFieldWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000134 /* TextFieldWidget.swift */; };
-		D000000000000000000002351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
-		D000000000000000000003351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
 		D0000000000000000000C2351 /* DialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000135 /* DialogWidget.swift */; };
-		D000000000000000000002361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
-		D000000000000000000003361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
 		D0000000000000000000C2361 /* BuddyPanelWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000136 /* BuddyPanelWidget.swift */; };
-		D000000000000000000002371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
-		D000000000000000000003371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
 		D0000000000000000000C2371 /* CreateRoomDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000137 /* CreateRoomDialogWidget.swift */; };
-		D000000000000000000002381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
-		D000000000000000000003381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
 		D0000000000000000000C2381 /* EnterRoomNumberDialogWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */; };
+		D0000000000000000000C2391 /* ChannelUserListWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000139 /* ChannelUserListWidget.swift */; };
+		D0000000000000000000C23A1 /* LobbyChatWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000000000000000000013A /* LobbyChatWidget.swift */; };
+		D0000000000000000000C30 /* WidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000130 /* WidgetPreview.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		6E0D60802FFEFD9D00BF6558 /* avatar.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = avatar.xfs; sourceTree = "<group>"; };
-		6E0D60812FFEFD9D00BF6558 /* characterdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = characterdata.dat; sourceTree = "<group>"; };
-		6E0D60822FFEFD9D00BF6558 /* graphics.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = graphics.xfs; sourceTree = "<group>"; };
-		6E0D60832FFEFD9D00BF6558 /* itemdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = itemdata.dat; sourceTree = "<group>"; };
-		6E0D60842FFEFD9D00BF6558 /* sound.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; path = sound.xfs; sourceTree = "<group>"; };
-		6E0D60852FFEFD9D00BF6558 /* specialdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = specialdata.dat; sourceTree = "<group>"; };
-		6E0D60862FFEFD9D00BF6558 /* stage.dat */ = {isa = PBXFileReference; lastKnownFileType = file; path = stage.dat; sourceTree = "<group>"; };
+		6E0D60802FFEFD9D00BF6558 /* avatar.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; name = avatar.xfs; path = orig/avatar.xfs; sourceTree = "<group>"; };
+		6E0D60812FFEFD9D00BF6558 /* characterdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = characterdata.dat; path = orig/characterdata.dat; sourceTree = "<group>"; };
+		6E0D60822FFEFD9D00BF6558 /* graphics.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; name = graphics.xfs; path = orig/graphics.xfs; sourceTree = "<group>"; };
+		6E0D60832FFEFD9D00BF6558 /* itemdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = itemdata.dat; path = orig/itemdata.dat; sourceTree = "<group>"; };
+		6E0D60842FFEFD9D00BF6558 /* sound.xfs */ = {isa = PBXFileReference; lastKnownFileType = file; name = sound.xfs; path = orig/sound.xfs; sourceTree = "<group>"; };
+		6E0D60852FFEFD9D00BF6558 /* specialdata.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = specialdata.dat; path = orig/specialdata.dat; sourceTree = "<group>"; };
+		6E0D60862FFEFD9D00BF6558 /* stage.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = stage.dat; path = orig/stage.dat; sourceTree = "<group>"; };
+		6E0D609D3000E0A200BF6558 /* WorldListPanelWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldListPanelWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000101 /* SpriteKitRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitRenderer.swift; sourceTree = "<group>"; };
 		D00000000000000000000102 /* SpriteKitAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpriteKitAudioPlayer.swift; sourceTree = "<group>"; };
 		D00000000000000000000103 /* GameScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
@@ -143,9 +147,10 @@
 		D00000000000000000000117 /* AvatarShopScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AvatarShopScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000118 /* LoadingScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
 		D00000000000000000000119 /* InBattleScreen.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InBattleScreen.swift; sourceTree = "<group>"; };
+		D00000000000000000000120 /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		D00000000000000000000121 /* GameSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameSceneView.swift; sourceTree = "<group>"; };
+		D00000000000000000000122 /* GunBoundSpriteKitApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GunBoundSpriteKitApp.swift; sourceTree = "<group>"; };
 		D00000000000000000000130 /* WidgetPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetPreview.swift; sourceTree = "<group>"; };
-		D0000000000000000000013A /* LobbyChatWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LobbyChatWidget.swift; sourceTree = "<group>"; };
-		D00000000000000000000139 /* ChannelUserListWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChannelUserListWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000132 /* ButtonWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ButtonWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000133 /* ScrollBarWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScrollBarWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000134 /* TextFieldWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextFieldWidget.swift; sourceTree = "<group>"; };
@@ -153,9 +158,8 @@
 		D00000000000000000000136 /* BuddyPanelWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuddyPanelWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000137 /* CreateRoomDialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreateRoomDialogWidget.swift; sourceTree = "<group>"; };
 		D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EnterRoomNumberDialogWidget.swift; sourceTree = "<group>"; };
-		D00000000000000000000120 /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
-		D00000000000000000000121 /* GameSceneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameSceneView.swift; sourceTree = "<group>"; };
-		D00000000000000000000122 /* GunBoundSpriteKitApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GunBoundSpriteKitApp.swift; sourceTree = "<group>"; };
+		D00000000000000000000139 /* ChannelUserListWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChannelUserListWidget.swift; sourceTree = "<group>"; };
+		D0000000000000000000013A /* LobbyChatWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LobbyChatWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -285,6 +289,7 @@
 				D00000000000000000000135 /* DialogWidget.swift */,
 				D00000000000000000000136 /* BuddyPanelWidget.swift */,
 				D00000000000000000000137 /* CreateRoomDialogWidget.swift */,
+				6E0D609D3000E0A200BF6558 /* WorldListPanelWidget.swift */,
 				D00000000000000000000138 /* EnterRoomNumberDialogWidget.swift */,
 			);
 			path = Widgets;
@@ -447,6 +452,7 @@
 				D00000000000000000000201 /* SpriteKitRenderer.swift in Sources */,
 				D00000000000000000000202 /* SpriteKitAudioPlayer.swift in Sources */,
 				D00000000000000000000203 /* GameScene.swift in Sources */,
+				6E0D60A03000E0A300BF6558 /* WorldListPanelWidget.swift in Sources */,
 				D00000000000000000000205 /* AppDelegate_macOS.swift in Sources */,
 				D0000000000000000000021A /* LoginView.swift in Sources */,
 				D0000000000000000000021B /* GameSceneView.swift in Sources */,
@@ -479,6 +485,7 @@
 				D00000000000000000000301 /* SpriteKitRenderer.swift in Sources */,
 				D00000000000000000000302 /* SpriteKitAudioPlayer.swift in Sources */,
 				D00000000000000000000303 /* GameScene.swift in Sources */,
+				6E0D609E3000E0A300BF6558 /* WorldListPanelWidget.swift in Sources */,
 				D00000000000000000000305 /* AppDelegate_tvOS.swift in Sources */,
 				D0000000000000000000031A /* LoginView.swift in Sources */,
 				D0000000000000000000031B /* GameSceneView.swift in Sources */,
@@ -511,6 +518,7 @@
 				D0000000000000000000C01 /* SpriteKitRenderer.swift in Sources */,
 				D0000000000000000000C02 /* SpriteKitAudioPlayer.swift in Sources */,
 				D0000000000000000000C03 /* GameScene.swift in Sources */,
+				6E0D609F3000E0A300BF6558 /* WorldListPanelWidget.swift in Sources */,
 				D0000000000000000000C04 /* LoginView.swift in Sources */,
 				D0000000000000000000C05 /* GameSceneView.swift in Sources */,
 				D0000000000000000000C06 /* GunBoundSpriteKitApp.swift in Sources */,

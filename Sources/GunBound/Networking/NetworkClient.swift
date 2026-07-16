@@ -24,6 +24,11 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         /// The connection ended (EOF or a socket error) while a request was
         /// waiting for its reply.
         case disconnected
+        /// No reply with this opcode arrived within `requestTimeout` — a
+        /// native-client resilience measure (the original blocks on the
+        /// wait cursor indefinitely), so a wedged server surfaces as an
+        /// error instead of a hang.
+        case timeout(Opcode)
     }
 
     private let socket: Socket
@@ -43,8 +48,10 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     public let pushes: AsyncStream<ServerPush>
     private let pushContinuation: AsyncStream<ServerPush>.Continuation
 
-    /// One waiter per expected reply opcode, FIFO within an opcode.
-    private var pending: [Opcode: [CheckedContinuation<Packet, Swift.Error>]] = [:]
+    /// One waiter per expected reply opcode, FIFO within an opcode. Each
+    /// carries an id so its timeout can evict exactly its own continuation.
+    private var pending: [Opcode: [(id: UInt64, continuation: CheckedContinuation<Packet, Swift.Error>)]] = [:]
+    private var nextWaiterID: UInt64 = 0
 
     /// Replies that arrived before their `request()` registered a waiter —
     /// also how the strictly-sequential mock tests keep working: their canned
@@ -55,16 +62,37 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     private var reassembly: [UInt8] = []
 
     private var readTask: Task<Void, Never>?
+    private var keepAliveTask: Task<Void, Never>?
     private var isFinished = false
 
-    private init(socket: Socket) {
+    /// How often the periodic keepalive (`0x0000`) goes out. The original
+    /// client participates in keepalive traffic too (the decomp confirms
+    /// the state-9 server ping `0x4410` acked with `0x3232`, and an
+    /// in-battle heartbeat); the reference emulators' convention — which
+    /// our packet and server handler follow — is a client-sent `0x0000`
+    /// every 30–60 seconds.
+    private let keepAliveInterval: Duration
+
+    /// How long a request waits for its reply before failing with
+    /// `Error.timeout` (see that case's note — our convention, not the
+    /// original's).
+    private let requestTimeout: Duration
+
+    private init(socket: Socket, keepAliveInterval: Duration, requestTimeout: Duration) {
         self.socket = socket
+        self.keepAliveInterval = keepAliveInterval
+        self.requestTimeout = requestTimeout
         (self.pushes, self.pushContinuation) = AsyncStream.makeStream(of: ServerPush.self)
     }
 
     /// Opens a TCP connection to `config.serverAddress`:`config.serverPort`
-    /// and starts the read loop.
-    public static func connect(_ config: NetworkConfig) async throws -> NetworkClient<Socket> {
+    /// and starts the read loop and the periodic keepalive (the cadence and
+    /// the request timeout are injectable so tests can shorten them).
+    public static func connect(
+        _ config: NetworkConfig,
+        keepAliveInterval: Duration = .seconds(30),
+        requestTimeout: Duration = .seconds(10)
+    ) async throws -> NetworkClient<Socket> {
         guard let destination = GunBoundAddress(address: config.serverAddress, port: config.serverPort) else {
             throw Error.invalidAddress(config.serverAddress)
         }
@@ -72,13 +100,15 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
             throw Error.invalidAddress("0.0.0.0")
         }
         let socket = try await Socket.client(address: local, destination: destination)
-        let client = NetworkClient(socket: socket)
+        let client = NetworkClient(socket: socket, keepAliveInterval: keepAliveInterval, requestTimeout: requestTimeout)
         await client.startReading()
+        await client.startKeepAlive()
         return client
     }
 
     public func close() async {
         readTask?.cancel()
+        keepAliveTask?.cancel()
         finish()
         await socket.close()
     }
@@ -88,6 +118,25 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     private func startReading() {
         guard readTask == nil else { return }
         readTask = Task { await self.readLoop() }
+    }
+
+    /// Sends the periodic keepalive for the connection's lifetime; a send
+    /// failure means the socket is gone, so the loop ends with it. Runs
+    /// from connect (the packet is valid pre-auth — it carries no body).
+    private func startKeepAlive() {
+        guard keepAliveTask == nil else { return }
+        let interval = keepAliveInterval
+        keepAliveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled, let self, await !self.isFinished else { return }
+                do {
+                    try await self.send(KeepAlive())
+                } catch {
+                    return
+                }
+            }
+        }
     }
 
     private func readLoop() async {
@@ -140,9 +189,9 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
             packet = decrypted
         }
         if var waiters = pending[packet.opcode], !waiters.isEmpty {
-            let continuation = waiters.removeFirst()
+            let waiter = waiters.removeFirst()
             pending[packet.opcode] = waiters
-            continuation.resume(returning: packet)
+            waiter.continuation.resume(returning: packet)
         } else if packet.opcode.type == .notification {
             pushContinuation.yield(ServerPush(packet, decoder: decoder))
         } else {
@@ -158,8 +207,8 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         pushContinuation.finish()
         let waiters = pending.values.flatMap { $0 }
         pending.removeAll()
-        for continuation in waiters {
-            continuation.resume(throwing: Error.disconnected)
+        for waiter in waiters {
+            waiter.continuation.resume(throwing: Error.disconnected)
         }
     }
 
@@ -241,6 +290,24 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await request(RoomListRequest(filter: filter), response: RoomListResponse.self).rooms
     }
 
+    /// Fetches the player's buddy roster (`0x2200` → `0x2201`, our own
+    /// convention — see `BuddyEntry`'s type-level note).
+    public func fetchBuddyList() async throws -> [BuddyEntry] {
+        try await request(BuddyListRequest(), response: BuddyListResponse.self).buddies
+    }
+
+    /// Adds a username to the buddy list (`0x2202`). Fire-and-forget: the
+    /// refreshed roster arrives as a `.buddyListUpdated` push (`0x2204`).
+    public func addBuddy(_ username: Username) async throws {
+        try await send(BuddyAddCommand(username: username))
+    }
+
+    /// Removes a username from the buddy list (`0x2203`). Fire-and-forget,
+    /// like `addBuddy`.
+    public func removeBuddy(_ username: Username) async throws {
+        try await send(BuddyRemoveCommand(username: username))
+    }
+
     /// Joins a room by ID (outgoing opcode `0x2110`) and decodes the server's
     /// `JoinRoomResponse` (`0x2111`). On success the lobby transitions into
     /// the room's Ready Room (state 9) — callers should check `isSuccess`.
@@ -289,6 +356,28 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         try await send(StartGameCommand())
     }
 
+    /// Reports the local player's own death (`0x4100` → `0x4103` ack) —
+    /// the server flips the slot dead, broadcasts the `0x4102` death
+    /// notification to the room, and ends the match (`0x4410`) when the
+    /// death wipes a team.
+    public func reportDeath() async throws {
+        _ = try await request(UserDeathRequest(), response: UserDeathResponse.self)
+    }
+
+    /// Returns to the room after a match (`0x3040` → `0x3041`) — sent once
+    /// the game-end result has been shown, before re-entering the Ready
+    /// Room.
+    public func returnToRoom() async throws {
+        _ = try await request(RoomReturnResultRequest(), response: RoomReturnResultResponse.self)
+    }
+
+    /// Reports the local player's score-mode respawn (`0x4104`) — flips the
+    /// server's slot back to alive so its bookkeeping matches the clients'
+    /// deterministic respawn.
+    public func resurrect() async throws {
+        try await send(PlayerResurrectCommand())
+    }
+
     /// Sends in-game traffic to another player through the server's tunnel
     /// relay (`0x4500`): the payload is delivered to whoever sits in `slot`
     /// as a `.tunnelReceived` push carrying this player's slot.
@@ -308,6 +397,19 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
         guard bytes.count > 2 else { return PlayerAvatar(equipped: 0, inventory: []) }
         let plaintext = [UInt8](try Crypto.AES.decrypt(Data(bytes[2...]), key: key, opcode: .getAvatarResponse))
         return Self.parseAvatar(plaintext)
+    }
+
+    /// Purchases an avatar part (`0x6010` gold / `0x6011` cash) and awaits
+    /// the server's acknowledgement (`0x6017`). The item code is our own
+    /// packed scheme (see `AvatarShopItemCode`) — the store appends it
+    /// verbatim to `avatarInventory`, and a follow-up `fetchAvatar()` will
+    /// see it.
+    public func buyAvatarItem(_ code: AvatarShopItemCode, withGold: Bool) async throws {
+        if withGold {
+            _ = try await request(BuyGoldRequest(avatar: code.rawValue), response: BuyResponse.self)
+        } else {
+            _ = try await request(BuyCashRequest(avatar: code.rawValue), response: BuyResponse.self)
+        }
     }
 
     /// Parses a decrypted avatar plaintext (`equipped` u64 LE, `count` u16 LE,
@@ -365,13 +467,32 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
 
     /// The next inbound packet with `opcode` — from the mailbox if it already
     /// arrived, else by registering a waiter for the read loop to resume.
+    /// The waiter fails with `Error.timeout` if no reply lands within
+    /// `requestTimeout`.
     private func receivePacket(opcode: Opcode) async throws -> Packet {
         if let index = mailbox.firstIndex(where: { $0.opcode == opcode }) {
             return mailbox.remove(at: index)
         }
         guard !isFinished else { throw Error.disconnected }
+        let id = nextWaiterID
+        nextWaiterID += 1
+        let deadline = requestTimeout
         return try await withCheckedThrowingContinuation { continuation in
-            pending[opcode, default: []].append(continuation)
+            pending[opcode, default: []].append((id: id, continuation: continuation))
+            Task { [weak self] in
+                try? await Task.sleep(for: deadline)
+                await self?.timeOutWaiter(id: id, opcode: opcode)
+            }
         }
+    }
+
+    /// Evicts and fails one waiter if it's still pending when its deadline
+    /// fires — a no-op when the reply (or a disconnect) already resumed it.
+    private func timeOutWaiter(id: UInt64, opcode: Opcode) {
+        guard var waiters = pending[opcode],
+              let index = waiters.firstIndex(where: { $0.id == id }) else { return }
+        let waiter = waiters.remove(at: index)
+        pending[opcode] = waiters
+        waiter.continuation.resume(throwing: Error.timeout(opcode))
     }
 }

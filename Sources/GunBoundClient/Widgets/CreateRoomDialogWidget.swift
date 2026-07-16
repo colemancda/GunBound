@@ -124,7 +124,7 @@ public final class CreateRoomDialogWidget: Widget {
             return false
         case .scroll(let x, let y, _):
             return frame.contains(x: x, y: y)
-        case .pointerMoved, .activate, .text, .key:
+        case .pointerMoved, .pointerUp, .activate, .text, .key:
             return false
         }
     }

@@ -15,8 +15,10 @@ import GunBound
 @MainActor
 public final class ChannelUserListWidget: Widget {
 
-    /// The decomp's fixed panel rect.
-    public static let defaultFrame = Rect(x: 572, y: 287, width: 209, height: 259)
+    /// The decomp's fixed panel rect. `nonisolated` (and computed, not
+    /// stored) so it stays usable from a nonisolated context, e.g. as a
+    /// default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 572, y: 287, width: 209, height: 259) }
 
     /// Rows visible at once — the decomp scrollbar's page size.
     public static let visibleRows = 7
@@ -52,12 +54,13 @@ public final class ChannelUserListWidget: Widget {
         self.textTint = textTint
         // Decomp: CreateScrollListWidget(mgr, 0xb3, 0x3f, 0x12, 0x9a, 7) —
         // the 18×154 track; the chrome's round knobs render *outside* it
-        // (measured from gamelist_channel.img: y 33–60 above, 219–246 below),
-        // so the arrow hit-zones sit on the knobs, not the track ends.
+        // Track + arrow rects are runtime-confirmed from a State-3 gbview dump
+        // (panel id 9002): the scroll widget is (751,350,18×154) and its
+        // arrows (751,322)/(751,514) 18×18 — panel-relative below.
         scrollBar = ScrollBarWidget(
             track: Rect(x: frame.x + 179, y: frame.y + 63, width: 18, height: 154),
-            upArrow: Rect(x: frame.x + 174, y: frame.y + 33, width: 28, height: 28),
-            downArrow: Rect(x: frame.x + 174, y: frame.y + 219, width: 28, height: 28)
+            upArrow: Rect(x: frame.x + 179, y: frame.y + 35, width: 18, height: 18),
+            downArrow: Rect(x: frame.x + 179, y: frame.y + 227, width: 18, height: 18)
         )
         scrollBar.pageSize = Self.visibleRows
         super.init(frame: frame)

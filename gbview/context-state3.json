@@ -1,0 +1,117 @@
+{
+  "g_clientContext": "0x007a7ae0",
+  "localUser": {
+    "off": "ctx+0x2331c",
+    "name": "colemancda2"
+  },
+  "serverList": {
+    "base": "0x007e72e8",
+    "count": 1,
+    "selectedServerId": 0,
+    "currentServerName": "OptiPlex 7020",
+    "servers": [
+      {
+        "idx": 0,
+        "id": 0,
+        "online": 1,
+        "region": 0,
+        "name": "OptiPlex 7020",
+        "desc": "GunBound World Server",
+        "ip": "100.65.243.48",
+        "port": 8370,
+        "players": 0,
+        "maxCapacity": 100,
+        "anim": 0
+      }
+    ]
+  },
+  "channelRoster": {
+    "base": "ctx+0x41440",
+    "users": [
+      {
+        "off": "ctx+0x41445",
+        "name": "admin"
+      },
+      {
+        "off": "ctx+0x41452",
+        "name": "colemancda2"
+      }
+    ]
+  },
+  "rooms": [
+    {
+      "slot": 0,
+      "cardId": 0,
+      "map": 0,
+      "info": "0x00000000",
+      "fullness": 0,
+      "flagA": 0,
+      "flagB": 0,
+      "status": 0,
+      "lock": 0
+    },
+    {
+      "slot": 1,
+      "cardId": 0,
+      "map": 0,
+      "info": "0x00000000",
+      "fullness": 0,
+      "flagA": 0,
+      "flagB": 0,
+      "status": 0,
+      "lock": 0
+    },
+    {
+      "slot": 2,
+      "cardId": 0,
+      "map": 0,
+      "info": "0x00000000",
+      "fullness": 0,
+      "flagA": 0,
+      "flagB": 0,
+      "status": 0,
+      "lock": 0
+    },
+    {
+      "slot": 3,
+      "cardId": 0,
+      "map": 0,
+      "info": "0x00000000",
+      "fullness": 0,
+      "flagA": 0,
+      "flagB": 0,
+      "status": 0,
+      "lock": 0
+    },
+    {
+      "slot": 4,
+      "cardId": 0,
+      "map": 0,
+      "info": "0x00000000",
+      "fullness": 0,
+      "flagA": 0,
+      "flagB": 0,
+      "status": 0,
+      "lock": 0
+    },
+    {
+      "slot": 5,
+      "cardId": 0,
+      "map": 0,
+      "info": "0x00000000",
+      "fullness": 0,
+      "flagA": 0,
+      "flagB": 0,
+      "status": 0,
+      "lock": 0
+    }
+  ],
+  "roomPlayers": [],
+  "peerEndpoint": {
+    "addr": "99.111.108.101",
+    "field4": "0x636e616d",
+    "field8": "0x00326164",
+    "flagC": 0
+  },
+  "inventory": []
+}

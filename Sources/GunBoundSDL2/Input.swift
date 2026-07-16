@@ -15,6 +15,8 @@ func translate(_ event: SDLEvent) -> ScreenInputEvent? {
     switch event {
     case .mouseButtonDown(_, let x, let y, _):
         return .pointerDown(x: x, y: y)
+    case .mouseButtonUp(_, let x, let y, _):
+        return .pointerUp(x: x, y: y)
     case .mouseMotion(_, let x, let y, _):
         return .pointerMoved(x: x, y: y)
     case .keyDown(let scancode, let keycode):
@@ -27,6 +29,12 @@ func translate(_ event: SDLEvent) -> ScreenInputEvent? {
             return .key(.left)
         case SDL_SCANCODE_RIGHT.rawValue:
             return .key(.right)
+        case SDL_SCANCODE_UP.rawValue:
+            return .key(.up)
+        case SDL_SCANCODE_DOWN.rawValue:
+            return .key(.down)
+        case SDL_SCANCODE_TAB.rawValue:
+            return .key(.tab)
         default:
             let code = keycode.rawValue
             if (0x20...0x7e).contains(code), let scalar = UnicodeScalar(UInt32(code)) {

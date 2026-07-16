@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import GunBound
 @testable import GunBoundClient
+import GunBoundFile
 import GunBoundProtocol
 
 @Suite @MainActor
@@ -31,11 +32,32 @@ struct WidgetTests {
 
     private final class NullRenderer: ClientRenderer {
         func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? { nil }
+        func texture(from frame: ImgFile.Frame) -> ClientTexture? { nil }
         func size(of texture: ClientTexture?) -> (width: Float, height: Float) { (0, 0) }
         func clear() {}
-        func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) {}
+        func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {}
         func present() {}
     }
+
+    /// A `ClientTexture` carrying its frame index, and a renderer that hands
+    /// them out and records the last frame drawn — so a widget's state→frame
+    /// choice is observable.
+    private final class FrameTex: ClientTexture { let frame: Int; init(_ frame: Int) { self.frame = frame } }
+    private final class FrameRenderer: ClientRenderer {
+        private(set) var lastFrame: Int?
+        private(set) var draws: [(frame: Int, rect: Rect)] = []
+        func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? { FrameTex(frameIndex) }
+        func texture(from frame: ImgFile.Frame) -> ClientTexture? { FrameTex(0) }
+        func size(of texture: ClientTexture?) -> (width: Float, height: Float) { (10, 10) }
+        func clear() {}
+        func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {
+            if let tex = texture as? FrameTex { lastFrame = tex.frame; draws.append((tex.frame, rect)) }
+        }
+        func present() {}
+        func frame(at rect: Rect) -> Int? { draws.last { $0.rect == rect }?.frame }
+    }
+
+    private var noAssets: AssetLibrary { AssetLibrary(directory: URL(fileURLWithPath: "/nonexistent", isDirectory: true)) }
 
     @Test func addSetsParentAndDrawRecursesParentFirst() {
         ProbeWidget.drawOrder = []
@@ -135,6 +157,163 @@ struct WidgetTests {
         #expect(scrolls == [1, 2, 1])
     }
 
+    @Test func scrollBarArrowsDisableWhenNothingToScroll() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        // A fresh bar (no content) can't scroll — arrows disabled.
+        #expect(!scrollBar.upArrow.isEnabled)
+        #expect(!scrollBar.downArrow.isEnabled)
+
+        // More content than a page fits → scrollable → arrows enabled.
+        scrollBar.contentCount = 8
+        scrollBar.pageSize = 6
+        #expect(scrollBar.upArrow.isEnabled)
+        #expect(scrollBar.downArrow.isEnabled)
+
+        // Content that fits a page → not scrollable → disabled again.
+        scrollBar.contentCount = 4
+        #expect(!scrollBar.upArrow.isEnabled)
+        #expect(!scrollBar.downArrow.isEnabled)
+    }
+
+    @Test func disabledButtonIgnoresClicksAndDrawsDisabledFrame() {
+        let button = ButtonWidget(frame: Rect(x: 10, y: 10, width: 20, height: 20))
+        button.sprite = ButtonSprite(name: "x.img", renderer: FrameRenderer(), assets: noAssets)
+        button.isEnabled = false
+        var clicks = 0
+        button.onClick = { clicks += 1 }
+
+        // A press inside a disabled button isn't consumed and fires nothing.
+        #expect(!button.dispatch(.pointerDown(x: 15, y: 15)))
+        #expect(clicks == 0)
+
+        // It draws the disabled frame (index 3).
+        let renderer = FrameRenderer()
+        button.drawSelf(renderer)
+        #expect(renderer.lastFrame == ButtonState.disabled.frame)
+
+        // With `showsDisabledFrame` off (the scroll arrows' mode — the
+        // original's enabled flag blocks input only), it draws normal art.
+        button.showsDisabledFrame = false
+        button.drawSelf(renderer)
+        #expect(renderer.lastFrame == 0)
+        #expect(!button.dispatch(.pointerDown(x: 15, y: 15)))
+        #expect(clicks == 0)
+    }
+
+    /// The decomp's thumb formulas: the page's share of the track floored
+    /// at 10 and rounded down to a multiple of 5, spanning from
+    /// `pos·height/total`; an empty bar's thumb fills the track.
+    @Test func scrollBarThumbGeometryFollowsTheDecomp() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+
+        scrollBar.contentCount = 10
+        scrollBar.pageSize = 5
+        #expect(scrollBar.thumbHeight == 50)  // 5/10 of 100
+        #expect(scrollBar.thumbTop == 0)
+        scrollBar.setPosition(4)
+        #expect(scrollBar.thumbTop == 40)  // 4·100/10
+
+        // The 13.3px share rounds down to 10 (multiple of 5)...
+        scrollBar.contentCount = 30
+        scrollBar.pageSize = 4
+        #expect(scrollBar.thumbHeight == 10)
+        // ...and a 1px share floors at the 10px minimum.
+        scrollBar.contentCount = 100
+        scrollBar.pageSize = 1
+        #expect(scrollBar.thumbHeight == 10)
+
+        // No content: the thumb fills the whole track.
+        scrollBar.contentCount = 0
+        #expect(scrollBar.thumbHeight == 100)
+    }
+
+    /// A press on the thumb arms the drag with the decomp's grab offset —
+    /// the thumb tracks the pointer without jumping under it — and any
+    /// release disarms it.
+    @Test func scrollBarThumbDragsWithTheGrabOffset() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 10
+        scrollBar.pageSize = 5  // maxPosition 5; thumb 50 tall at y 0
+
+        // Grab the thumb 25px into it.
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 25)))
+        #expect(scrollBar.position == 0)
+
+        // Move down 20px: the thumb top lands at 20 → pos 20·10/100 = 2.
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 45)))
+        #expect(scrollBar.position == 2)
+
+        // Dragging past the track end clamps, not crashes.
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 500)))
+        #expect(scrollBar.position == 5)
+
+        // Release ends the drag — further moves are ignored.
+        #expect(scrollBar.dispatch(.pointerUp(x: 10, y: 500)))
+        #expect(scrollBar.dispatch(.pointerMoved(x: 10, y: 25)) == false)
+        #expect(scrollBar.position == 5)
+    }
+
+    /// Holding the track (off the thumb) pages toward the pointer once per
+    /// frame — the decomp's held-track auto-scroll — stopping when the
+    /// thumb reaches the pointer.
+    @Test func scrollBarHeldTrackPagesTowardThePointer() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 20
+        scrollBar.pageSize = 5  // maxPosition 15; thumb 25 tall
+
+        // Hold the track below the thumb (thumb spans 0–25; y 60 is clear
+        // of the down arrow's 80–100 band).
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 60)))
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 5)  // paged down once
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 10)
+        // Thumb now spans 50–75, covering the held point: paging stops.
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 10)
+
+        _ = scrollBar.dispatch(.pointerUp(x: 10, y: 60))
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 10)
+    }
+
+    /// A held arrow auto-repeats its ±1 step every frame (the decomp's
+    /// armed-label re-fire), on top of the immediate step at the press.
+    @Test func scrollBarHeldArrowAutoRepeats() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 20
+        scrollBar.pageSize = 5
+
+        // Press the down arrow (its band is y 80–100): one step at the
+        // press, another per update while held.
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 90)))
+        #expect(scrollBar.position == 1)
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 2)
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 3)
+
+        // Release stops the repeat.
+        _ = scrollBar.dispatch(.pointerUp(x: 10, y: 90))
+        scrollBar.update(deltaTime: 1.0 / 60)
+        #expect(scrollBar.position == 3)
+    }
+
+    /// A press outside the widget's frame (or with nothing to scroll)
+    /// arms nothing, and a stray pointerUp with no press active is a
+    /// no-op rather than being falsely consumed.
+    @Test func scrollBarIgnoresPressesOutsideItsBoundsOrWithNothingToScroll() {
+        let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100), arrowSize: 20)
+        scrollBar.contentCount = 10
+        scrollBar.pageSize = 5
+
+        #expect(scrollBar.dispatch(.pointerDown(x: 999, y: 999)) == false)
+        #expect(scrollBar.dispatch(.pointerUp(x: 10, y: 50)) == false)
+
+        scrollBar.pageSize = 10  // everything fits: maxPosition 0
+        #expect(scrollBar.dispatch(.pointerDown(x: 10, y: 50)) == false)
+    }
+
     @Test func scrollBarFiresTheDecompCommand() {
         let root = Widget()
         let scrollBar = ScrollBarWidget(track: Rect(x: 0, y: 0, width: 20, height: 100))
@@ -169,6 +348,13 @@ struct WidgetTests {
         _ = dialog.dispatch(.pointerDown(x: dialog.okButton.frame.x + 1, y: dialog.okButton.frame.y + 1))
         #expect(confirmed == 1)
         #expect(dialog.isHidden)
+    }
+
+    /// The dialog holds a single message (no separate title — its first
+    /// wrapped line is drawn in the title strip, mirroring the original).
+    @Test func dialogHoldsTheWholeMessage() {
+        let dialog = DialogWidget(message: "Title\n\nbody", font: nil)
+        #expect(dialog.message == "Title\n\nbody")
     }
 
     @Test func dialogEnterConfirms() {
@@ -214,6 +400,31 @@ struct WidgetTests {
         #expect(!panel.dispatch(.pointerDown(x: 400, y: 400)))
     }
 
+    @Test func buddyPanelDragsByChromeButNotRows() {
+        // Default frame (568,11,211×267). Drag by empty title-bar chrome.
+        let panel = BuddyPanelWidget(font: nil)
+        panel.buddies = ["a", "b", "c"]
+        let closeStart = panel.closeButton.frame
+        let dialogStart = panel.addBuddyDialog.frame
+
+        // (600,15) is title-bar chrome — not a button (662/705/748) nor a row.
+        #expect(panel.dispatch(.pointerDown(x: 600, y: 15)))
+        _ = panel.dispatch(.pointerMoved(x: 620, y: 35))
+        #expect(panel.frame.x == 588 && panel.frame.y == 31)
+        #expect(panel.closeButton.frame.x == closeStart.x + 20)     // chrome moves
+        #expect(panel.addBuddyDialog.frame == dialogStart)          // modal stays put
+        _ = panel.dispatch(.pointerUp(x: 620, y: 35))
+
+        // A press on a roster row selects, it doesn't drag.
+        let fresh = BuddyPanelWidget(font: nil)
+        fresh.buddies = ["a", "b", "c"]
+        let before = fresh.frame
+        _ = fresh.dispatch(.pointerDown(x: 585, y: 50))   // row 0 (listOrigin 580,47)
+        _ = fresh.dispatch(.pointerMoved(x: 650, y: 120))
+        #expect(fresh.frame == before)
+        #expect(fresh.selectedIndex == 0)
+    }
+
     @Test func buddyPanelRosterDrivesTheScrollbar() {
         let panel = BuddyPanelWidget(font: nil)
         #expect(panel.scrollBar.contentCount == 0)
@@ -221,6 +432,69 @@ struct WidgetTests {
         #expect(panel.scrollBar.contentCount == 20)
         // 20 buddies, 11 visible → 9 scroll steps.
         #expect(panel.scrollBar.maxPosition == 20 - BuddyPanelWidget.visibleRows)
+    }
+
+    /// Add opens the inline name field; typing a name and pressing Enter
+    /// fires `onAdd` and closes the field. An empty submit is a no-op.
+    @Test func buddyPanelAddOpensDialogAndSubmitsNames() {
+        let panel = BuddyPanelWidget(font: nil)
+        var added: [String] = []
+        panel.onAdd = { added.append($0) }
+        let dialog = panel.addBuddyDialog
+
+        // Add opens the modal dialog, cleared and focused.
+        #expect(dialog.isHidden)
+        panel.addButton.onClick?()
+        #expect(!dialog.isHidden)
+        #expect(dialog.nameField.isFocused)
+
+        // Typing a name and confirming fires onAdd and closes the dialog.
+        _ = dialog.nameField.dispatch(.text("guest"))
+        _ = dialog.nameField.dispatch(.activate)
+        #expect(added == ["guest"])
+        #expect(dialog.isHidden)
+
+        // Reopened: an empty submit fires nothing; CLOSE hides it.
+        panel.addButton.onClick?()
+        _ = dialog.nameField.dispatch(.activate)
+        #expect(added == ["guest"])
+        #expect(!dialog.isHidden)
+        dialog.closeButton.onClick?()
+        #expect(dialog.isHidden)
+    }
+
+    /// Clicking a roster row selects it (re-click deselects); Del fires
+    /// `onDelete` with the selected name; a roster change clears the
+    /// selection.
+    @Test func buddyPanelSelectionDrivesDelete() {
+        let panel = BuddyPanelWidget(font: nil)
+        panel.buddies = ["alpha", "beta", "gamma"]
+        var deleted: [String] = []
+        panel.onDelete = { deleted.append($0) }
+
+        // Del with nothing selected is a no-op.
+        panel.delButton.onClick?()
+        #expect(deleted.isEmpty)
+
+        // Click the second row (list origin is (frame.x+12, frame.y+36);
+        // rows pitch by the fallback line height 12 + 4).
+        let x = panel.frame.x + 20
+        let rowY = panel.frame.y + 36 + 16 + 2
+        #expect(panel.dispatch(.pointerDown(x: x, y: rowY)))
+        #expect(panel.selectedIndex == 1)
+
+        panel.delButton.onClick?()
+        #expect(deleted == ["beta"])
+
+        // The refreshed roster clears the stale selection.
+        panel.buddies = ["alpha", "gamma"]
+        #expect(panel.selectedIndex == nil)
+
+        // Re-click toggles the selection off.
+        #expect(panel.dispatch(.pointerDown(x: x, y: rowY)))
+        #expect(panel.selectedIndex == 1)
+        #expect(panel.dispatch(.pointerDown(x: x, y: rowY)))
+        #expect(panel.selectedIndex == nil)
     }
 
     @Test func createRoomDialogSubmitCarriesFields() {
@@ -257,14 +531,18 @@ struct WidgetTests {
     }
 
     @Test func enterNumberDialogSubmitsValidNumbersOnly() {
-        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 250, y: 200, width: 300, height: 180), font: nil)
-        var joined: Int?
-        dialog.onSubmit = { joined = $0 }
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 243, y: 202, width: 314, height: 160), font: nil)
+        var joined: (number: Int, password: String)?
+        dialog.onSubmit = { joined = ($0, $1) }
 
         dialog.numberField.focus()
         _ = dialog.numberField.dispatch(.text("42"))
+        // A password typed into the second field is carried through.
+        dialog.passwordField.focus()
+        _ = dialog.passwordField.dispatch(.text("secret"))
         dialog.okButton.onClick?()
-        #expect(joined == 42)
+        #expect(joined?.number == 42)
+        #expect(joined?.password == "secret")
 
         // Out of range → no submit.
         joined = nil
@@ -278,6 +556,76 @@ struct WidgetTests {
         dialog.numberField.focus()
         _ = dialog.numberField.dispatch(.text("1a2b"))
         #expect(dialog.numberField.text == "12")
+    }
+
+    @Test func enterNumberDialogDragsByItsChromeAndResetsOnReopen() {
+        let dialog = EnterRoomNumberDialogWidget(frame: Rect(x: 243, y: 202, width: 314, height: 160), font: nil)
+        let okStart = dialog.okButton.frame
+
+        // Press the title-bar chrome (above the fields at y 252) and drag +40,+30.
+        #expect(dialog.dispatch(.pointerDown(x: 250, y: 210)))
+        _ = dialog.dispatch(.pointerMoved(x: 290, y: 240))
+        #expect(dialog.frame.x == 283 && dialog.frame.y == 232)
+        // Children move with the panel.
+        #expect(dialog.okButton.frame.x == okStart.x + 40 && dialog.okButton.frame.y == okStart.y + 30)
+        _ = dialog.dispatch(.pointerUp(x: 290, y: 240))
+
+        // Pressing a child (the Ok button) does not start a drag.
+        let beforeButtonPress = dialog.frame
+        _ = dialog.dispatch(.pointerDown(x: dialog.okButton.frame.x + 2, y: dialog.okButton.frame.y + 2))
+        _ = dialog.dispatch(.pointerMoved(x: dialog.okButton.frame.x + 60, y: dialog.okButton.frame.y + 60))
+        #expect(dialog.frame == beforeButtonPress)
+
+        // Reopening (reset) returns it to its start position.
+        dialog.reset()
+        #expect(dialog.frame.x == 243 && dialog.frame.y == 202)
+        #expect(dialog.okButton.frame == okStart)
+    }
+
+    @Test func lobbyChatChannelTabsSelectAndHighlight() {
+        let tabs: [(normal: ClientTexture?, selected: ClientTexture?)] =
+            (0..<8).map { _ in (normal: FrameTex(0) as ClientTexture?, selected: FrameTex(3) as ClientTexture?) }
+        let panel = LobbyChatWidget(font: nil, channelTabs: tabs)
+        var picked: Int?
+        panel.onSelectChannel = { picked = $0 }
+
+        #expect(panel.selectedChannel == 0)
+
+        // Click tab 3 — rect x = 23+264+3*32 = 383, y = 287+9 = 296.
+        #expect(panel.dispatch(.pointerDown(x: 388, y: 301)))
+        #expect(panel.selectedChannel == 3)
+        #expect(picked == 3)
+
+        // The selected tab draws its yellow frame (3); an unselected one, 0.
+        let renderer = FrameRenderer()
+        panel.drawSelf(renderer)
+        #expect(renderer.frame(at: Rect(x: 383, y: 296, width: 22, height: 22)) == 3)
+        #expect(renderer.frame(at: Rect(x: 287, y: 296, width: 22, height: 22)) == 0)
+    }
+
+    @Test func buddyChatWindowSendsClosesAndScrolls() {
+        let window = BuddyChatWindowWidget(recipient: "admin", font: nil)
+        var sent: [String] = []
+        var closed = false
+        window.onSend = { sent.append($0) }
+        window.onClose = { closed = true }
+
+        // Typing a line and pressing Enter sends it and clears the input.
+        window.inputField.focus()
+        _ = window.inputField.dispatch(.text("hi"))
+        _ = window.inputField.dispatch(.activate)
+        #expect(sent == ["hi"])
+        #expect(window.inputField.text.isEmpty)
+
+        // A full log drives the scrollbar and follows the tail.
+        window.messages = (1...30).map { ChatLine(sender: "admin", message: "m\($0)") }
+        #expect(window.scrollBar.contentCount == 30)
+        #expect(window.scrollBar.position == window.scrollBar.maxPosition)
+
+        // Close hides the window and fires the callback.
+        window.closeButton.onClick?()
+        #expect(closed)
+        #expect(window.isHidden)
     }
 
     @Test func channelUserListScrollsItsRoster() {

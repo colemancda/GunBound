@@ -101,9 +101,25 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public static let statusIconOffset = (x: Float(0x13), y: Float(0x55 - 0x3a))  // (19, 27)
     public static let modeIconOffset = (x: Float(0xb1), y: Float(0x5b - 0x3a))    // (177, 33)
     public static let lockIconOffsetY = Float(0x52 - 0x3a)                        // 24
-    /// The padlock sits 6px further left in the right column (decomp's
-    /// `0xea - 6` for `slot/3 != 0`).
-    public static func lockIconX(rightColumn: Bool) -> Float { rightColumn ? Float(0xea - 6) : Float(0xea) }
+    /// The padlock's card-relative x. The byte-matched `RenderRoomCard`
+    /// (decomp `src/cxx/State03_GameRoomList.cpp`) computes the right
+    /// column's as `0xea - 0xfa` — **−16**, i.e. 16px left of the right
+    /// card's band, hanging into the column gap (corrected from an earlier
+    /// `0xea − 6` misreading of the raw port).
+    public static func lockIconX(rightColumn: Bool) -> Float { rightColumn ? -16 : Float(0xea) }
+
+    /// The card's map thumbnail sheet (`gameliststage.img`, 11 thumbs per
+    /// bank, frame 0 the random "?"), blitted at this card-relative
+    /// offset. `RenderRoomCard` picks `(infoByte2 & 3)·11 + mapId`; the
+    /// bank bits' semantics aren't pinned down (the promoted source
+    /// guesses fullness), so bank 0 draws until they are.
+    public let stageThumbImageName = "gameliststage.img"
+    public static let stageThumbOffset = (x: Float(0x6a), y: Float(0x5b - 0x3a))  // (106, 33)
+
+    /// The map thumbnail's frame for a room (bank 0).
+    public func stageThumbFrame(of room: RoomListResponse.Room) -> Int {
+        Int(room.map.rawValue)
+    }
 
     /// The confirmed button set with verbatim rects from the decompiled
     /// `State03_GameRoomList_CreateButtons` (`0x42aba0`): six 107×45 main
@@ -131,6 +147,19 @@ public final class GameRoomListViewModel: ScreenViewModel {
     /// The active room-list filter (View All / Waiting bottom-bar buttons).
     public private(set) var filter: RoomFilter = .all
 
+    /// Whether a filter button is the current selection — the toggle's
+    /// "active" (yellow) state in the decomp (`SetState("active")`, the 5th
+    /// frame of `b_gamelist_viewall`/`wait.img`). Exactly one filter is
+    /// always current; Find Friend's mode-6 filter isn't modeled here, so
+    /// it never shows active.
+    public func isFilterActive(_ action: ButtonAction) -> Bool {
+        switch action {
+        case .viewAll: return filter == .all
+        case .waitingOnly: return filter == .waitingOnly
+        default: return false
+        }
+    }
+
     /// Rooms from the most recent `0x2103` room-list response — the full
     /// fetched list (`visibleRooms` applies the filter and page cap for
     /// display). Settable so tests and SwiftUI previews can populate it
@@ -139,6 +168,9 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public var rooms: [RoomListResponse.Room] = []
 
     public private(set) var hoveredButtonIndex: Int?
+    /// The button currently held down (pointer pressed on it, not yet
+    /// released) — drives the `pressed` button frame.
+    public private(set) var pressedButtonIndex: Int?
     public private(set) var hoveredRoomIndex: Int?
     /// The highlighted room card (`this+8` in the decomp) — set by clicking a
     /// card, joined via the Join button.
@@ -156,10 +188,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
     public private(set) var isCreateRoomDialogVisible = false
     public private(set) var isEnterNumberDialogVisible = false
 
-    /// The player's buddies. No `0x1010`-family buddy-list packet is wired up
-    /// yet, so this stays empty (the panel opens showing an empty list) until
-    /// that protocol path exists — settable so tests/previews can populate it.
+    /// The player's buddies, fetched on entry and refreshed by
+    /// `.buddyListUpdated` pushes (`0x2200`/`0x2204`, our own convention —
+    /// see `BuddyEntry`'s type-level note). Online names are marked so the
+    /// panel can style them once it draws more than plain text. Settable
+    /// so tests/previews can populate it directly.
     public var buddies: [String] = []
+    public private(set) var onlineBuddies: Set<String> = []
 
     /// Channel members shown in the CHANNEL panel — seeded from the join-
     /// channel roster (`0x2001`) and grown by `0x200E` pushes as users join.
@@ -197,6 +232,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
 
     public func onEnter() {
         hoveredButtonIndex = nil
+        pressedButtonIndex = nil
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
         filter = .all
@@ -209,10 +245,12 @@ public final class GameRoomListViewModel: ScreenViewModel {
         }
         startObservingPushes()
         loadRooms()
+        loadBuddies()
     }
 
     public func onExit() {
         hoveredButtonIndex = nil
+        pressedButtonIndex = nil
         hoveredRoomIndex = nil
         selectedRoomIndex = nil
         pushTask?.cancel()
@@ -253,10 +291,54 @@ public final class GameRoomListViewModel: ScreenViewModel {
             ))
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
+        case .buddyListUpdated(let notification):
+            applyBuddyList(notification.buddies)
         case .gameStarted, .userQuit, .hostMigrated, .tunnelReceived, .playerDied, .gameEnded:
             break  // only meaningful inside a room (Ready Room / In-Battle handle these)
         case .raw:
             break
+        }
+    }
+
+    private func applyBuddyList(_ entries: [BuddyEntry]) {
+        buddies = entries.map { String(describing: $0.username) }
+        onlineBuddies = Set(entries.filter(\.isOnline).map { String(describing: $0.username) })
+    }
+
+    /// Fetches the buddy roster (`0x2200` → `0x2201`).
+    private func loadBuddies() {
+        guard let client = delegate.client else { return }
+        Task {
+            do {
+                applyBuddyList(try await client.fetchBuddyList())
+            } catch {
+                print("[GunBound] couldn't fetch buddy list: \(error)")
+            }
+        }
+    }
+
+    /// Adds a username to the buddy list (the panel's Add button) — the
+    /// refreshed roster arrives as a `.buddyListUpdated` push.
+    public func addBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.addBuddy(username)
+            } catch {
+                print("[GunBound] couldn't add buddy: \(error)")
+            }
+        }
+    }
+
+    /// Removes a username from the buddy list (the panel's Del button).
+    public func removeBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.removeBuddy(username)
+            } catch {
+                print("[GunBound] couldn't remove buddy: \(error)")
+            }
         }
     }
 
@@ -383,6 +465,7 @@ public final class GameRoomListViewModel: ScreenViewModel {
                 return
             }
             guard let index = buttons.firstIndex(where: { $0.rect.contains(x: x, y: y) }) else { return }
+            pressedButtonIndex = index
             handleButton(buttons[index].action)
 
         case .scroll(_, let y, let steps):
@@ -390,6 +473,9 @@ public final class GameRoomListViewModel: ScreenViewModel {
             // buttons at y 246) turns one page per gesture, like Prev/Next.
             guard y < 246, steps != 0 else { return }
             step(page: steps > 0 ? 1 : -1)
+
+        case .pointerUp:
+            pressedButtonIndex = nil
 
         case .activate, .text, .key:
             break
@@ -465,15 +551,16 @@ public final class GameRoomListViewModel: ScreenViewModel {
 
     /// Joins a room by its typed number (`0x2110`), entering its Ready Room on
     /// success.
-    public func joinRoomByNumber(_ number: Int) {
+    public func joinRoomByNumber(_ number: Int, password: String = "") {
         guard !isJoiningRoom, let client = delegate.client else { return }
         isEnterNumberDialogVisible = false
         isJoiningRoom = true
         let room = RoomID(rawValue: UInt16(clamping: number))
+        let roomPassword = RoomPassword(rawValue: password) ?? RoomPassword()
         Task {
             defer { isJoiningRoom = false }
             do {
-                let response = try await client.joinRoom(room)
+                let response = try await client.joinRoom(room, password: roomPassword)
                 if response.isSuccess {
                     delegate.session.currentRoom = response
                     delegate.requestTransition(to: .readyRoom)
@@ -492,9 +579,13 @@ public final class GameRoomListViewModel: ScreenViewModel {
     }
 
     /// Shows or hides the buddy panel — the toggle path, also used by
-    /// previews/tests to open it directly.
+    /// previews/tests to open it directly. Opening refreshes the roster
+    /// (online statuses go stale while the panel is closed).
     public func setBuddyPanelVisible(_ visible: Bool) {
         isBuddyPanelVisible = visible
+        if visible {
+            loadBuddies()
+        }
     }
 
     private func setFilter(_ newFilter: RoomFilter) {

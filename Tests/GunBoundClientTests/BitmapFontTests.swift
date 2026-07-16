@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import GunBound
 @testable import GunBoundClient
+import GunBoundFile
 
 /// A `ClientTexture` that just remembers which glyph frame it stands for.
 @MainActor
@@ -20,6 +21,8 @@ final class RecordingRenderer: ClientRenderer {
 
     private(set) var drawCalls: [(frame: Int, rect: Rect)] = []
 
+    func texture(from frame: ImgFile.Frame) -> ClientTexture? { nil }
+
     func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture? {
         StubTexture(frame: frameIndex)
     }
@@ -30,7 +33,7 @@ final class RecordingRenderer: ClientRenderer {
 
     func clear() {}
 
-    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) {
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float) {
         guard let texture = texture as? StubTexture else { return }
         drawCalls.append((texture.frame, rect))
     }

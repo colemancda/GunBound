@@ -15,6 +15,10 @@ final class MockGunBoundSocket: GunBoundSocketTCP, @unchecked Sendable {
     /// should replay, in order, one per `recieve(_:)` call.
     nonisolated(unsafe) static var queuedResponses: [[UInt8]] = []
 
+    /// When set, a drained mock blocks instead of EOFing — a server that
+    /// stays connected but never replies (the request-timeout scenario).
+    nonisolated(unsafe) static var hangWhenDrained = false
+
     let address: GunBound.GunBoundAddress
     private let responses: [[UInt8]]
     private var responseIndex = 0
@@ -35,7 +39,12 @@ final class MockGunBoundSocket: GunBoundSocketTCP, @unchecked Sendable {
 
     func recieve(_ bufferSize: Int) async throws -> Data {
         defer { responseIndex += 1 }
-        guard responseIndex < responses.count else { return Data() }
+        guard responseIndex < responses.count else {
+            if Self.hangWhenDrained {
+                try await Task.sleep(for: .seconds(60))  // cancelled by close
+            }
+            return Data()
+        }
         return Data(responses[responseIndex])
     }
 

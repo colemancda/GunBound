@@ -16,15 +16,32 @@ import GunBound
 public final class DialogWidget: Widget {
 
     /// The decomp's fixed dialog rect — also `error_back.img`'s natural size.
-    public static let defaultFrame = Rect(x: 249, y: 193, width: 304, height: 176)
+    /// `nonisolated` (and computed, not stored) so it stays usable from a
+    /// nonisolated context, e.g. as a default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 249, y: 193, width: 304, height: 176) }
 
     /// The OK button's decomp position (`b_error_confirm` at (0x1c6, 0x14b),
     /// size 0x4a×0x1a). Callers usually override the size with the loaded
     /// texture's own dimensions.
-    public static let defaultConfirmFrame = Rect(x: 454, y: 331, width: 74, height: 26)
+    public nonisolated static var defaultConfirmFrame: Rect { Rect(x: 454, y: 331, width: 74, height: 26) }
 
+    /// The full message. Following the original (`ShowErrorDialog` renders
+    /// one wrapped string, `GameTick` blits its first line into the title
+    /// strip and the rest into the body), this widget has **no separate
+    /// title**: the first wrapped line is drawn in the strip and the
+    /// remaining lines in the body. The localized error strings are authored
+    /// as `Title\n\nDetail`, so the first line naturally becomes the title
+    /// and the blank line becomes the gap beneath it.
     public var message: String
     public var backgroundTexture: ClientTexture?
+    /// A solid texture drawn full-screen behind the panel to dim what's
+    /// underneath — the original's modal shade (a 50%-alpha black fill; the
+    /// decomp's `FUN_004ed5a0(…, 0x80000000)`). `nil` draws no dim.
+    public var dimTexture: ClientTexture?
+    /// The area the dim covers — the client's logical 800×600 canvas.
+    public var dimBounds = Rect(x: 0, y: 0, width: 800, height: 600)
+    /// The dim's opacity (0x80/0xff ≈ 0.5, matching the original's fill).
+    public static let dimOpacity: Float = 0.5
     private let font: LoadedFont?
     private let textTint: (r: UInt8, g: UInt8, b: UInt8)
     public let okButton: ButtonWidget
@@ -69,33 +86,57 @@ public final class DialogWidget: Widget {
     }
 
     public override func drawSelf(_ renderer: ClientRenderer) {
+        // Modal shade: dim the whole screen behind the panel first (the
+        // original darkens the background while a dialog is up).
+        if let dimTexture {
+            renderer.draw(dimTexture, in: dimBounds, tint: (0, 0, 0), blend: .alpha, opacity: Self.dimOpacity)
+        }
         if let backgroundTexture {
             renderer.draw(backgroundTexture, in: frame, tint: nil)
         }
         guard let font else { return }
 
-        // Message body: inset inside the panel's dark inner band. The top
-        // strip of `error_back.img` is a title bar, so text starts below it.
-        let inset: Float = 18
-        let bodyTop = frame.y + 40
-        let bodyWidth = frame.width - inset * 2
-        let lines = wrap(message, within: bodyWidth, font: font)
-        var y = bodyTop
-        for line in lines {
-            // Center each line horizontally within the body.
-            let lineWidth = font.width(of: line)
-            let x = frame.x + inset + max(0, (bodyWidth - lineWidth) / 2)
-            font.draw(line, x: x, y: y, tint: textTint, using: renderer)
+        let lines = wrap(message, within: frame.width - Self.bodyInset * 2, font: font)
+
+        // First wrapped line → the title strip (the decomp blits it at
+        // panel-relative y 14: BlitRLESprite y 0xcf = 207, panel top
+        // 0xc1 = 193). Centered in the strip.
+        if let titleLine = lines.first, !titleLine.isEmpty {
+            let titleWidth = font.width(of: titleLine)
+            font.draw(
+                titleLine,
+                x: frame.x + max(Self.bodyInset, (frame.width - titleWidth) / 2),
+                y: frame.y + 14,
+                tint: textTint,
+                using: renderer
+            )
+        }
+
+        // Remaining lines → the body, left-aligned (the original blits them
+        // from y 236 = panel-relative 43). The message's blank line after
+        // the title keeps a slot here, forming the gap beneath the title.
+        var y = frame.y + Self.bodyTop
+        for line in lines.dropFirst() {
+            font.draw(line, x: frame.x + Self.bodyInset, y: y, tint: textTint, using: renderer)
             y += font.lineHeight + 4
         }
     }
+
+    /// Body-text layout, panel-relative. The decomp blits the body lines
+    /// starting at y 236 (0xec) with the panel top at y 193 (0xc1), i.e.
+    /// panel-relative **43** — matching `RenderWrappedText`'s y arg (0x2b);
+    /// lines step 14px (0xe). The left inset isn't cleanly recoverable (the
+    /// wrapped-text buffer uses its own layout space, wrap width 0x15e), so
+    /// it stays a visual estimate.
+    private static let bodyInset: Float = 18
+    private static let bodyTop: Float = 43
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
         switch event {
         case .activate:
             confirm()
             return true
-        case .pointerDown:
+        case .pointerDown, .pointerUp:
             // Modal: swallow clicks anywhere so the screen behind stays inert
             // (the OK button already had its chance as a child).
             return true

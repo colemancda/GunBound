@@ -53,5 +53,16 @@ struct ItemDataFileTests {
         #expect(unused.name.isEmpty)
         #expect(unused.price == 0)
         #expect(unused.descriptionText.isEmpty)
+
+        // The shelf-icon code (`field0x30`) decodes to a sheet + frame pair:
+        // Dual `0xff01` → sheet 1, enabled frame 0; Bunge shot `0x0001` →
+        // sheet 0, frame 0; Teleport `0xff0a` → sheet 1, frame 18 (decomp
+        // `fc6a7cb`).
+        #expect(dual.field0x30 == 0xff01)
+        #expect(dual.shelfIcon == ItemDataFile.ShelfIcon(sheetIndex: 1, enabledFrame: 0, disabledFrame: 1))
+        #expect(records[11].name == "Bunge shot")
+        #expect(records[11].shelfIcon == ItemDataFile.ShelfIcon(sheetIndex: 0, enabledFrame: 0, disabledFrame: 1))
+        #expect(teleport.shelfIcon == ItemDataFile.ShelfIcon(sheetIndex: 1, enabledFrame: 18, disabledFrame: 19))
+        #expect(blood.shelfIcon == ItemDataFile.ShelfIcon(sheetIndex: 0, enabledFrame: 4, disabledFrame: 5))
     }
 }

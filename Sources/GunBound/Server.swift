@@ -822,6 +822,10 @@ internal extension GunBoundServer {
             await register { [unowned self] in try await self.roomDetail($0) }
             // user lookup
             await register { [unowned self] in try await self.userLookup($0) }
+            // buddy list
+            await register { [unowned self] in try await self.buddyList($0) }
+            await connection.register { [unowned self] in await self.buddyAdd($0) }
+            await connection.register { [unowned self] in await self.buddyRemove($0) }
             // user ready
             await register { [unowned self] in try await self.userReady($0) }
             // user death (in-game)
@@ -1767,6 +1771,66 @@ internal extension GunBoundServer {
                 rankCurrent: Int16(bitPattern: user.rankCurrent),
                 rankSeason: Int16(bitPattern: user.rankSeason)
             )
+        }
+
+        /// Buddy list request (our own convention — see `BuddyEntry`'s
+        /// type-level note): the requester's roster with live online status.
+        private func buddyList(_ request: BuddyListRequest) async throws -> BuddyListResponse {
+            guard let username = await self.connection.username else {
+                throw GunBoundError.notAuthenticated
+            }
+            let user = try await self.server.dataSource.user(for: username)
+            return BuddyListResponse(buddies: await self.onlineStatus(of: user.buddies))
+        }
+
+        /// Buddy add command: appends (deduplicated) to the buddy list if
+        /// the target account exists, then pushes the refreshed roster.
+        private func buddyAdd(_ command: BuddyAddCommand) async {
+            guard let username = await self.connection.username,
+                  (try? await self.server.dataSource.userExists(for: command.username)) == true
+            else { return }
+            do {
+                try await self.server.dataSource.updateUser(username) { user in
+                    guard !user.buddies.contains(command.username) else { return }
+                    user.buddies.append(command.username)
+                }
+                await self.pushBuddyList(to: username)
+            } catch {
+                log("Buddy Add Error: \(error)")
+            }
+        }
+
+        /// Buddy remove command: drops the username and pushes the
+        /// refreshed roster.
+        private func buddyRemove(_ command: BuddyRemoveCommand) async {
+            guard let username = await self.connection.username else { return }
+            do {
+                try await self.server.dataSource.updateUser(username) { user in
+                    user.buddies.removeAll { $0 == command.username }
+                }
+                await self.pushBuddyList(to: username)
+            } catch {
+                log("Buddy Remove Error: \(error)")
+            }
+        }
+
+        private func pushBuddyList(to username: Username) async {
+            guard let user = try? await self.server.dataSource.user(for: username) else { return }
+            let notification = BuddyListNotification(buddies: await self.onlineStatus(of: user.buddies))
+            await self.send(notification)
+        }
+
+        /// Online status is derived live from the connected-clients table
+        /// (no separate presence tracking) — a buddy is "online" iff some
+        /// active connection is authenticated as that username.
+        private func onlineStatus(of buddies: [Username]) async -> [BuddyEntry] {
+            var online = Set<Username>()
+            for connection in await self.server.storage.connections.values {
+                if let name = await connection.connection.username {
+                    online.insert(name)
+                }
+            }
+            return buddies.map { BuddyEntry(username: $0, isOnline: online.contains($0)) }
         }
 
         /// Cash refresh request (0x6100): reply with the same cash update

@@ -12,19 +12,26 @@ import GunBound
 /// and three `ButtonWidget`s under one panel and draws the buddy roster in
 /// the list band, scrolled by the bar.
 ///
-/// The panel's own rect (and `buddy_back.img`'s size) are decomp-confirmed;
-/// the *interior* button/scrollbar positions are not recorded in the decomp,
-/// so they're eyeballed against the panel art and documented as such (the
-/// same footing as the Server Select scrollbar's baked-arrow hit zones).
+/// The panel rect and the *interior* button/scrollbar positions are all
+/// runtime-confirmed against a live `gbview` panel-tree dump (panel id 20000):
+/// Add / Del / close-X are the three title-bar label buttons, and the scroll
+/// widget runs down the right edge — the exact rects below.
 @MainActor
 public final class BuddyPanelWidget: Widget {
 
     /// The decomp's fixed panel rect — also `buddy_back.img`'s natural size.
-    public static let defaultFrame = Rect(x: 568, y: 11, width: 211, height: 267)
+    /// `nonisolated` (and computed, not stored) so it stays usable from a
+    /// nonisolated context, e.g. as a default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 568, y: 11, width: 211, height: 267) }
 
     /// Buddy names shown in the list band; the counter reflects the count.
     public var buddies: [String] = [] {
-        didSet { scrollBar.contentCount = buddies.count }
+        didSet {
+            scrollBar.contentCount = buddies.count
+            if buddies != oldValue {
+                selectedIndex = nil
+            }
+        }
     }
 
     public var backgroundTexture: ClientTexture?
@@ -42,8 +49,19 @@ public final class BuddyPanelWidget: Widget {
 
     /// Called when the close-X is clicked (after the panel hides itself).
     public var onClose: (() -> Void)?
-    public var onAdd: (() -> Void)?
-    public var onDelete: (() -> Void)?
+    /// Called when a name submitted in the add-buddy dialog is confirmed.
+    public var onAdd: ((String) -> Void)?
+    /// Called when Del is clicked with a roster row selected, with that
+    /// buddy's name.
+    public var onDelete: ((String) -> Void)?
+
+    /// The roster row highlighted by a click — Del acts on it. Cleared
+    /// when the roster changes out from under it.
+    public private(set) var selectedIndex: Int?
+
+    /// The modal add-buddy dialog the Add button opens (the decomp's separate
+    /// `0x557e68` panel), hidden until then.
+    public let addBuddyDialog: AddBuddyDialogWidget
 
     /// The list band the roster is drawn into, inset inside the panel border
     /// (below the title bar, left of the scrollbar).
@@ -57,51 +75,83 @@ public final class BuddyPanelWidget: Widget {
         addTexture: ClientTexture? = nil,
         delTexture: ClientTexture? = nil,
         closeTexture: ClientTexture? = nil,
+        dialogBackground: ClientTexture? = nil,
+        dialogAddTexture: ClientTexture? = nil,
+        dialogCloseTexture: ClientTexture? = nil,
+        dialogMessage: String = AddBuddyDialogWidget.defaultMessage,
         textTint: (r: UInt8, g: UInt8, b: UInt8) = (255, 255, 255)
     ) {
         self.font = font
         self.backgroundTexture = background
         self.textTint = textTint
 
-        // Interior positions (panel-relative, not decomp-recorded):
-        //   close-X — far right of the title bar (25×22 art)
-        //   Add / Del — bottom-left, side by side (42×22 art)
-        //   scrollbar — right edge, below the title bar down to the bottom
-        closeButton = ButtonWidget(
-            frame: Rect(x: frame.x + frame.width - 29, y: frame.y + 5, width: 25, height: 22),
-            texture: closeTexture
-        )
+        // Interior positions — panel-relative offsets from the gbview dump
+        // (panel at 568,11): Add / Del / close-X all sit in the title bar,
+        // and the scroll widget (arrows on its baked knobs) runs down the
+        // right edge.
         addButton = ButtonWidget(
-            frame: Rect(x: frame.x + 10, y: frame.y + frame.height - 28, width: 42, height: 22),
+            frame: Rect(x: frame.x + 94, y: frame.y + 7, width: 39, height: 20),
             texture: addTexture
         )
         delButton = ButtonWidget(
-            frame: Rect(x: frame.x + 56, y: frame.y + frame.height - 28, width: 42, height: 22),
+            frame: Rect(x: frame.x + 137, y: frame.y + 7, width: 39, height: 20),
             texture: delTexture
         )
-        // The chrome's round knobs render outside the track (measured from
-        // buddy_back.img: y 44–63 above, 234–253 below); the arrow hit-zones
-        // sit on the knobs.
+        closeButton = ButtonWidget(
+            frame: Rect(x: frame.x + 180, y: frame.y + 7, width: 22, height: 20),
+            texture: closeTexture
+        )
         scrollBar = ScrollBarWidget(
-            track: Rect(x: frame.x + frame.width - 26, y: frame.y + 34, width: 22, height: frame.height - 66),
-            upArrow: Rect(x: frame.x + 184, y: frame.y + 44, width: 24, height: 20),
-            downArrow: Rect(x: frame.x + 184, y: frame.y + 234, width: 24, height: 20)
+            track: Rect(x: frame.x + 183, y: frame.y + 73, width: 18, height: 152),
+            upArrow: Rect(x: frame.x + 183, y: frame.y + 45, width: 18, height: 18),
+            downArrow: Rect(x: frame.x + 183, y: frame.y + 235, width: 18, height: 18)
         )
         scrollBar.pageSize = Self.visibleRows
 
+        // The modal add-buddy dialog (fixed rect (281,206)), hidden until Add.
+        addBuddyDialog = AddBuddyDialogWidget(
+            font: font,
+            background: dialogBackground,
+            addTexture: dialogAddTexture,
+            closeTexture: dialogCloseTexture,
+            message: dialogMessage,
+            messageTint: textTint
+        )
+        addBuddyDialog.isHidden = true
+
         super.init(frame: frame)
+        isDraggable = true  // a movable dialog (m_pinned clear in the decomp)
         add(scrollBar)
         add(addButton)
         add(delButton)
         add(closeButton)
+        add(addBuddyDialog)  // added last → topmost, modal over the panel
 
         closeButton.onClick = { [weak self] in self?.close() }
-        addButton.onClick = { [weak self] in self?.onAdd?() }
-        delButton.onClick = { [weak self] in self?.onDelete?() }
+        addButton.onClick = { [weak self] in self?.openAddDialog() }
+        delButton.onClick = { [weak self] in self?.deleteSelected() }
+        addBuddyDialog.onAdd = { [weak self] name in
+            self?.addBuddyDialog.isHidden = true
+            self?.onAdd?(name)
+        }
+        addBuddyDialog.onClose = { [weak self] in self?.addBuddyDialog.isHidden = true }
     }
 
-    /// Hides the panel and fires `onClose`.
+    /// Add: opens the modal add-buddy dialog, cleared and focused.
+    private func openAddDialog() {
+        addBuddyDialog.isHidden = false
+        addBuddyDialog.reset()
+    }
+
+    /// Del: removes the highlighted roster row, if any.
+    private func deleteSelected() {
+        guard let index = selectedIndex, buddies.indices.contains(index) else { return }
+        onDelete?(buddies[index])
+    }
+
+    /// Hides the panel (and its add dialog) and fires `onClose`.
     public func close() {
+        addBuddyDialog.isHidden = true
         isHidden = true
         onClose?()
     }
@@ -116,12 +166,28 @@ public final class BuddyPanelWidget: Widget {
         // avatar icon baked into the panel art).
         font.draw("\(buddies.count)", x: frame.x + 34, y: frame.y + 7, tint: textTint, using: renderer)
 
-        // The roster, scrolled by the bar: draw the visible window only.
+        // The roster, scrolled by the bar: draw the visible window only,
+        // the selected row (Del's target) highlighted.
         let start = scrollBar.position
         let (originX, originY) = listOrigin
         for (row, name) in buddies.dropFirst(start).prefix(Self.visibleRows).enumerated() {
-            font.draw(name, x: originX, y: originY + Float(row) * linePitch, tint: textTint, using: renderer)
+            let tint = (start + row == selectedIndex) ? (r: UInt8(255), g: UInt8(220), b: UInt8(120)) : textTint
+            font.draw(name, x: originX, y: originY + Float(row) * linePitch, tint: tint, using: renderer)
         }
+    }
+
+    /// The visible roster row (absolute index into `buddies`) at a point,
+    /// or `nil` outside the list band.
+    private func rowIndex(atX x: Float, y: Float) -> Int? {
+        let (originX, originY) = listOrigin
+        // The band spans from the list origin down to the Add field's band,
+        // left of the scrollbar.
+        guard x >= originX, x < scrollBar.frame.x,
+              y >= originY, y < frame.y + frame.height - 56 else { return nil }
+        let row = Int((y - originY) / linePitch)
+        guard row >= 0, row < Self.visibleRows else { return nil }
+        let index = scrollBar.position + row
+        return buddies.indices.contains(index) ? index : nil
     }
 
     public override func handleSelf(_ event: ScreenInputEvent) -> Bool {
@@ -130,13 +196,32 @@ public final class BuddyPanelWidget: Widget {
         // through to the screen behind. Clicks outside the panel pass through.
         switch event {
         case .pointerDown(let x, let y):
-            return frame.contains(x: x, y: y)
+            guard frame.contains(x: x, y: y) else { return false }
+            // A click in the list band selects (or re-clicks deselect) the row
+            // under it; anywhere else on the chrome begins a drag (the panel
+            // is a movable dialog — `m_pinned` clear in the decomp).
+            if let index = rowIndex(atX: x, y: y) {
+                selectedIndex = (selectedIndex == index) ? nil : index
+                return true
+            }
+            return handleDrag(event)
+        case .pointerMoved, .pointerUp:
+            return handleDrag(event)
         case .scroll(let x, let y, let steps):
             guard frame.contains(x: x, y: y) else { return false }
             scrollBar.step(steps)
             return true
-        case .pointerMoved, .activate, .text, .key:
+        case .activate, .text, .key:
             return false
+        }
+    }
+
+    /// Drags the panel and its own chrome/children, but leaves the modal
+    /// add-buddy dialog (a fixed-position child) where it is.
+    public override func moveBy(dx: Float, dy: Float) {
+        frame = Rect(x: frame.x + dx, y: frame.y + dy, width: frame.width, height: frame.height)
+        for child in children where child !== addBuddyDialog {
+            child.moveBy(dx: dx, dy: dy)
         }
     }
 }

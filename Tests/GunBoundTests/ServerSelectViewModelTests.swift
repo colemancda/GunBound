@@ -185,6 +185,50 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.gaugeRect(at: 0).x == 33 + 181)
     }
 
+    /// The View All / Friends panel toggle: View All is the default selection,
+    /// clicking Friends moves the selection, and a press-then-release doesn't
+    /// leave the toggle stuck (pressed is transient).
+    @Test func worldListFilterToggleSelection() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let viewModel = ServerSelectViewModel(delegate: MockViewModelDelegate(network: network), directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        // Load the list so the screen is interactive (clicks are ignored while
+        // the directory is still loading).
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        // View All is selected by default.
+        #expect(viewModel.isFilterSelected("b_server_all.img"))
+        #expect(!viewModel.isFilterSelected("b_server_friend.img"))
+
+        // Select a row first, so the tab switch's highlight-clearing shows.
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.selectedIndex != nil)
+
+        // Click Friends (rect x 430, y 504, 74×26).
+        viewModel.handle(.pointerDown(x: 435, y: 510))
+        #expect(viewModel.isFilterSelected("b_server_friend.img"))
+        #expect(!viewModel.isFilterSelected("b_server_all.img"))
+        // A tab switch clears the row highlight (live capture:
+        // m_highlightedSlot -1 / m_inputEnabled 0 after switching) and the
+        // Friends view lists nothing without buddy data (m_viewMode 2 shows
+        // an empty panel).
+        #expect(viewModel.selectedIndex == nil)
+        #expect(!viewModel.isConnectEnabled)
+        #expect(viewModel.visibleServers.isEmpty)
+        // Releasing clears the transient pressed state.
+        viewModel.handle(.pointerUp(x: 435, y: 510))
+        #expect(viewModel.pressedIndex == nil)
+
+        // Click View All again (rect x 336, y 504, 74×26) — the full list
+        // comes back.
+        viewModel.handle(.pointerDown(x: 340, y: 510))
+        #expect(viewModel.isFilterSelected("b_server_all.img"))
+        #expect(!viewModel.isFilterSelected("b_server_friend.img"))
+        #expect(!viewModel.visibleServers.isEmpty)
+    }
+
     /// Clicking a row selects it — but only online rows, mirroring
     /// `WorldListRowHitTest` (fullness is only checked at connect time).
     @Test func rowClickSelectsOnlineRowsOnly() async throws {
@@ -248,6 +292,83 @@ struct ServerSelectViewModelTests {
         #expect(viewModel.selectedIndex == 3)
         let fallback = await viewModel.fetchDirectoryAndChooseServer()
         #expect(fallback.port == 8370)
+    }
+
+    /// The SERVER button stays disabled until a row is selected: clicking
+    /// it with no selection does nothing, one row click arms it, and then
+    /// it connects.
+    @Test func serverButtonRequiresASelection() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        let serverButton = try #require(viewModel.buttons.first { $0.name == "b_server_choiceserver.img" })
+        #expect(!viewModel.isConnectEnabled)
+        viewModel.handle(.pointerDown(x: serverButton.rect.x + 5, y: serverButton.rect.y + 5))
+        #expect(!viewModel.state.isConnecting)  // disabled: nothing happened
+
+        // Selecting a row arms the button; clicking it now connects.
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.isConnectEnabled)
+        viewModel.handle(.pointerDown(x: serverButton.rect.x + 5, y: serverButton.rect.y + 5))
+        #expect(viewModel.state.isConnecting)
+    }
+
+    /// Double-clicking the selected row connects; a slow second click
+    /// (outside the window) just keeps the selection.
+    @Test func doubleClickingTheSelectedRowConnects() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        let row1 = viewModel.rowRect(at: 1)
+        // A slow pair: select, wait past the window, click again — still
+        // just selected.
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        viewModel.update(deltaTime: ServerSelectViewModel.doubleClickInterval + 0.1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.selectedIndex == 1)
+        #expect(!viewModel.state.isConnecting)
+
+        // A quick second click inside the window connects.
+        viewModel.update(deltaTime: 0.1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        #expect(viewModel.state.isConnecting)
+    }
+
+    /// The error dialog's OK button quits the client — the same action as
+    /// the EXIT button — since the failed connection is already torn down.
+    @Test func errorDialogConfirmQuits() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+
+        #expect(!delegate.quitRequested)
+        viewModel.confirmError()
+        #expect(delegate.quitRequested)
+    }
+
+    /// Network errors map to the localized dialog the original would show —
+    /// a request timeout is "access time expired" (id 201), everything else
+    /// is "server access error" (id 200) — never the raw error text.
+    @Test func networkErrorsMapToLocalizedDialogs() {
+        let timeout = NetworkClient<GunBoundSocketIPv4TCP>.Error.timeout(.joinChannelResponse)
+        #expect(ServerSelectViewModel.dialogMessage(for: timeout) == .accessTimeExpired)
+
+        let refused = NetworkClient<GunBoundSocketIPv4TCP>.Error.disconnected
+        #expect(ServerSelectViewModel.dialogMessage(for: refused) == .serverAccessError)
+
+        struct SomeOtherError: Error {}
+        #expect(ServerSelectViewModel.dialogMessage(for: SomeOtherError()) == .serverAccessError)
     }
 
     /// Scrolling slides a 12-slot window over the fetched list one grid

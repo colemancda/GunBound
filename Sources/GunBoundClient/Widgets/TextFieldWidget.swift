@@ -1,10 +1,16 @@
 import GunBound
 
 /// A single-line text-entry field — the widget the Create Room and Enter-Room-
-/// By-Number dialogs build on (the decomp's text-entry widget class,
+/// By-Number dialogs build on (the decomp's `CEditBox`,
 /// `BuildCreateRoomDialog`'s ids 0/1). It draws the current text (or a
 /// placeholder) with a blinking caret while focused, and edits from the
 /// `.text` / `.key` events the input model now carries.
+///
+/// **Documented divergence**: the original doesn't edit text itself — a
+/// single shared Win32 EDIT control overlays whichever field has focus,
+/// and `CEditBox::Draw` (`0x507030`, decomp `src/cxx/EditBox.cpp`) pulls
+/// the OS control's text into the widget each frame. A cross-platform port
+/// has no OS text control to lean on, so this widget owns its editing.
 ///
 /// Focus: clicking inside focuses the field and fires `onFocus` (a container
 /// uses that to blur its other fields — dispatch stops at the first consumer,
@@ -126,11 +132,15 @@ public final class TextFieldWidget: Widget {
         case .key(.left), .key(.right):
             // Accepted but not yet acted on (end-caret only for now).
             return isFocused
+        case .key(.up), .key(.down), .key(.tab):
+            // No vertical caret movement or field-hopping in a
+            // single-line field.
+            return false
         case .activate:
             guard isFocused else { return false }
             onSubmit?()
             return true
-        case .pointerMoved, .scroll:
+        case .pointerMoved, .pointerUp, .scroll:
             return false
         }
     }

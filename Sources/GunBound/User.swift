@@ -47,6 +47,11 @@ public struct User: Equatable, Hashable, Codable, Identifiable, Sendable {
 
     public var avatarInventory: [UInt32]
 
+    /// This account's buddy list — see `BuddyEntry`'s type-level note on
+    /// why this is our own add/remove/list convention rather than a
+    /// decomp-confirmed record shape.
+    public var buddies: [Username]
+
     public init(
         id: Username,
         isBanned: Bool = false,
@@ -63,7 +68,8 @@ public struct User: Equatable, Hashable, Codable, Identifiable, Sendable {
         guildRank: UInt16 = 0,
         gpCurrent: UInt32 = 0,
         gpSeason: UInt32 = 0,
-        avatarInventory: [UInt32] = []
+        avatarInventory: [UInt32] = [],
+        buddies: [Username] = []
     ) {
         self.id = id
         self.isBanned = isBanned
@@ -81,5 +87,6 @@ public struct User: Equatable, Hashable, Codable, Identifiable, Sendable {
         self.gpCurrent = gpCurrent
         self.gpSeason = gpSeason
         self.avatarInventory = avatarInventory
+        self.buddies = buddies
     }
 }

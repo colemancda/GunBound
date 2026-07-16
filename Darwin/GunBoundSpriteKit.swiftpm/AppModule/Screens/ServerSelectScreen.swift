@@ -23,6 +23,15 @@ import GunBoundProtocol
     serverSelectScreenPreview(result: .failure(URLError(.cannotFindHost)))
 }
 
+// Recreates the runtime "Access time has expired." dialog (localized id 201):
+// a request timeout maps to `.accessTimeExpired`, unlike a connection failure
+// which shows `.serverAccessError`.
+#Preview("Server Select — Access Time Expired") {
+    serverSelectScreenPreview(
+        result: .failure(NetworkClient<GunBoundSocketIPv4TCP>.Error.timeout(.serverDirectoryRequest))
+    )
+}
+
 #Preview("Server Select — Buddy Panel") {
     serverSelectScreenPreview(result: .success(mockServers), showBuddyPanel: true)
 }

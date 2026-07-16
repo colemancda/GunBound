@@ -19,12 +19,14 @@ import GunBound
 @MainActor
 public final class LobbyChatWidget: Widget {
 
-    /// The decomp's fixed lobby panel rect.
-    public static let defaultFrame = Rect(x: 23, y: 287, width: 549, height: 259)
+    /// The decomp's fixed lobby panel rect. `nonisolated` (and computed, not
+    /// stored) so it stays usable from a nonisolated context, e.g. as a
+    /// default parameter value.
+    public nonisolated static var defaultFrame: Rect { Rect(x: 23, y: 287, width: 549, height: 259) }
 
     /// The lobby panel's scrollbar page size (rows visible at once). The
     /// Ready Room variant passes 9.
-    public static let defaultVisibleRows = 13
+    public nonisolated static var defaultVisibleRows: Int { 13 }
 
     /// History rows visible at once — the panel's scrollbar page size.
     public let visibleRows: Int
@@ -47,8 +49,23 @@ public final class LobbyChatWidget: Widget {
     public let inputField: TextFieldWidget
     public let scrollBar: ScrollBarWidget
 
+    /// The 8 lobby channel tabs' normal/selected artwork (`b_gamelist_ch1…8`).
+    /// Empty for the Ready Room variant, which has no channel tabs.
+    private let channelTabs: [(normal: ClientTexture?, selected: ClientTexture?)]
+    /// The current channel (0…7) — its tab shows the yellow `selected` frame.
+    public var selectedChannel = 0
+    /// Fired when a channel tab is clicked (channel-switch isn't wired yet, so
+    /// this is currently a visual selection).
+    public var onSelectChannel: ((Int) -> Void)?
+
     /// Fired when the player submits a non-empty chat line.
     public var onSend: ((String) -> Void)?
+
+    /// Rect of channel tab `index` — 8 tabs from panel-relative (264,9),
+    /// 32px apart, 22×22 (runtime `gbview`: (287,296)…(511,296)).
+    private func channelTabRect(_ index: Int) -> Rect {
+        Rect(x: frame.x + 264 + Float(index) * 32, y: frame.y + 9, width: 22, height: 22)
+    }
 
     /// The history band the lines draw into — below the title strip, left of
     /// the scrollbar, above the input line. The row *origin* isn't decomp-
@@ -80,13 +97,15 @@ public final class LobbyChatWidget: Widget {
         inputFrame: Rect = Rect(x: 26, y: 235, width: 484, height: 12),
         scrollTrack: Rect = Rect(x: 526, y: 63, width: 18, height: 154),
         scrollKnobs: (up: Rect, down: Rect)? = (
-            up: Rect(x: 521, y: 33, width: 28, height: 28),
-            down: Rect(x: 521, y: 219, width: 28, height: 28)
+            up: Rect(x: 526, y: 35, width: 18, height: 18),
+            down: Rect(x: 526, y: 227, width: 18, height: 18)
         ),
+        channelTabs: [(normal: ClientTexture?, selected: ClientTexture?)] = [],
         visibleRows: Int = LobbyChatWidget.defaultVisibleRows
     ) {
         self.font = font
         self.backgroundTexture = background
+        self.channelTabs = channelTabs
         self.visibleRows = visibleRows
         // Lobby decomp: CreateTextEntryWidget(0, 0x1a, 0xeb, 0x1e4, 0xc, 0x50).
         inputField = TextFieldWidget(
@@ -124,6 +143,13 @@ public final class LobbyChatWidget: Widget {
     public override func drawSelf(_ renderer: ClientRenderer) {
         if let backgroundTexture {
             renderer.draw(backgroundTexture, in: frame, tint: nil)
+        }
+        // Channel tabs along the title strip — the current channel yellow.
+        for (index, tab) in channelTabs.enumerated() {
+            let texture = index == selectedChannel ? tab.selected : tab.normal
+            if let texture {
+                renderer.draw(texture, in: channelTabRect(index), tint: nil)
+            }
         }
         guard let font else { return }
         let (originX, originY) = listOrigin
@@ -188,6 +214,14 @@ public final class LobbyChatWidget: Widget {
         if case .scroll(let x, let y, let steps) = event, frame.contains(x: x, y: y) {
             scrollBar.step(steps)
             return true
+        }
+        // A click on a channel tab selects it.
+        if case .pointerDown(let x, let y) = event {
+            for index in channelTabs.indices where channelTabRect(index).contains(x: x, y: y) {
+                selectedChannel = index
+                onSelectChannel?(index)
+                return true
+            }
         }
         return false
     }

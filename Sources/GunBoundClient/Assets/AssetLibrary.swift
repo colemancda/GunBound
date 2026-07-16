@@ -1,4 +1,5 @@
 import Foundation
+import GunBound
 import GunBoundFile
 
 /// Loads named resources (`.img` sprites, `.mp3`/`.xes` audio) out of the
@@ -24,6 +25,9 @@ public final class AssetLibrary {
     /// lazily per resource name, not eagerly for every entry.
     private var imageCache: [String: [ImgFile.Frame]] = [:]
     private var audioPathCache: [String: URL] = [:]
+    private var languageCache: LanguageFile?
+    private var avatarCatalogCache: [String: [AvatarInfoFile.Item]] = [:]
+    private var itemDataCache: [ItemDataFile.ItemRecord]?
 
     private lazy var audioCacheDirectory: URL = {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("GunBoundClientAudioCache", isDirectory: true)
@@ -94,6 +98,34 @@ public final class AssetLibrary {
         return frames[index]
     }
 
+    /// Decodes a `.xtf` raw D3D texture surface (e.g. `TornadoTexture.xtf`,
+    /// `FirewallTexture.xtf`, `LightningTexture.xtf` — the weather-hazard
+    /// render textures `RenderWeatherHazards` binds by name via
+    /// `FindTextureCacheEntryByName`). Unlike `.img`, this isn't a sprite
+    /// sheet with a frame table: it's a single flat surface — empirically,
+    /// every shipped hazard `.xtf` is a fixed 9-byte header (unparsed;
+    /// purpose unconfirmed) followed by a flat 256×256 ARGB4444 body, the
+    /// same pixel encoding `.img`'s `.alpha` transparency type already
+    /// decodes. Not hand-verified beyond that byte-count match.
+    public func xtfTexture(named name: String) throws -> ImgFile.Frame {
+        let bytes = try entryData(name, in: "graphics.xfs")
+        let headerSize = 9
+        let side = 256
+        let expected = headerSize + side * side * 2
+        guard bytes.count == expected else {
+            throw Error.missingEntry(name)
+        }
+        var pixels: [ImgFile.Pixel] = []
+        pixels.reserveCapacity(side * side)
+        var offset = headerSize
+        for _ in 0..<(side * side) {
+            let raw = UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+            pixels.append(ImgFile.Pixel(argb4444: raw))
+            offset += 2
+        }
+        return ImgFile.Frame(transparencyType: .alpha, width: Int32(side), height: Int32(side), pixels: pixels)
+    }
+
     /// A playable file URL for a named `.mp3` track stored in `sound.xfs`.
     /// `.mp3` entries are byte-for-byte standard MPEG data (per
     /// `FILEFORMATS.md`), so this just writes the raw entry bytes to a cache
@@ -135,5 +167,57 @@ public final class AssetLibrary {
         let data = try [UInt8](Data(contentsOf: url))
         let decoded = DatFile.decompress(data, decodedSize: DatFile.stageDataDecodedSize)
         return try StageDataFile.readRecords(decoded)
+    }
+
+    /// Decompresses and parses `itemdata.dat` (battle-item names/prices)
+    /// from the assets directory. Parsed once, then reused.
+    public func itemData() throws -> [ItemDataFile.ItemRecord] {
+        if let cached = itemDataCache { return cached }
+        let url = directory.appendingPathComponent("itemdata.dat")
+        let data = try [UInt8](Data(contentsOf: url))
+        let decoded = DatFile.decompress(data, decodedSize: DatFile.itemDataDecodedSize)
+        let records = try ItemDataFile.readRecords(decoded)
+        itemDataCache = records
+        return records
+    }
+
+    /// Loads and parses a stage's `.lnd` terrain/collision mask (e.g.
+    /// `cave.lnd`) from `graphics.xfs`.
+    public func terrainMask(named name: String) throws -> LndFile {
+        try LndFile.read(entryData(name, in: "graphics.xfs"))
+    }
+
+    /// Loads and parses a sprite sheet's `.epa` animation table (e.g.
+    /// `tank1.epa`) from `graphics.xfs` — the named frame runs that drive
+    /// mobile poses.
+    public func animationTable(named name: String) throws -> EpaFile {
+        try EpaFile.read(entryData(name, in: "graphics.xfs"))
+    }
+
+    /// Loads and parses an avatar costume catalog (`{gender}{category}.dat`
+    /// inside `avatar.xfs` — e.g. `mh.dat`, the male head/hat table): the
+    /// per-part names, prices, and stats the Avatar Store's cards show.
+    public func avatarCatalog(named name: String) throws -> [AvatarInfoFile.Item] {
+        if let cached = avatarCatalogCache[name] { return cached }
+        let items = try AvatarInfoFile.readItems(entryData(name, in: "avatar.xfs"))
+        avatarCatalogCache[name] = items
+        return items
+    }
+
+    /// Loads and caches the localized UI-string table (`Language.txt` inside
+    /// `graphics.xfs`) — the port of the original's `LoadLocalizedStrings` →
+    /// `g_localizedStringTable`. Parsed once, then reused for every lookup.
+    public func language() throws -> LanguageFile {
+        if let cached = languageCache { return cached }
+        let file = LanguageFile.read(try entryData("Language.txt", in: "graphics.xfs"))
+        languageCache = file
+        return file
+    }
+
+    /// The localized message for `id` — the `GetLocalizedString` counterpart.
+    /// `nil` when the loaded `Language.txt` has no such entry (or couldn't be
+    /// loaded), so callers can fall back to a built-in default string.
+    public func localizedString(_ id: LocalizedStringID) -> String? {
+        (try? language())?.string(id: id.rawValue)
     }
 }

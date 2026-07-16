@@ -22,6 +22,10 @@ public final class GameStateMachine {
     /// each frame and calls `applyGamepad(...)`.
     public let gamepadCursor = GamepadCursor()
 
+    /// The decomp-confirmed screen-transition wipe (see its own doc) — armed
+    /// on every state change, drawn over everything including the cursor.
+    private let transitionWipe = ScreenTransitionWipe()
+
     public init(context: ClientContext, initialMode: ClientMode, makeScreen: @escaping (ClientMode) -> GameScreen?) throws {
         self.context = context
         self.makeScreen = makeScreen
@@ -30,7 +34,13 @@ public final class GameStateMachine {
         }
         self.current = screen
         cursor.isVisible = false
-        cursor.texture = context.renderer.texture(named: SoftwareCursor.sheetName, frame: 0, assets: context.assets)
+        // Load cursor.img frames 0–16 — the live-confirmed 17-frame arrow idle
+        // loop (see SoftwareCursor's doc); frame 0 doubles as the single-frame
+        // fallback.
+        cursor.frames = SoftwareCursor.arrowFrames.compactMap {
+            context.renderer.texture(named: SoftwareCursor.sheetName, frame: $0, assets: context.assets)
+        }
+        cursor.texture = cursor.frames.first
         print("[GunBoundClient] entering screen: \(initialMode)")
         try current.onEnter(context: context)
     }
@@ -38,7 +48,7 @@ public final class GameStateMachine {
     public func handleInput(_ event: ScreenInputEvent) {
         // Track the pointer so the software cursor follows it.
         switch event {
-        case let .pointerMoved(x, y), let .pointerDown(x, y):
+        case let .pointerMoved(x, y), let .pointerDown(x, y), let .pointerUp(x, y):
             cursor.position = (x, y)
         case .activate, .text, .key, .scroll:
             break
@@ -65,6 +75,8 @@ public final class GameStateMachine {
 
     public func update(deltaTime: Double) throws {
         current.update(deltaTime: deltaTime)
+        cursor.update(deltaTime: deltaTime)
+        transitionWipe.update(deltaTime: deltaTime)
         if let nextMode = context.consumePendingTransition() {
             guard let nextScreen = makeScreen(nextMode) else {
                 print("[GunBoundClient] no screen registered for mode \(nextMode), ignoring transition")
@@ -74,6 +86,9 @@ public final class GameStateMachine {
             current = nextScreen
             print("[GunBoundClient] entering screen: \(nextMode)")
             try current.onEnter(context: context)
+            // Every state change gets the wipe, decomp-confirmed — arm it
+            // after onEnter so the very first frame is already black.
+            transitionWipe.begin()
         }
     }
 
@@ -82,6 +97,9 @@ public final class GameStateMachine {
         // The custom pointer draws last, over all screen content — exactly
         // where the original blits it at the end of each frame.
         cursor.draw(context.renderer)
+        // The transition wipe draws over everything, including the cursor,
+        // matching the original's per-frame render tail order.
+        transitionWipe.draw(context.renderer)
         context.renderer.present()
     }
 }

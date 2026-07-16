@@ -16,12 +16,16 @@ import GunBound
 public final class GameRoomListScreen: GameScreen {
     private let viewModel: GameRoomListViewModel
     private var backgroundTexture: ClientTexture?
-    private var buttonTextures: [ClientTexture?] = []
+    /// Per-button state artwork; the correct frame is chosen at draw time from
+    /// the button's `ButtonState` (default/hovered/pressed/disabled/selected).
+    private var buttonSprites: [ButtonSprite] = []
     /// `gamelist_back.img` frames keyed by frame index (see `RenderRoomCard`):
     /// 1–6 card backgrounds, 7–9 status icons, 10–13 game-mode labels, 15
     /// padlock. Stored sparse by index so drawing reads them by the frame
     /// number the view model computes.
     private var cardFrames: [Int: ClientTexture] = [:]
+    /// Map thumbnails (`gameliststage.img`) keyed by map id.
+    private var stageThumbs: [Int: ClientTexture] = [:]
     private var font: LoadedFont?
     private var audio: ClientAudioPlayer?
     private var textFont: LoadedFont?
@@ -56,20 +60,33 @@ public final class GameRoomListScreen: GameScreen {
             cardFrames[frame] = renderer.texture(named: viewModel.backgroundImageName, frame: frame, assets: assets)
         }
 
+        // The cards' map thumbnails (`gameliststage.img`, frame = map id).
+        let thumbCount = (try? assets.image(named: viewModel.stageThumbImageName).count) ?? 0
+        for frame in 0..<min(thumbCount, 11) {
+            stageThumbs[frame] = renderer.texture(named: viewModel.stageThumbImageName, frame: frame, assets: assets)
+        }
+
         font = LoadedFont(.numberFont, renderer: renderer, assets: assets)
         textFont = LoadedFont(.latinFont, renderer: renderer, assets: assets)
 
         // Button rects are decomp-confirmed constants on the view model
         // (`State03_GameRoomList_CreateButtons`); just load the artwork.
-        buttonTextures = viewModel.buttons.map { renderer.texture(named: $0.name, assets: assets) }
+        buttonSprites = viewModel.buttons.map { ButtonSprite(name: $0.name, renderer: renderer, assets: assets) }
 
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
 
         // The lobby chat panel — always-visible chrome at the decomp rect,
         // fed by 0x201F broadcasts; Enter in its input sends 0x2010.
+        // The 8 channel tabs (b_gamelist_ch1…8): frame 0 = normal, 3 = the
+        // yellow selected state.
+        let channelTabs = (1...8).map { n in
+            (normal: renderer.texture(named: "b_gamelist_ch\(n).img", frame: 0, assets: assets),
+             selected: renderer.texture(named: "b_gamelist_ch\(n).img", frame: 3, assets: assets))
+        }
         let chatPanel = LobbyChatWidget(
             font: textFont,
-            background: renderer.texture(named: viewModel.chatBackImageName, assets: assets)
+            background: renderer.texture(named: viewModel.chatBackImageName, assets: assets),
+            channelTabs: channelTabs
         )
         chatPanel.onSend = { [weak viewModel = self.viewModel] line in
             viewModel?.sendChat(line)
@@ -98,10 +115,15 @@ public final class GameRoomListScreen: GameScreen {
             background: buddyBack,
             addTexture: renderer.texture(named: viewModel.buddyAddImageName, assets: assets),
             delTexture: renderer.texture(named: viewModel.buddyDelImageName, assets: assets),
-            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets)
+            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets),
+            dialogBackground: renderer.texture(named: "buddy2.img", assets: assets),
+            dialogAddTexture: renderer.texture(named: "b_buddy2_addfriend1.img", assets: assets),
+            dialogCloseTexture: renderer.texture(named: "b_buddy2_close.img", assets: assets)
         )
         buddyPanel.isHidden = true
         buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
+        buddyPanel.onAdd = { [weak viewModel = self.viewModel] name in viewModel?.addBuddy(named: name) }
+        buddyPanel.onDelete = { [weak viewModel = self.viewModel] name in viewModel?.removeBuddy(named: name) }
         rootWidget.add(buddyPanel)
         self.buddyPanel = buddyPanel
 
@@ -131,16 +153,23 @@ public final class GameRoomListScreen: GameScreen {
         rootWidget.add(createRoomDialog)
         self.createRoomDialog = createRoomDialog
 
-        let (directBack, directFrame) = centered(viewModel.directGoBackImageName)
+        // The DIRECT GO dialog opens at its runtime initial rect (243,202) —
+        // roughly centered — from a gbview dump. (It's draggable, so a later
+        // capture at (459,33) was just a dragged position.)
+        let directBack = renderer.texture(named: viewModel.directGoBackImageName, assets: assets)
+        let (directWidth, directHeight) = renderer.size(of: directBack)
+        let directFrame = directWidth > 0
+            ? Rect(x: 243, y: 202, width: directWidth, height: directHeight)
+            : Rect(x: 243, y: 202, width: 314, height: 160)
         let enterNumberDialog = EnterRoomNumberDialogWidget(
             frame: directFrame, font: textFont, background: directBack,
             okTexture: okTexture, cancelTexture: cancelTexture
         )
         enterNumberDialog.isHidden = true
-        enterNumberDialog.onSubmit = { [weak viewModel = self.viewModel] number in
-            viewModel?.joinRoomByNumber(number)
+        enterNumberDialog.onSubmit = { [weak viewModel] number, password in
+            viewModel?.joinRoomByNumber(number, password: password)
         }
-        enterNumberDialog.onCancel = { [weak viewModel = self.viewModel] in viewModel?.dismissDialogs() }
+        enterNumberDialog.onCancel = { [weak viewModel] in viewModel?.dismissDialogs() }
         rootWidget.add(enterNumberDialog)
         self.enterNumberDialog = enterNumberDialog
     }
@@ -148,8 +177,9 @@ public final class GameRoomListScreen: GameScreen {
     public func onExit() {
         viewModel.onExit()
         backgroundTexture = nil
-        buttonTextures = []
+        buttonSprites = []
         cardFrames = [:]
+        stageThumbs = [:]
         font = nil
         textFont = nil
         audio?.stop()
@@ -218,6 +248,17 @@ public final class GameRoomListScreen: GameScreen {
                 renderer.draw(icon, in: Rect(x: rect.x + offsetX, y: rect.y + offsetY, width: w, height: h), tint: nil)
             }
 
+            // The room's map thumbnail (RenderRoomCard's `gameliststage`
+            // blit at card-relative (0x6a, 0x21)).
+            if let thumb = stageThumbs[viewModel.stageThumbFrame(of: room)] ?? stageThumbs[0] {
+                let (w, h) = renderer.size(of: thumb)
+                renderer.draw(thumb, in: Rect(
+                    x: rect.x + GameRoomListViewModel.stageThumbOffset.x,
+                    y: rect.y + GameRoomListViewModel.stageThumbOffset.y,
+                    width: w, height: h
+                ), tint: nil)
+            }
+
             // Status (PLAY/FULL/WAIT), game-mode label (SOLO…JEWEL), and the
             // padlock when the room is private — all at their decomp offsets.
             drawIcon(viewModel.statusFrame(of: room),
@@ -245,9 +286,21 @@ public final class GameRoomListScreen: GameScreen {
         }
 
         for (index, button) in viewModel.buttons.enumerated() {
-            guard let texture = buttonTextures[index] else { continue }
-            let tint: (r: UInt8, g: UInt8, b: UInt8)? = index == viewModel.hoveredButtonIndex ? (200, 200, 255) : nil
-            renderer.draw(texture, in: button.rect, tint: tint)
+            // Each button draws the frame for its current state: the current
+            // filter shows `selected` (yellow), the rest resolve to
+            // pressed/hovered/default from the pointer.
+            let state: ButtonState
+            if viewModel.isFilterActive(button.action) {
+                state = .selected
+            } else if index == viewModel.pressedButtonIndex {
+                state = .pressed
+            } else if index == viewModel.hoveredButtonIndex {
+                state = .hovered
+            } else {
+                state = .normal
+            }
+            guard let texture = buttonSprites[index].texture(for: state) else { continue }
+            renderer.draw(texture, in: button.rect, tint: nil)
         }
 
         // The buddy panel draws on top of everything when shown.

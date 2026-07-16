@@ -1,5 +1,6 @@
 import GunBound
 import GunBoundProtocol
+import GunBoundFile
 
 /// View for the pre-battle Ready Room (state 9) — `ready_back.img` chrome
 /// with the 8-slot roster (2×2 each side of the center map panel), the map
@@ -20,10 +21,46 @@ public final class ReadyRoomScreen: GameScreen {
     private var characterFrames: [Int: ClientTexture] = [:]
     private var buttonTextures: [ReadyRoomViewModel.ButtonAction: ClientTexture] = [:]
     private var startTexture: ClientTexture?
+    /// The item shelf's page-1 entries, resolved in `onEnter`: the icon
+    /// texture plus the `itemdata.dat` price.
+    private var shelfItems: [(texture: ClientTexture, price: UInt32)] = []
+    private var shelfArrowUp: ClientTexture?
+    private var shelfArrowDown: ClientTexture?
+
+    /// The shelf's first page as `itemdata.dat` record indices, in the
+    /// original's on-screen order (from a live screenshot). Which records
+    /// populate the shelf at runtime — and their order — is still open in
+    /// the decomp (the `DAT_0056dc40` index is unresolved), so this list is
+    /// screenshot-derived; the *icons*, however, are now computed from each
+    /// record's own `field0x30` shelf-icon code (decomp `fc6a7cb`), not
+    /// hand-picked frames.
+    private static let shelfRecords = [0, 4, 6, 5, 2, 8, 7, 11, 9]
+    /// The two Ready Room item-shop icon sheets, indexed by the shelf code's
+    /// sheet flag (`0x2713`/`0x2714`).
+    private static let shelfSheets = ["ready_itemshop1.img", "ready_itemshop2.img"]
+
+    /// Slot furniture from `ready_back.img`'s extra frames (screenshot-mapped):
+    /// frame 1 = team A platform, 2 = team B platform, 3 = the idle pole,
+    /// 6 = the green READY pole, 7 = the host's key icon.
+    private var platformTextures: [Team: ClientTexture] = [:]
+    private var poleTexture: ClientTexture?
+    private var poleReadyTexture: ClientTexture?
+    private var keyTexture: ClientTexture?
     private var font: LoadedFont?
     private var rootWidget = Widget()
     private var chatPanel: LobbyChatWidget?
+    private var buddyPanel: BuddyPanelWidget?
     private var audio: ClientAudioPlayer?
+
+    /// Kept for lazily loading each roster mobile's animated tank sprite —
+    /// the slots show the live mobile (idle `.epa` loop), not the picker card.
+    private var assets: AssetLibrary?
+    private var mobileAnimations: [Mobile: EpaFile] = [:]
+    private var frameCache: [String: ClientTexture] = [:]
+    /// Composited avatar outfits, shared with the Avatar Store's preview.
+    private let avatarCache = AvatarSpriteCache()
+    /// Drives the slot mobiles' idle animation.
+    private var clock: Double = 0
 
     public init(viewModel: ReadyRoomViewModel) {
         self.viewModel = viewModel
@@ -33,6 +70,7 @@ public final class ReadyRoomScreen: GameScreen {
         viewModel.onEnter()
         let renderer = context.renderer
         let assets = context.assets
+        self.assets = assets
         backgroundTexture = renderer.texture(named: viewModel.backgroundImageName, assets: assets)
         if let musicName = viewModel.musicName {
             let audio = context.makeAudioPlayer()
@@ -50,6 +88,28 @@ public final class ReadyRoomScreen: GameScreen {
             characterFrames[frame] = renderer.texture(named: viewModel.characterImageName, frame: frame, assets: assets)
         }
 
+        platformTextures[.a] = renderer.texture(named: viewModel.backgroundImageName, frame: 1, assets: assets)
+        platformTextures[.b] = renderer.texture(named: viewModel.backgroundImageName, frame: 2, assets: assets)
+        poleTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 3, assets: assets)
+        poleReadyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 6, assets: assets)
+        keyTexture = renderer.texture(named: viewModel.backgroundImageName, frame: 7, assets: assets)
+
+        // The item shelf: each record's icon is decoded from its own
+        // field0x30 shelf-icon code (sheet + enabled frame), price from the
+        // record.
+        let itemRecords = (try? assets.itemData()) ?? []
+        shelfItems = Self.shelfRecords.compactMap { index in
+            guard itemRecords.indices.contains(index) else { return nil }
+            let record = itemRecords[index]
+            let icon = record.shelfIcon
+            guard Self.shelfSheets.indices.contains(icon.sheetIndex),
+                  let texture = renderer.texture(named: Self.shelfSheets[icon.sheetIndex], frame: icon.enabledFrame, assets: assets)
+            else { return nil }
+            return (texture, record.price)
+        }
+        shelfArrowUp = renderer.texture(named: "b_ready_shopup.img", frame: 0, assets: assets)
+        shelfArrowDown = renderer.texture(named: "b_ready_shopdown.img", frame: 0, assets: assets)
+
         buttonTextures[.exit] = renderer.texture(named: viewModel.exitButtonImageName, assets: assets)
         buttonTextures[.buddy] = renderer.texture(named: viewModel.buddyButtonImageName, assets: assets)
         buttonTextures[.changeTeam] = renderer.texture(named: viewModel.teamButtonImageName, assets: assets)
@@ -57,7 +117,10 @@ public final class ReadyRoomScreen: GameScreen {
         startTexture = renderer.texture(named: viewModel.startButtonImageName, assets: assets)
 
         // The room chat panel at the decomp rect (21,385) 480×160, scrollbar
-        // (455,51) 18×69 page 9; the input line along the panel's bottom.
+        // (455,51) 18×69 page 9; the input line along the panel's bottom. The
+        // scroll arrows sit *outside* the track — a gbview dump (panel 2000)
+        // reports them at (476,408)/(476,515), i.e. panel-relative (455,23)/
+        // (455,130) — not the track ends.
         rootWidget = Widget(frame: Rect(x: 0, y: 0, width: 800, height: 600))
         let chatPanel = LobbyChatWidget(
             frame: Rect(x: 21, y: 385, width: 480, height: 160),
@@ -65,7 +128,10 @@ public final class ReadyRoomScreen: GameScreen {
             background: nil,  // the chat well is baked into ready_back.img
             inputFrame: Rect(x: 12, y: 140, width: 420, height: 12),
             scrollTrack: Rect(x: 455, y: 51, width: 18, height: 69),
-            scrollKnobs: nil,  // the ready_back well has no distinct knob art
+            scrollKnobs: (
+                up: Rect(x: 455, y: 23, width: 18, height: 18),
+                down: Rect(x: 455, y: 130, width: 18, height: 18)
+            ),
             visibleRows: 9
         )
         chatPanel.onSend = { [weak viewModel = self.viewModel] line in
@@ -73,6 +139,31 @@ public final class ReadyRoomScreen: GameScreen {
         }
         rootWidget.add(chatPanel)
         self.chatPanel = chatPanel
+
+        // The shared buddy panel (the decomp's singleton, same as the
+        // lobby's) — hidden until the BUDDY button toggles it.
+        let buddyBack = renderer.texture(named: viewModel.buddyBackImageName, assets: assets)
+        let (panelWidth, panelHeight) = renderer.size(of: buddyBack)
+        let panelFrame = panelWidth > 0
+            ? Rect(x: 568, y: 11, width: panelWidth, height: panelHeight)
+            : BuddyPanelWidget.defaultFrame
+        let buddyPanel = BuddyPanelWidget(
+            frame: panelFrame,
+            font: font,
+            background: buddyBack,
+            addTexture: renderer.texture(named: viewModel.buddyAddImageName, assets: assets),
+            delTexture: renderer.texture(named: viewModel.buddyDelImageName, assets: assets),
+            closeTexture: renderer.texture(named: viewModel.buddyCloseImageName, assets: assets),
+            dialogBackground: renderer.texture(named: "buddy2.img", assets: assets),
+            dialogAddTexture: renderer.texture(named: "b_buddy2_addfriend1.img", assets: assets),
+            dialogCloseTexture: renderer.texture(named: "b_buddy2_close.img", assets: assets)
+        )
+        buddyPanel.isHidden = true
+        buddyPanel.onClose = { [weak viewModel = self.viewModel] in viewModel?.dismissBuddyPanel() }
+        buddyPanel.onAdd = { [weak viewModel = self.viewModel] name in viewModel?.addBuddy(named: name) }
+        buddyPanel.onDelete = { [weak viewModel = self.viewModel] name in viewModel?.removeBuddy(named: name) }
+        rootWidget.add(buddyPanel)
+        self.buddyPanel = buddyPanel
     }
 
     public func onExit() {
@@ -82,9 +173,22 @@ public final class ReadyRoomScreen: GameScreen {
         characterFrames = [:]
         buttonTextures = [:]
         startTexture = nil
+        platformTextures = [:]
+        poleTexture = nil
+        poleReadyTexture = nil
+        keyTexture = nil
+        shelfItems = []
+        shelfArrowUp = nil
+        shelfArrowDown = nil
         font = nil
         rootWidget = Widget()
         chatPanel = nil
+        buddyPanel = nil
+        assets = nil
+        mobileAnimations = [:]
+        frameCache = [:]
+        avatarCache.reset()
+        clock = 0
         audio?.stop()
         audio = nil
     }
@@ -99,6 +203,7 @@ public final class ReadyRoomScreen: GameScreen {
     }
 
     public func update(deltaTime: Double) {
+        clock += deltaTime
         audio?.update(deltaTime: deltaTime)
         viewModel.update(deltaTime: deltaTime)
         if let chatPanel {
@@ -106,6 +211,10 @@ public final class ReadyRoomScreen: GameScreen {
             if chatPanel.messages != viewModel.chatMessages {
                 chatPanel.messages = viewModel.chatMessages
             }
+        }
+        if let buddyPanel {
+            buddyPanel.isHidden = !viewModel.isBuddyPanelVisible
+            buddyPanel.buddies = viewModel.buddies
         }
         rootWidget.update(deltaTime: deltaTime)
     }
@@ -120,27 +229,105 @@ public final class ReadyRoomScreen: GameScreen {
             renderer.draw(thumb, in: ReadyRoomViewModel.mapThumbRect, tint: nil)
         }
 
-        if let font {
-            // Room name in the top strip.
-            font.draw(viewModel.roomName, x: 46, y: 12, using: renderer)
-            font.draw("\(viewModel.map)", x: 580, y: 12, using: renderer)
+        // The item shelf: page 1 of the purchasable battle items in the
+        // decomp-exact 3×3 grid, each icon with its gold price under it.
+        for (index, item) in shelfItems.enumerated() where index < ReadyRoomViewModel.shelfCellCount {
+            let cell = ReadyRoomViewModel.shelfCellRect(at: index)
+            renderer.draw(item.texture, in: cell, tint: nil)
+            if let font, item.price > 0 {
+                let text = "\(item.price)"
+                font.draw(
+                    text,
+                    x: cell.x + cell.width - font.width(of: text),
+                    y: cell.y + cell.height - font.lineHeight + 2,
+                    tint: (255, 220, 80),
+                    using: renderer
+                )
+            }
+        }
+        if let shelfArrowUp {
+            let (w, h) = renderer.size(of: shelfArrowUp)
+            renderer.draw(shelfArrowUp, in: Rect(x: 763, y: 408, width: w, height: h), tint: nil)
+        }
+        if let shelfArrowDown {
+            let (w, h) = renderer.size(of: shelfArrowDown)
+            renderer.draw(shelfArrowDown, in: Rect(x: 763, y: 478, width: w, height: h), tint: nil)
+        }
 
-            // Roster: name, team, mobile per occupied slot; readied players
-            // marked. Own slot also shows the picked mobile's portrait.
-            for (index, player) in viewModel.players.enumerated() {
+        // The six option-value buttons under the map (mode/capacity live,
+        // groups A–D as fresh-room defaults).
+        for (name, rect) in viewModel.optionButtons {
+            if let texture = optionTexture(named: name, renderer: renderer) {
+                renderer.draw(texture, in: rect, tint: nil)
+            }
+        }
+
+        if let font {
+            // Room name in the top strip; channel + server in the top-right
+            // box (the original's "1 OptiPlex 7020" slot).
+            font.draw(viewModel.roomName, x: 46, y: 12, using: renderer)
+            font.draw(viewModel.channelLabel, x: 580, y: 12, using: renderer)
+
+            // The map name, centered in the map panel's dark title band.
+            let mapName = "\(viewModel.map)".uppercased()
+            let band = ReadyRoomViewModel.mapTitleRect
+            font.draw(
+                mapName,
+                x: band.x + (band.width - font.width(of: mapName)) / 2,
+                y: band.y + (band.height - font.lineHeight) / 2,
+                using: renderer
+            )
+
+            // Roster: every open slot (the room capacity) gets a team
+            // platform — the occupant's team, or the side's default for an
+            // empty seat. An occupied platform carries the pole (green READY
+            // when readied), the mobile on the stripe band with the player's
+            // composited avatar riding it (standing alone when the mobile is
+            // random), and the name in the platform's name box — the host's
+            // key after slot 0's name. Closed slots stay the bare boxes baked
+            // into the background. All geometry matched to a live screenshot.
+            let players = viewModel.players
+            for index in 0..<Int(viewModel.capacity.rawValue) where index < ReadyRoomViewModel.maxPlayers {
                 let rect = viewModel.rosterSlotRect(at: index)
-                let name = String(describing: player.username)
-                font.draw(name, x: rect.x + 8, y: rect.y + 8, using: renderer)
-                font.draw("Team \(player.team)", x: rect.x + 8, y: rect.y + 24, using: renderer)
-                let portraitFrame = Int(player.primaryTank.rawValue)
-                if let portrait = characterFrames[portraitFrame] {
-                    // Portraits are 113×146; fit them into the slot's lower band.
-                    let height = rect.height - 46
-                    let width = height * 113 / 146
-                    renderer.draw(portrait, in: Rect(x: rect.x + (rect.width - width) / 2, y: rect.y + 40, width: width, height: height), tint: nil)
+                let player = index < players.count ? players[index] : nil
+                let team = player?.team ?? ReadyRoomViewModel.defaultTeam(forSlot: index)
+                let platform = Rect(x: rect.x + 6, y: rect.y + rect.height - 73, width: 127, height: 72)
+                if let texture = platformTextures[team] {
+                    renderer.draw(texture, in: platform, tint: nil)
                 }
-                if viewModel.readyPlayers.contains(name) {
-                    font.draw("READY", x: rect.x + 8, y: rect.y + rect.height - 18, tint: (120, 255, 120), using: renderer)
+                guard let player else { continue }
+                let name = String(describing: player.username)
+
+                // The feet line: the platform's stripe band top surface.
+                let baseline = platform.y + 34
+                let isReady = viewModel.readyPlayers.contains(name)
+                if let pole = isReady ? poleReadyTexture : poleTexture {
+                    renderer.draw(pole, in: Rect(x: platform.x + 101, y: baseline - 40, width: 19, height: 40), tint: nil)
+                }
+
+                // The mobile idles on the stripe band, centered in the space
+                // left of the pole; the avatar rides it (or stands in its
+                // place when there's no tank to ride).
+                var saddle: (x: Float, y: Float) = (platform.x + 50, baseline)
+                if let sprite = mobileSprite(for: player.primaryTank, renderer: renderer) {
+                    let (w, h) = renderer.size(of: sprite)
+                    let scale = min(1, 64 / max(1, h))
+                    let dw = w * scale, dh = h * scale
+                    renderer.draw(sprite, in: Rect(x: platform.x + 50 - dw / 2, y: baseline - dh, width: dw, height: dh), tint: nil)
+                    saddle.y = baseline - dh + 14
+                }
+                if let avatar = avatarSprite(equipped: player.avatarEquipped, renderer: renderer) {
+                    let (aw, ah) = renderer.size(of: avatar)
+                    renderer.draw(avatar, in: Rect(x: saddle.x - aw / 2, y: saddle.y - ah, width: aw, height: ah), tint: nil)
+                }
+
+                // The name in the platform's name box, dark on the light band;
+                // the host (slot 0) gets the key icon right after it.
+                let nameX = platform.x + 10
+                let nameY = platform.y + 48
+                font.draw(name, x: nameX, y: nameY, tint: (30, 30, 30), using: renderer)
+                if index == 0, let keyTexture {
+                    renderer.draw(keyTexture, in: Rect(x: nameX + font.width(of: name) + 4, y: nameY, width: 22, height: 13), tint: nil)
                 }
             }
         }
@@ -172,7 +359,8 @@ public final class ReadyRoomScreen: GameScreen {
                 let isDisabled = cell == ReadyRoomViewModel.pickerDisabledCell
                 let isRandom = cell == ReadyRoomViewModel.pickerCellCount - 1
                 let mobile: Mobile? = isRandom ? .random : Mobile(rawValue: UInt8(cell))
-                if let portrait = characterFrames[cell], !isRandom {
+                if !isRandom, let mobile,
+                   let portrait = characterFrames[ReadyRoomViewModel.characterFrame(for: mobile)] {
                     let tint: (r: UInt8, g: UInt8, b: UInt8)? = isDisabled
                         ? (90, 90, 90)
                         : (mobile == viewModel.selectedMobile ? (255, 255, 160) : nil)
@@ -182,5 +370,54 @@ public final class ReadyRoomScreen: GameScreen {
                 }
             }
         }
+    }
+
+    /// An option-value button's normal frame, cached by entry name (the
+    /// mode/capacity slots swap artwork with the room settings).
+    private func optionTexture(named name: String, renderer: ClientRenderer) -> ClientTexture? {
+        if let cached = frameCache[name] { return cached }
+        guard let assets else { return nil }
+        let texture = renderer.texture(named: name, frame: 0, assets: assets)
+        if let texture { frameCache[name] = texture }
+        return texture
+    }
+
+    /// The composited avatar for a packed `avatarEquipped` outfit — the
+    /// shared `AvatarSpriteCache` (`LoadAvatarSprites` port).
+    private func avatarSprite(equipped: UInt64, renderer: ClientRenderer) -> ClientTexture? {
+        guard let assets else { return nil }
+        return avatarCache.sprite(equipped: equipped, assets: assets, renderer: renderer)
+    }
+
+    /// The current idle frame of a mobile's tank sprite — its `.epa` `normal`
+    /// run looped by the screen clock, the same pipeline the battle uses.
+    /// Loads the animation table lazily and caches decoded frames.
+    private func mobileSprite(for mobile: Mobile, renderer: ClientRenderer) -> ClientTexture? {
+        guard let assets else { return nil }
+        if mobileAnimations[mobile] == nil {
+            mobileAnimations[mobile] = try? assets.animationTable(named: mobile.tankAnimationName)
+        }
+        var frame = 0
+        if let animation = mobileAnimations[mobile]?.animation(named: "normal") {
+            frame = frameIndex(in: animation, age: clock)
+        }
+        let key = "\(mobile.tankImageName)#\(frame)"
+        if let cached = frameCache[key] { return cached }
+        let texture = renderer.texture(named: mobile.tankImageName, frame: frame, assets: assets)
+        if let texture { frameCache[key] = texture }
+        return texture
+    }
+
+    /// The looping frame index at `age` seconds, honoring the run's per-frame
+    /// durations at ~15 ticks/s (matching the battle mobile animator).
+    private func frameIndex(in animation: EpaFile.Animation, age: Double) -> Int {
+        let total = max(1, animation.durations.reduce(0, +))
+        let tick = max(0, Int(age * 15)) % total
+        var elapsed = 0
+        for (offset, duration) in animation.durations.enumerated() {
+            elapsed += duration
+            if tick < elapsed { return animation.frames[offset] }
+        }
+        return animation.frames.first ?? 0
     }
 }

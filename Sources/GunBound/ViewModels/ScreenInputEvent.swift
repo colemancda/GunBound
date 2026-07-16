@@ -10,6 +10,10 @@ public enum ScreenInputEvent: Equatable, Sendable {
     /// The pointer moved to this position (used for hover state).
     case pointerMoved(x: Float, y: Float)
 
+    /// A pointer (mouse click/tap) was released at this position — pairs
+    /// with `pointerDown` to bracket a drag (e.g. a scrollbar thumb).
+    case pointerUp(x: Float, y: Float)
+
     /// A generic "confirm" input not tied to a screen position — Enter/Space
     /// or a tap, matching screens that advance on "press any key" and doubling
     /// as the submit key for a focused text field.
@@ -36,5 +40,13 @@ public enum ScreenInputEvent: Equatable, Sendable {
         case backspace
         case left
         case right
+        /// ▲/▼ — no text-editing role; in battle they adjust the aim
+        /// elevation (the original's control scheme: arrows ◀/▶ walk the
+        /// mobile, ▲/▼ move the barrel).
+        case up
+        case down
+        /// Tab — cycles the weapon slot in battle (the original's weapon
+        /// switch; the three slots play `b_play_weapon1/2/3` cues).
+        case tab
     }
 }

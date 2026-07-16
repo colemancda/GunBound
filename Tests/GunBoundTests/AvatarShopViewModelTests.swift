@@ -11,45 +11,135 @@ struct AvatarShopViewModelTests {
         return (AvatarShopViewModel(delegate: delegate), delegate)
     }
 
-    @Test func itemSpriteNameIsFiveDigitPadded() {
-        #expect(AvatarShopViewModel.itemSpriteName(for: 123) == "00123.img")
-        #expect(AvatarShopViewModel.itemSpriteName(for: 7) == "00007.img")
-        #expect(AvatarShopViewModel.itemSpriteName(for: 12345) == "12345.img")
+    private func item(_ id: Int, _ name: String = "Part") -> AvatarShopViewModel.ShopItem {
+        AvatarShopViewModel.ShopItem(id: id, name: name, gold: 10_000, cash: 1_000, isMale: true)
     }
 
-    @Test func itemGridLayout() {
+    /// 3×3 cards at the screenshot-measured origin/pitch.
+    @Test func cardGridLayout() {
+        let cell0 = AvatarShopViewModel.cardRect(at: 0)
+        let cell1 = AvatarShopViewModel.cardRect(at: 1)
+        let cell3 = AvatarShopViewModel.cardRect(at: 3)
+        #expect(cell0 == Rect(x: 21, y: 69, width: 160, height: 156))
+        #expect(cell1.x == 181 && cell1.y == cell0.y)
+        #expect(cell3.x == 21 && cell3.y == 230)
+    }
+
+    /// The four bottom-left tabs map cap/cloth/glasses/flag to the Head /
+    /// Body / Glasses / Flag part tables, per the store screen doc.
+    @Test func categoryTabs() {
+        #expect(AvatarShopViewModel.categoryTabs.map(\.category) == [.head, .body, .glasses, .flag])
+        #expect(AvatarShopViewModel.categoryTabRect(at: 0) == Rect(x: 39, y: 561, width: 49, height: 32))
+        #expect(AvatarShopViewModel.categoryTabRect(at: 3).x == 39 + 3 * 53)
+    }
+
+    /// Clicking a tab switches category and resets page/selection; the shop
+    /// opens on Head (the original shows helmets first).
+    @Test func tabClickSwitchesCategory() {
         let (viewModel, _) = makeViewModel()
-        let cell0 = viewModel.itemRect(at: 0)
-        let cell1 = viewModel.itemRect(at: 1)
-        let cell5 = viewModel.itemRect(at: 5)  // wraps to next row (5 columns)
-        #expect(cell1.y == cell0.y && cell1.x > cell0.x)
-        #expect(cell5.x == cell0.x && cell5.y > cell0.y)
+        #expect(viewModel.selectedCategory == .head)
+
+        let tab = AvatarShopViewModel.categoryTabRect(at: 1)
+        viewModel.handle(.pointerDown(x: tab.x + 2, y: tab.y + 2))
+        #expect(viewModel.selectedCategory == .body)
     }
 
-    @Test func itemsComeFromSessionAvatar() {
-        let (viewModel, delegate) = makeViewModel()
-        #expect(viewModel.items.isEmpty)
-        delegate.session.avatar = PlayerAvatar(equipped: 0, inventory: [10, 20, 30])
-        #expect(viewModel.items == [10, 20, 30])
-    }
-
-    @Test func itemsCappedToVisibleGrid() {
-        let (viewModel, delegate) = makeViewModel()
-        delegate.session.avatar = PlayerAvatar(equipped: 0, inventory: Array(0..<50).map(UInt32.init))
-        #expect(viewModel.items.count == AvatarShopViewModel.maxVisibleItems)
-    }
-
-    @Test func categoryClickSelectsTab() {
+    /// The catalog pages 9 cards at a time; the pager clamps to the ends.
+    @Test func catalogPaging() {
         let (viewModel, _) = makeViewModel()
-        viewModel.setRect(Rect(x: 100, y: 20, width: 60, height: 40), forCategoryAt: 2)
-        viewModel.handle(.pointerDown(x: 120, y: 40))
-        #expect(viewModel.selectedCategory == 2)
+        viewModel.setCatalog((0..<20).map { item($0) }, for: .head)
+        #expect(viewModel.pageCount == 3)
+        #expect(viewModel.visibleItems.count == 9)
+        #expect(viewModel.visibleItems.first?.id == 0)
+
+        let down = AvatarShopViewModel.scrollDownRect
+        viewModel.handle(.pointerDown(x: down.x + 2, y: down.y + 2))
+        #expect(viewModel.visibleItems.first?.id == 9)
+        viewModel.handle(.pointerDown(x: down.x + 2, y: down.y + 2))
+        #expect(viewModel.visibleItems.count == 2)  // 20 items → last page
+        viewModel.handle(.pointerDown(x: down.x + 2, y: down.y + 2))
+        #expect(viewModel.page == 2)  // clamped
+
+        let up = AvatarShopViewModel.scrollUpRect
+        viewModel.handle(.pointerDown(x: up.x + 2, y: up.y + 2))
+        #expect(viewModel.page == 1)
     }
 
-    @Test func cancelReturnsToLobby() {
+    /// Clicking a card selects it; Try re-dresses the local preview with the
+    /// selected part (bit 15 = gender, bits 0–14 = id, in the tab's slot).
+    @Test func selectAndTryOn() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setCatalog([item(0, "Space Marine"), item(5, "Rome Helmet")], for: .head)
+
+        let card = AvatarShopViewModel.cardRect(at: 1)
+        viewModel.handle(.pointerDown(x: card.x + 5, y: card.y + 5))
+        #expect(viewModel.selectedItem?.name == "Rome Helmet")
+
+        let baseline = viewModel.previewEquipped
+        viewModel.handle(.pointerDown(x: AvatarShopViewModel.tryRect.x + 2, y: AvatarShopViewModel.tryRect.y + 2))
+        let worn = AvatarEquipment(rawValue: viewModel.previewEquipped)
+        #expect(worn.head.rawValue == 0x8005)
+        #expect(viewModel.previewEquipped != baseline || AvatarEquipment(rawValue: baseline).head.rawValue == 0x8005)
+    }
+
+    /// The preview wears the fetched outfit when there's no try-on override,
+    /// and the standard kit when nothing is known.
+    @Test func previewFollowsSessionAvatar() {
         let (viewModel, delegate) = makeViewModel()
-        viewModel.cancelRect = Rect(x: 20, y: 540, width: 100, height: 40)
-        viewModel.handle(.pointerDown(x: 40, y: 560))
+        #expect(viewModel.previewEquipped == AvatarShopViewModel.standardOutfit)
+
+        delegate.session.avatar = PlayerAvatar(equipped: 0x0001_8001_8000_8005, inventory: [7])
+        #expect(viewModel.previewEquipped == 0x0001_8001_8000_8005)
+        #expect(viewModel.inventory == [7])
+    }
+
+    /// The MY AVATAR header sums the worn parts' stats from the catalogs
+    /// (a tried-on part contributes immediately).
+    @Test func previewStatsSumWornParts() {
+        let (viewModel, _) = makeViewModel()
+        viewModel.setCatalog([
+            AvatarShopViewModel.ShopItem(
+                id: 0, name: "Standard", gold: 0, cash: 0, isMale: true,
+                stats: [.init(stat: .defense, value: 3), .init(stat: .popularity, value: 3)]
+            ),
+            AvatarShopViewModel.ShopItem(
+                id: 2, name: "Safety Helmet", gold: 15_000, cash: 1_500, isMale: true,
+                stats: [.init(stat: .defense, value: 6)]
+            ),
+        ], for: .head)
+
+        // Standard outfit: head id 0 worn → its stats.
+        #expect(viewModel.previewStats == [
+            .init(stat: .defense, value: 3), .init(stat: .popularity, value: 3),
+        ])
+
+        // Try on the Safety Helmet: the head slot's stats swap.
+        let card = AvatarShopViewModel.cardRect(at: 1)
+        viewModel.handle(.pointerDown(x: card.x + 5, y: card.y + 5))
+        viewModel.handle(.pointerDown(x: AvatarShopViewModel.tryRect.x + 2, y: AvatarShopViewModel.tryRect.y + 2))
+        #expect(viewModel.previewStats == [.init(stat: .defense, value: 6)])
+    }
+
+    /// Owned-item codes resolve to real catalog names via
+    /// `AvatarShopItemCode`; a code from an unloaded/unknown category falls
+    /// back to a numeric label instead of crashing or showing garbage.
+    @Test func ownedItemsResolveNamesFromCatalog() {
+        let (viewModel, delegate) = makeViewModel()
+        viewModel.setCatalog([item(6, "Rome Helmet")], for: .head)
+
+        let helmetCode = AvatarShopItemCode(category: .head, part: AvatarEquipment.Part(rawValue: 0x8006))
+        delegate.session.avatar = PlayerAvatar(equipped: 0, inventory: [helmetCode.rawValue, 0xdead_beef])
+
+        let owned = viewModel.ownedItems
+        #expect(owned.count == 2)
+        #expect(owned[0].name == "Rome Helmet")
+        #expect(owned[1].name == "Item 3735928559")
+    }
+
+    @Test func exitReturnsToLobby() {
+        let (viewModel, delegate) = makeViewModel()
+        let exit = AvatarShopViewModel.exitRect
+        viewModel.handle(.pointerDown(x: exit.x + 5, y: exit.y + 5))
         #expect(delegate.requestedTransitions == [.gameRoomList])
     }
 

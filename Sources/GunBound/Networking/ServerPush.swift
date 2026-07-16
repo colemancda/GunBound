@@ -61,6 +61,10 @@ public enum ServerPush: Equatable, Sendable {
     /// relayed jewel-mode summary.
     case gameEnded(GameEndNotification)
 
+    /// The requester's buddy roster refreshed after an add/remove
+    /// (`0x2204`, our own convention — see `BuddyEntry`'s type-level note).
+    case buddyListUpdated(BuddyListNotification)
+
     /// Any other notification, undecoded.
     case raw(Packet)
 }
@@ -125,6 +129,11 @@ extension ServerPush {
         case .gameEndNotification:
             if let value = try? decoder.decode(GameEndNotification.self, from: packet) {
                 self = .gameEnded(value)
+                return
+            }
+        case .buddyListNotification:
+            if let value = try? decoder.decode(BuddyListNotification.self, from: packet) {
+                self = .buddyListUpdated(value)
                 return
             }
         default:

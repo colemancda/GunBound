@@ -1,4 +1,5 @@
 import GunBound
+import GunBoundFile
 
 /// An opaque handle to a loaded texture — a marker protocol rather than a
 /// concrete type so each rendering backend (SDL3, SpriteKit, ...) can wrap
@@ -20,6 +21,12 @@ public protocol ClientRenderer: AnyObject {
     /// as "just don't draw it" rather than a fatal error).
     func texture(named name: String, frame frameIndex: Int, assets: AssetLibrary) -> ClientTexture?
 
+    /// Builds a texture from an already-decoded (and possibly
+    /// caller-mutated) sprite frame — the terrain-destruction path: the
+    /// battle screen punches blast holes into the stage frame's pixels
+    /// and rebuilds its texture from them.
+    func texture(from frame: ImgFile.Frame) -> ClientTexture?
+
     /// The texture's pixel size, `(0, 0)` if unavailable.
     func size(of texture: ClientTexture?) -> (width: Float, height: Float)
 
@@ -30,7 +37,9 @@ public protocol ClientRenderer: AnyObject {
     /// Draws `texture` stretched into `rect` (window/logical coordinates),
     /// optionally tinted (used for hover-state highlighting) — `nil` means
     /// draw at the texture's own natural color — composited with `blend`.
-    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode)
+    /// `opacity` (`0…1`) scales the whole draw's alpha, for translucent
+    /// overlays like the modal dialog's screen dim; `1` is fully opaque.
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode, opacity: Float)
 
     /// Presents the frame — called once per frame by the state machine
     /// after the current screen has drawn, not per-screen.
@@ -55,10 +64,16 @@ public extension ClientRenderer {
         texture(named: name, frame: 0, assets: assets)
     }
 
-    /// Alpha-blended draw — the default for all UI chrome; effects layers
-    /// pass `.additive` explicitly.
+    /// Blend-composited draw at full opacity — the common overload for
+    /// effects layers that pass `.additive`.
+    func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?, blend: ClientBlendMode) {
+        draw(texture, in: rect, tint: tint, blend: blend, opacity: 1)
+    }
+
+    /// Alpha-blended, fully-opaque draw — the default for all UI chrome;
+    /// effects layers pass `.additive`, overlays pass `opacity`.
     func draw(_ texture: ClientTexture, in rect: Rect, tint: (r: UInt8, g: UInt8, b: UInt8)?) {
-        draw(texture, in: rect, tint: tint, blend: .alpha)
+        draw(texture, in: rect, tint: tint, blend: .alpha, opacity: 1)
     }
 }
 

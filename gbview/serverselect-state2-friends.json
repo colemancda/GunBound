@@ -1,0 +1,133 @@
+{
+  "gameState": {
+    "id": 2,
+    "name": "ServerSelect",
+    "object": "0x02f73598",
+    "vtable": "0x005570f0",
+    "fields": {
+      "m_connecting": 0,
+      "m_sendHandshake": 0,
+      "m_uiDirty": 1,
+      "m_wantInitialList": 0,
+      "m_highlightedSlot": -1,
+      "m_unk0c": -1,
+      "m_viewMode": 2,
+      "m_scrollA": 0,
+      "m_scrollOffset": 0,
+      "m_unk1c": 0,
+      "m_tickCounter": 3480,
+      "m_inputEnabled": 0,
+      "m_connectingSlot": -1
+    }
+  },
+  "view": {
+    "manager": "0x00e53c40",
+    "head": "0x032dc6fc",
+    "panels": [
+      {
+        "addr": "0x032dc440",
+        "vtable": "0x00557f08",
+        "typeId": 0,
+        "id": 9000,
+        "rect": {
+          "x": 11,
+          "y": 13,
+          "w": 545,
+          "h": 530
+        },
+        "focused": true,
+        "enabled": true,
+        "hidden": false,
+        "childCount": 3,
+        "children": [
+          {
+            "addr": "0x032dc4e8",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 0,
+            "rect": {
+              "x": 336,
+              "y": 504,
+              "w": 74,
+              "h": 26
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc550",
+            "vtable": "0x00557da0",
+            "typeId": 1,
+            "id": 1,
+            "rect": {
+              "x": 430,
+              "y": 504,
+              "w": 74,
+              "h": 26
+            },
+            "focused": false,
+            "enabled": true,
+            "hidden": false,
+            "childCount": 0,
+            "children": []
+          },
+          {
+            "addr": "0x032dc5c8",
+            "vtable": "0x00557e90",
+            "typeId": 4,
+            "id": 0,
+            "rect": {
+              "x": 526,
+              "y": 87,
+              "w": 18,
+              "h": 377
+            },
+            "focused": false,
+            "enabled": false,
+            "hidden": false,
+            "childCount": 2,
+            "children": [
+              {
+                "addr": "0x032dc630",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 0,
+                "rect": {
+                  "x": 526,
+                  "y": 59,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": false,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              },
+              {
+                "addr": "0x032dc680",
+                "vtable": "0x00557da0",
+                "typeId": 1,
+                "id": 1,
+                "rect": {
+                  "x": 526,
+                  "y": 474,
+                  "w": 18,
+                  "h": 18
+                },
+                "focused": false,
+                "enabled": false,
+                "hidden": false,
+                "childCount": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

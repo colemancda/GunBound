@@ -54,6 +54,13 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     public let exitButtonImageName = "b_ready_exit.img"
     public let buddyButtonImageName = "b_ready_buddy.img"
 
+    /// The shared buddy panel's chrome — the same art the lobby uses (the
+    /// decomp's panel is a singleton shown from both screens).
+    public let buddyBackImageName = "buddy_back.img"
+    public let buddyAddImageName = "b_buddy_plus.img"
+    public let buddyDelImageName = "b_buddy_del.img"
+    public let buddyCloseImageName = "b_buddy_exit.img"
+
     /// The bottom-bar buttons at the decomp rects, plus the picker toggle
     /// (id 500 at (0x25, 0x16b), the chat panel's top-left corner).
     public let buttons: [Button] = [
@@ -105,6 +112,14 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     public var chatMessages: [ChatLine] = []
     public static let maxChatLines = 100
 
+    /// The shared buddy panel (the decomp's singleton `BuildBuddyPanel`,
+    /// shown from the lobby *and* the Ready Room) — the BUDDY button
+    /// toggles it; the roster is fetched on open and refreshed by
+    /// `.buddyListUpdated` pushes.
+    public private(set) var isBuddyPanelVisible = false
+    public var buddies: [String] = []
+    public private(set) var onlineBuddies: Set<String> = []
+
     private var pushTask: Task<Void, Never>?
 
     private let delegate: ViewModelDelegate
@@ -119,9 +134,87 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     /// The selected map for this room.
     public var map: GameMap { delegate.session.currentRoom?.map ?? .random }
 
+    /// The room's settings dword, typed.
+    public var settings: RoomSettings {
+        RoomSettings(rawValue: delegate.session.currentRoom?.settings ?? 0)
+    }
+
+    /// The top-right info box's text — channel number + server, like the
+    /// original's "1 OptiPlex 7020".
+    public var channelLabel: String {
+        let channel = delegate.session.channel.map { "\($0.channel)" } ?? "1"
+        return "\(channel) \(delegate.network.serverAddress)"
+    }
+
+    /// The map panel's dark title band, where the map name is centered
+    /// (directly above the thumbnail).
+    public static let mapTitleRect = Rect(x: 332, y: 52, width: 136, height: 13)
+
+    /// The item shelf's 3×3 grid — decomp-exact (`FUN_004d7db0`: spacing
+    /// `(i%3)*0x46+0x210` / `(i/3)*0x2d+0x193`, i.e. 70×45 cells at
+    /// (528,403)); the icons themselves are 64×43.
+    public static let shelfCellCount = 9
+    public static func shelfCellRect(at index: Int) -> Rect {
+        Rect(
+            x: 528 + Float(index % 3) * 70,
+            y: 403 + Float(index / 3) * 45,
+            width: 64,
+            height: 43
+        )
+    }
+
+    /// The six option-value buttons under the map panel — **decomp-exact
+    /// geometry** (`ApplyRoomSettings` `0x4daa60` `CreateButtonWidget` calls:
+    /// 0x51×0x18 = 81×24, columns x 0x13d/0x193 = 317/403, rows y
+    /// 0xe1/0xff/0x11d = 225/255/285). Mode (settings bits 18–19) and
+    /// capacity (`JoinRoomResponse.capacity`) render live. The A SIDE /
+    /// SSDEATH / ATTACK / DEATH72 slots map to specific settings fields —
+    /// A-SIDE = bit 4, group B = bits 8–11, group C = bits 12–13, ATTACK =
+    /// bit 7 / group D = bits 14–15 — but the original draws each via a
+    /// shared `b_ready_option` toggle whose per-value label art isn't yet
+    /// pinned, so these still show fixed default labels.
+    public var optionButtons: [(name: String, rect: Rect)] {
+        let modeNames = ["b_ready_solo.img", "b_ready_score.img", "b_ready_tag.img", "b_ready_jewel.img"]
+        let capacityNames: [RoomCapacity: String] = [
+            ._1_1: "b_ready_1vs1.img",
+            ._2_2: "b_ready_2vs2.img",
+            ._3_3: "b_ready_3vs3.img",
+            ._4_4: "b_ready_4vs4.img",
+        ]
+        let names = [
+            modeNames[settings.modeLabelIndex & 3],
+            capacityNames[capacity] ?? "b_ready_2vs2.img",
+            "b_ready_aside.img",
+            "b_ready_ssdeath.img",
+            "b_ready_attackbomb.img",
+            "b_ready_death72.img",
+        ]
+        return names.enumerated().map { (index, name) in
+            (name, Rect(
+                x: index % 2 == 0 ? 317 : 403,
+                y: 225 + Float(index / 2) * 30,
+                width: 81,
+                height: 24
+            ))
+        }
+    }
+
     /// The roster from the join response (up to `maxPlayers`).
     public var players: [JoinRoomResponse.PlayerSession] {
         Array((delegate.session.currentRoom?.players ?? []).prefix(Self.maxPlayers))
+    }
+
+    /// The room's player capacity — its raw value is the number of open
+    /// roster slots (the ones that show a team platform; the rest stay the
+    /// bare boxes baked into the background). Full 8 when the room isn't
+    /// known, so the offline walkthrough shows every slot.
+    public var capacity: RoomCapacity { delegate.session.currentRoom?.capacity ?? ._4_4 }
+
+    /// The default team for an open-but-empty roster slot — the left half of
+    /// each row seats team A, the right half team B (the original shows A
+    /// platforms left of the map panel and B platforms right of it).
+    public static func defaultTeam(forSlot index: Int) -> Team {
+        (index % rosterColumnX.count) < rosterColumnX.count / 2 ? .a : .b
     }
 
     /// Whether this client is the room host (slot 0) — hosts get the Start
@@ -142,6 +235,21 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         )
     }
 
+    /// The frame index in `ready_selectcharacter.img` for a mobile's card —
+    /// **not** ordered by `Mobile.rawValue`. Verified by extracting the sheet:
+    /// frame 0 is Random, frames 1–13 are Armor…Grub (`rawValue + 1`), and
+    /// Aduka is frame 16 (14–15 are unused placeholders). Dragon/Knight aren't
+    /// in this sheet, so they fall back to Random.
+    public static func characterFrame(for mobile: Mobile) -> Int {
+        switch mobile {
+        case .random: return 0
+        case .aduka: return 16
+        default:
+            let raw = Int(mobile.rawValue)
+            return (0...0x0c).contains(raw) ? raw + 1 : 0
+        }
+    }
+
     /// The picker cell rect for cell `index` (0..<`pickerCellCount`).
     public static func pickerCellRect(at index: Int) -> Rect {
         Rect(
@@ -156,6 +264,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         isReady = false
         isBusy = false
         isPickerVisible = false
+        isBuddyPanelVisible = false
         hoveredButtonIndex = nil
         selectedMobile = .random
         readyPlayers = []
@@ -197,6 +306,8 @@ public final class ReadyRoomViewModel: ScreenViewModel {
             ))
         case .clientPrint(let notice):
             appendChat(ChatLine(message: notice.message, type: .notice))
+        case .buddyListUpdated(let notification):
+            applyBuddyList(notification.buddies)
         case .roomUpdated, .roomPlayerLeft, .userJoinedChannel, .raw:
             break
         case .userQuit, .hostMigrated, .tunnelReceived, .playerDied, .gameEnded:
@@ -230,7 +341,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
                 handleButton(buttons[index].action)
             }
 
-        case .activate, .text, .key, .scroll:
+        case .pointerUp, .activate, .text, .key, .scroll:
             break
         }
     }
@@ -246,7 +357,63 @@ public final class ReadyRoomViewModel: ScreenViewModel {
         case .togglePicker:
             isPickerVisible.toggle()
         case .buddy:
-            print("[GunBound] ready-room buddy panel not wired yet")
+            setBuddyPanelVisible(!isBuddyPanelVisible)
+        }
+    }
+
+    // MARK: - Buddy panel
+
+    /// Closes the buddy panel (its close-X button).
+    public func dismissBuddyPanel() {
+        setBuddyPanelVisible(false)
+    }
+
+    /// Shows or hides the shared buddy panel, fetching the roster on open.
+    public func setBuddyPanelVisible(_ visible: Bool) {
+        isBuddyPanelVisible = visible
+        if visible {
+            loadBuddies()
+        }
+    }
+
+    private func applyBuddyList(_ entries: [BuddyEntry]) {
+        buddies = entries.map { String(describing: $0.username) }
+        onlineBuddies = Set(entries.filter(\.isOnline).map { String(describing: $0.username) })
+    }
+
+    private func loadBuddies() {
+        guard let client = delegate.client else { return }
+        Task {
+            do {
+                applyBuddyList(try await client.fetchBuddyList())
+            } catch {
+                print("[GunBound] couldn't fetch buddy list: \(error)")
+            }
+        }
+    }
+
+    /// Adds a username to the buddy list (the panel's Add field) — the
+    /// refreshed roster arrives as a `.buddyListUpdated` push.
+    public func addBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.addBuddy(username)
+            } catch {
+                print("[GunBound] couldn't add buddy: \(error)")
+            }
+        }
+    }
+
+    /// Removes a username from the buddy list (the panel's Del button).
+    public func removeBuddy(named name: String) {
+        guard let client = delegate.client, let username = Username(rawValue: name) else { return }
+        Task {
+            do {
+                try await client.removeBuddy(username)
+            } catch {
+                print("[GunBound] couldn't remove buddy: \(error)")
+            }
         }
     }
 

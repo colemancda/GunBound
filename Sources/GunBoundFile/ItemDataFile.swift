@@ -61,8 +61,14 @@ public enum ItemDataFile {
         /// comment for how this was identified).
         public let twoSlotsFlag: UInt8
 
-        /// `uint16` at record offset `0x30`. Read and checksummed, purpose
-        /// beyond that unconfirmed.
+        /// `uint16` at record offset `0x30` — the item's **packed
+        /// shelf-icon code** (decomp `fc6a7cb`; GunBound-Decomp
+        /// `ARCHITECTURE.md` Ready Room section / `FILEFORMATS.md`). The low
+        /// byte is an icon-pair index and the high byte (`0x00`/`0xff`)
+        /// selects between the two Ready Room item-shop icon sheets — see
+        /// `shelfIcon`. (The same code is what the Ready Room's runtime
+        /// `DAT_0056dc40` icon table stores, so `0x30` is the record's own
+        /// pre-baked icon.)
         public let field0x30: UInt16
 
         /// Localized item description, NUL-terminated, confirmed to start
@@ -91,6 +97,44 @@ public enum ItemDataFile {
             self.twoSlotsFlag = twoSlotsFlag
             self.field0x30 = field0x30
             self.descriptionText = descriptionText
+        }
+
+        /// The item's Ready Room shelf icon, decoded from `field0x30` — the
+        /// enabled/disabled frame pair and which icon sheet they live on
+        /// (decomp `fc6a7cb`). The consumer computes `frame = (code & 0xff)
+        /// * 2`, blitting `frame - 2` when the item is owned/enabled and
+        /// `frame - 1` when disabled; the high byte selects sheet
+        /// `0x2713` (`sheetIndex 0`) or `0x2714` (`sheetIndex 1`).
+        public var shelfIcon: ShelfIcon {
+            ItemDataFile.shelfIcon(forCode: field0x30)
+        }
+    }
+
+    /// Decodes a packed shelf-icon code (an `itemdata.dat` `0x30` field, or a
+    /// `DAT_0056dc40` battle-item-ordinal entry — same encoding) into its
+    /// sheet + frame pair (decomp `fc6a7cb`/`703fd5f`).
+    public static func shelfIcon(forCode code: UInt16) -> ShelfIcon {
+        let pair = Int(code & 0xff)
+        return ShelfIcon(
+            sheetIndex: (code & 0xff00) != 0 ? 1 : 0,
+            enabledFrame: pair * 2 - 2,
+            disabledFrame: pair * 2 - 1
+        )
+    }
+
+    /// A decoded shelf-icon reference (see `ItemRecord.shelfIcon`).
+    public struct ShelfIcon: Equatable, Hashable, Sendable {
+        /// Which item-shop icon sheet: `0` = texture `0x2713`, `1` = `0x2714`.
+        public let sheetIndex: Int
+        /// Sheet frame for the owned/enabled state.
+        public let enabledFrame: Int
+        /// Sheet frame for the unowned/disabled (greyed) state.
+        public let disabledFrame: Int
+
+        public init(sheetIndex: Int, enabledFrame: Int, disabledFrame: Int) {
+            self.sheetIndex = sheetIndex
+            self.enabledFrame = enabledFrame
+            self.disabledFrame = disabledFrame
         }
     }
 

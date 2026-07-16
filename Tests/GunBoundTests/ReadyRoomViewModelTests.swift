@@ -5,6 +5,18 @@ import Testing
 @Suite @MainActor
 struct ReadyRoomViewModelTests {
 
+    @Test func characterCardFrameMapping() {
+        // ready_selectcharacter.img isn't ordered by rawValue: Random is 0,
+        // Armor…Grub are rawValue+1, Aduka is 16 (verified from the sheet).
+        #expect(ReadyRoomViewModel.characterFrame(for: .random) == 0)
+        #expect(ReadyRoomViewModel.characterFrame(for: .armor) == 1)
+        #expect(ReadyRoomViewModel.characterFrame(for: .nak) == 3)
+        #expect(ReadyRoomViewModel.characterFrame(for: .trico) == 4)   // was wrongly frame 3
+        #expect(ReadyRoomViewModel.characterFrame(for: .grub) == 13)
+        #expect(ReadyRoomViewModel.characterFrame(for: .aduka) == 16)
+        #expect(ReadyRoomViewModel.characterFrame(for: .dragon) == 0)  // not in the sheet → random
+    }
+
     private func makeViewModel() -> (ReadyRoomViewModel, MockViewModelDelegate) {
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let delegate = MockViewModelDelegate(network: network)
@@ -54,6 +66,56 @@ struct ReadyRoomViewModelTests {
         #expect(ReadyRoomViewModel.pickerCellRect(at: 5) == Rect(x: 33, y: 438, width: 66, height: 50))
         #expect(ReadyRoomViewModel.pickerCellCount == 15)
         #expect(ReadyRoomViewModel.pickerDisabledCell == 13)
+    }
+
+    /// Open slots = the room capacity (all 8 with no room, for the offline
+    /// walkthrough); empty open slots default to A on the left half of each
+    /// row and B on the right half, matching the original's platform layout.
+    @Test func capacityAndDefaultTeams() {
+        let (viewModel, delegate) = makeViewModel()
+        #expect(viewModel.capacity == ._4_4)
+
+        delegate.session.currentRoom = JoinRoomResponse(
+            room: 1, name: "R", map: .random, settings: 0, capacity: ._2_2, players: []
+        )
+        #expect(viewModel.capacity == ._2_2)
+        #expect(viewModel.capacity.rawValue == 4)
+
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 0) == .a)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 1) == .a)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 2) == .b)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 3) == .b)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 4) == .a)
+        #expect(ReadyRoomViewModel.defaultTeam(forSlot: 7) == .b)
+    }
+
+    /// The six option-value buttons: mode and capacity swap artwork with the
+    /// room settings; the undecoded groups show the fresh-room defaults.
+    @Test func optionButtonsFollowRoomSettings() {
+        let (viewModel, delegate) = makeViewModel()
+        var settings = RoomSettings(rawValue: 0)
+        settings.modeLabelIndex = 2  // TAG
+        delegate.session.currentRoom = JoinRoomResponse(
+            room: 1, name: "R", map: .random, settings: settings.rawValue, capacity: ._3_3, players: []
+        )
+
+        let buttons = viewModel.optionButtons
+        #expect(buttons.count == 6)
+        #expect(buttons[0].name == "b_ready_tag.img")
+        #expect(buttons[1].name == "b_ready_3vs3.img")
+        #expect(buttons[2].name == "b_ready_aside.img")
+        #expect(buttons[5].name == "b_ready_death72.img")
+        #expect(buttons[0].rect == Rect(x: 317, y: 225, width: 81, height: 24))
+        #expect(buttons[1].rect.x == 403)
+        #expect(buttons[4].rect == Rect(x: 317, y: 285, width: 81, height: 24))
+    }
+
+    /// The item shelf's 3×3 grid is decomp-exact: 70×45 cells at (528,403).
+    @Test func shelfGridMatchesTheDecomp() {
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 0) == Rect(x: 528, y: 403, width: 64, height: 43))
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 2).x == 528 + 2 * 70)
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 3) == Rect(x: 528, y: 448, width: 64, height: 43))
+        #expect(ReadyRoomViewModel.shelfCellRect(at: 8).y == 403 + 2 * 45)
     }
 
     @Test func exposesRoomFromSession() {
