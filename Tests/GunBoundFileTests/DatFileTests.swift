@@ -41,4 +41,17 @@ struct DatFileTests {
         let decoded = DatFile.decompress(compressed, decodedSize: DatFile.stageDataDecodedSize)
         #expect(decoded.count == DatFile.stageDataDecodedSize)
     }
+
+    /// The `ParserSpan` overload consumes the compressed bytes from a span
+    /// and yields the same result as the array-based path — the form callers
+    /// parsing a larger container in place use.
+    @Test
+    func decompressFromParserSpan() throws {
+        let compressed = try loadResource("characterdata", "dat")
+        let decoded = try compressed.withParserSpan { span in
+            DatFile.decompress(parsing: &span, decodedSize: DatFile.characterDataDecodedSize)
+        }
+        #expect(decoded == DatFile.decompress(compressed, decodedSize: DatFile.characterDataDecodedSize))
+        #expect(decoded.count == DatFile.characterDataDecodedSize)
+    }
 }

@@ -15,7 +15,7 @@
 /// - Item is removed from player's inventory
 /// - Gold is credited to player's account
 /// - Server sends GoldUpdateResponse with new balance
-public struct SellResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Sendable {
+public struct SellResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .sellResponse }
 

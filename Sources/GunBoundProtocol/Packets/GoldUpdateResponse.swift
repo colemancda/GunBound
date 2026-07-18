@@ -9,7 +9,7 @@
 ///
 /// This packet is typically sent after purchases, game rewards, or when explicitly
 /// requested by the client.
-public struct GoldUpdateResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Hashable, Sendable {
+public struct GoldUpdateResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .goldUpdateResponse }
 

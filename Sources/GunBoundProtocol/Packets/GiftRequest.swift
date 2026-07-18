@@ -14,7 +14,7 @@
 /// is offline, the gift is typically held in their inventory until they log in.
 ///
 /// **Note:** This packet is encrypted and requires decryption before processing.
-public struct GiftRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Sendable {
+public struct GiftRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .giftRequest }
 

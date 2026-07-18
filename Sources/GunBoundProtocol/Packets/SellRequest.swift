@@ -11,7 +11,7 @@
 /// with gold based on the item's sell price.
 ///
 /// **Note:** This packet is encrypted and requires decryption before processing.
-public struct SellRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Sendable {
+public struct SellRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .sellRequest }
 

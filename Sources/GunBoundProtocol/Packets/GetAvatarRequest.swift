@@ -13,7 +13,7 @@
 /// When sendExtended is true, the response includes detailed information
 /// about all avatar items in the player's inventory. When false, only
 /// basic information is returned (typically just equipped avatars).
-public struct GetAvatarRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Sendable {
+public struct GetAvatarRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .getAvatarRequest }
 

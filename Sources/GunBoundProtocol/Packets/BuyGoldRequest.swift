@@ -11,7 +11,7 @@
 /// The server verifies the purchase and deducts gold from the player's account.
 ///
 /// **Note:** This packet is encrypted and requires decryption before processing.
-public struct BuyGoldRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Sendable {
+public struct BuyGoldRequest: GunBoundPacket, GunBoundPacketDecodable, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .buyGoldRequest }
 

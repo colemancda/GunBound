@@ -14,7 +14,7 @@
 /// When authentication fails, only the status is sent.
 /// When successful, the UserData structure contains all the player's
 /// current account information including session ID, rank, gold, GP, etc.
-public struct AuthenticationResponse: GunBoundPacket, GunBoundPacketEncodable, Hashable, Sendable {
+public struct AuthenticationResponse: GunBoundPacket, GunBoundPacketEncodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .authenticationResponse }
 
