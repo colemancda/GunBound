@@ -63,6 +63,47 @@ struct InBattleDriveTests {
         #expect(!renderer.draws.isEmpty)
     }
 
+    /// Score/Tag/Jewel modes each have their own simulation and render paths;
+    /// drive a battle in each (with distinct secondary tanks so Tag can swap)
+    /// through firing and a death, rendering every frame.
+    @Test(arguments: [UInt32(0x0044_0000), 0x0008_0000, 0x000C_0000, 0])
+    func battleModesRenderAndResolve(settings: UInt32) throws {
+        let renderer = ScreenHarness.Renderer()
+        let context = ScreenHarness.context(renderer)
+        context.session.battle = StartGameNotification(
+            settings: settings, map: .metropolis,
+            players: [
+                StartGameNotification.Player(id: 0, username: "u", team: .a, primaryTank: .boomer, secondaryTank: .mage, xPosition: 600, yPosition: 400, turnOrder: 0),
+                StartGameNotification.Player(id: 1, username: "x", team: .b, primaryTank: .armor, secondaryTank: .nak, xPosition: 1000, yPosition: 400, turnOrder: 1),
+            ],
+            events: 0, commandData: []
+        )
+        let viewModel = InBattleViewModel(delegate: context)
+        let screen = InBattleScreen(viewModel: viewModel)
+        try screen.onEnter(context: context)
+
+        // One fire, then the enemy dies (Tag swaps, Score decrements lives,
+        // Solo/Jewel eliminate) and the match resolves.
+        if viewModel.phase == .aiming {
+            screen.handleInput(.activate)
+            screen.update(deltaTime: 0.4)
+            screen.handleInput(.activate)
+            var frames = 0
+            while frames < 3000, viewModel.phase != .aiming, viewModel.phase != .waiting {
+                screen.update(deltaTime: 1.0 / 60)
+                try screen.render(renderer)
+                frames += 1
+            }
+        }
+        viewModel.apply(.playerDied(PlayerDeadNotification(slot: 1, team: .b)))
+        viewModel.apply(.playerDied(PlayerDeadNotification(slot: 1, team: .b)))  // second: past any Tag swap
+        for _ in 0..<50 {
+            screen.update(deltaTime: 0.1)
+            try screen.render(renderer)
+        }
+        #expect(!renderer.draws.isEmpty)
+    }
+
     @Test func chatOverlayAndRelayedActionsRender() throws {
         let renderer = ScreenHarness.Renderer()
         let context = ScreenHarness.context(renderer)
