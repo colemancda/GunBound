@@ -14,10 +14,17 @@
 /// selects the encoding — `1` = ARGB4444 (alpha), anything else = flat
 /// RGB565. The header layout was confirmed empirically against every `.xtf`
 /// shipped in `graphics.xfs` (all 256×256, format 1); dimensions are read
-/// from the header, so any size decodes. (The `.xtf` string never appears in
-/// the original binary — these are loaded as generic cache surfaces by name,
-/// per `FILEFORMATS.md` — so the header layout is empirical, not
-/// decomp-confirmed.)
+/// from the header, so any size decodes.
+///
+/// Decomp corroboration: `.xtf` is the texture extension the original's
+/// `PreloadTexture` (0x4f43a0) appends when opening `<name>.xtf` from
+/// `graphics.xfs` (the extension string lives at `.data` 0x557554 — an
+/// earlier `FILEFORMATS.md` note that "no `.xtf` string exists in the
+/// binary" turned out to be a zeroed-data extraction artifact). Its read
+/// sequence — two int-sized fields, one byte, then the whole pixel body
+/// straight into a 256×256 atlas-surface upload — matches this header,
+/// though the exact per-read byte counts were dropped by the decompiler,
+/// so the layout stays pinned by the on-disk files themselves.
 public enum XtfFile {
 
     public enum Error: Swift.Error, Equatable {
