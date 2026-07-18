@@ -30,34 +30,18 @@ struct RoomLifecycleLoopbackTests {
                 )
             }
         }
-        var lastError: Swift.Error?
-        for _ in 0..<5 {
-            let port = UInt16.random(in: 20_000...60_000)
-            guard let address = GunBound.GunBoundAddress(address: "127.0.0.1", port: port) else { continue }
-            do {
-                let server = try await GunBoundServer(
-                    configuration: GunBoundServerConfiguration(address: address, backlog: 8),
-                    dataSource: dataSource,
-                    socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
-                )
-                return (server, port)
-            } catch {
-                lastError = error
-            }
-        }
-        throw lastError ?? GunBoundDecodingError.invalidPacket
+        let port = await InMemoryTCPRegistry.shared.uniqueServerPort()
+        let address = GunBound.GunBoundAddress(address: "127.0.0.1", port: port)!
+        let server = try await GunBoundServer(
+            configuration: GunBoundServerConfiguration(address: address, backlog: 8),
+            dataSource: dataSource,
+            socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
+        )
+        return (server, port)
     }
 
     private static func connect(_ username: String, port: UInt16) async throws -> NetworkClient<InMemoryTCPSocket> {
-        let client = try await NetworkClient<InMemoryTCPSocket>.connect(NetworkConfig(
-            username: username, password: "1234",
-            serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-        ), requestTimeout: .seconds(30))
-        let auth = try await client.authenticate(username: username, password: "1234")
-        #expect(auth.status == .success, "\(username)")
-        let channel = try await client.joinChannel()
-        #expect(channel.isSuccess, "\(username)")
-        return client
+        try await TestServer.connect(username, port: port)
     }
 
     /// One 1:1 room, lived in from creation to host migration:
@@ -73,7 +57,7 @@ struct RoomLifecycleLoopbackTests {
     ///    the room to the waiting state
     /// 6. the master disconnecting hands the seat to the lowest occupied
     ///    slot and notifies the survivors
-    @Test func roomLifecycleEndToEnd() async throws {
+    @Test func roomLifecycleEndToEnd() async throws { try await TestServer.exclusive {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
@@ -198,5 +182,5 @@ struct RoomLifecycleLoopbackTests {
 
         await guest.close()
         await extra.close()
-    }
+    } }
 }

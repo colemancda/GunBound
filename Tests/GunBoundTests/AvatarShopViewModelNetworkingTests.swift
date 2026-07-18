@@ -8,16 +8,16 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(1))) @MainActor
 struct AvatarShopViewModelNetworkingTests {
 
-    @Test func onEnterFetchesInventory() async throws {
+    @Test func onEnterFetchesInventory() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(server) {} }
         let viewModel = AvatarShopViewModel(delegate: delegate)
 
         viewModel.onEnter()
         #expect(await TestServer.wait { delegate.session.avatar != nil })
-    }
+    } }
 
-    @Test func buyingTheSelectedItemRunsThePurchasePath() async throws {
+    @Test func buyingTheSelectedItemRunsThePurchasePath() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(server) {} }
         let viewModel = AvatarShopViewModel(delegate: delegate)
@@ -38,5 +38,5 @@ struct AvatarShopViewModelNetworkingTests {
         let buy = AvatarShopViewModel.buyRect
         viewModel.handle(.pointerDown(x: buy.x + 5, y: buy.y + 5))
         _ = await TestServer.wait { !viewModel.isLoading }
-    }
+    } }
 }
