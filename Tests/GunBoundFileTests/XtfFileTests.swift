@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import GunBoundFile
 
 @Suite struct XtfFileTests {
@@ -19,7 +20,6 @@ import Testing
     /// Format 1 decodes as ARGB4444, dimensions come from the header, and the
     /// alpha channel survives.
     @Test func decodesArgb4444() throws {
-        // 2×2, one opaque red, one transparent — raw ARGB4444 0xAF00 etc.
         let pixels: [UInt16] = [0xF00F, 0x0F00, 0xFFFF, 0x0000]
         let frame = try XtfFile.decode(makeXtf(width: 2, height: 2, format: 1, pixels: pixels))
         #expect(frame.width == 2)
@@ -44,16 +44,49 @@ import Testing
         #expect(frame.pixels[0] == ImgFile.Pixel(rgb565: 0xF800))
     }
 
+    /// The `ParserSpan` overload consumes exactly the header + body and
+    /// agrees with the array-based path.
+    @Test func decodesFromParserSpan() throws {
+        let bytes = makeXtf(width: 2, height: 1, format: 1, pixels: [0xF00F, 0xFFFF])
+        let fromSpan = try bytes.withParserSpan { try XtfFile.decode(parsing: &$0) }
+        let fromArray = try XtfFile.decode(bytes)
+        #expect(fromSpan == fromArray)
+    }
+
+    /// Truncation — a short header or a body smaller than
+    /// `width × height × 2` — surfaces as a parsing error, not a crash.
     @Test func rejectsTruncatedHeaderAndBody() {
-        #expect(throws: XtfFile.Error.truncated) { try XtfFile.decode([0, 1, 2]) }
-        // Header says 4×4 (32 pixels) but body has only two.
+        #expect(throws: (any Error).self) { try XtfFile.decode([0, 1, 2]) }
+        // Header says 4×4 (16 pixels) but the body has only two.
         let short = makeXtf(width: 4, height: 4, format: 1, pixels: [0, 0])
-        #expect(throws: XtfFile.Error.truncated) { try XtfFile.decode(short) }
+        #expect(throws: (any Error).self) { try XtfFile.decode(short) }
     }
 
     @Test func rejectsInvalidDimensions() {
         #expect(throws: XtfFile.Error.invalidDimensions(width: 0, height: 0)) {
             try XtfFile.decode(makeXtf(width: 0, height: 0, format: 1, pixels: []))
         }
+        // A corrupt header claiming an absurd surface is rejected before any
+        // large allocation.
+        let huge = makeXtf(width: 0x100000, height: 2, format: 1, pixels: [0])
+        #expect(throws: XtfFile.Error.invalidDimensions(width: 0x100000, height: 2)) {
+            try XtfFile.decode(huge)
+        }
+    }
+
+    /// The real `TornadoTexture.xtf` from `graphics.xfs` (the weather-hazard
+    /// swirl `RenderWeatherHazards` binds): a 256×256 ARGB4444 surface whose
+    /// content is real art, not a blank runtime target — the exact alpha
+    /// coverage is pinned so a decoder regression that shifts the pixel
+    /// interpretation can't slip by.
+    @Test func decodesTheRealTornadoTexture() throws {
+        let url = Bundle.module.url(forResource: "TornadoTexture", withExtension: "xtf", subdirectory: "Resources")!
+        let data = try [UInt8](Data(contentsOf: url))
+        let frame = try XtfFile.decode(data)
+        #expect(frame.width == 256)
+        #expect(frame.height == 256)
+        #expect(frame.transparencyType == .alpha)
+        #expect(frame.pixels.count == 65536)
+        #expect(frame.pixels.count(where: { $0.alpha > 0 }) == 35609)
     }
 }

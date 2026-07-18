@@ -14,47 +14,49 @@
 /// selects the encoding — `1` = ARGB4444 (alpha), anything else = flat
 /// RGB565. The header layout was confirmed empirically against every `.xtf`
 /// shipped in `graphics.xfs` (all 256×256, format 1); dimensions are read
-/// from the header, so any size decodes.
+/// from the header, so any size decodes. (The `.xtf` string never appears in
+/// the original binary — these are loaded as generic cache surfaces by name,
+/// per `FILEFORMATS.md` — so the header layout is empirical, not
+/// decomp-confirmed.)
 public enum XtfFile {
 
     public enum Error: Swift.Error, Equatable {
-        /// Fewer bytes than the 9-byte header, or a body shorter than
-        /// `width × height × 2`.
-        case truncated
         /// A zero or absurd dimension in the header.
         case invalidDimensions(width: Int, height: Int)
     }
 
-    static let headerSize = 6 + 1 + 2  // two u32 + a format byte (9)
+    /// A dimension bound far beyond any real surface (the originals are all
+    /// 256×256) that keeps a corrupt header from driving a huge allocation.
+    public static let maxDimension = 0x4000
 
     /// Decodes a `.xtf` surface into an `ImgFile.Frame` — the same pixel
     /// representation `.img` frames use, so it flows through the identical
     /// texture pipeline.
     public static func decode(_ data: [UInt8]) throws -> ImgFile.Frame {
-        guard data.count >= 9 else { throw Error.truncated }
-
-        func readUInt32LE(at index: Int) -> Int {
-            Int(data[index]) | (Int(data[index + 1]) << 8)
-                | (Int(data[index + 2]) << 16) | (Int(data[index + 3]) << 24)
+        try data.withParserSpan { input in
+            try decode(parsing: &input)
         }
-        let width = readUInt32LE(at: 0)
-        let height = readUInt32LE(at: 4)
-        let format = data[8]
+    }
 
-        guard width > 0, height > 0, width <= 0x4000, height <= 0x4000 else {
+    /// Decodes a `.xtf` surface from a `ParserSpan` positioned at the start
+    /// of the 9-byte header; consumes the header and the pixel body.
+    public static func decode(parsing input: inout ParserSpan) throws -> ImgFile.Frame {
+        let width = Int(try UInt32(parsingLittleEndian: &input))
+        let height = Int(try UInt32(parsingLittleEndian: &input))
+        let format = try UInt8(parsing: &input)
+
+        guard width > 0, height > 0, width <= Self.maxDimension, height <= Self.maxDimension else {
             throw Error.invalidDimensions(width: width, height: height)
         }
         let pixelCount = width * height
-        guard data.count >= 9 + pixelCount * 2 else { throw Error.truncated }
+        let body = try [UInt8](parsing: &input, byteCount: pixelCount * 2)
 
         let isAlpha = format == 1
         var pixels: [ImgFile.Pixel] = []
         pixels.reserveCapacity(pixelCount)
-        var offset = 9
-        for _ in 0..<pixelCount {
-            let raw = UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
+        for i in 0..<pixelCount {
+            let raw = UInt16(body[i * 2]) | (UInt16(body[i * 2 + 1]) << 8)
             pixels.append(isAlpha ? ImgFile.Pixel(argb4444: raw) : ImgFile.Pixel(rgb565: raw))
-            offset += 2
         }
         return ImgFile.Frame(
             transparencyType: isAlpha ? .alpha : .none,
