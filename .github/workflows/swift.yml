@@ -48,9 +48,10 @@ jobs:
     - name: Export coverage and enforce threshold
       run: Scripts/coverage.sh
       env:
-        # Baseline measured at 65.48% — start green, ratchet up as
+        # Ratcheted to 68 after GunBoundFile (99%) and GunBoundProtocol
+        # (95%) were brought up; raise again as GunBound/GunBoundClient
         # coverage grows.
-        COVERAGE_THRESHOLD: 65
+        COVERAGE_THRESHOLD: 68
     - name: Upload coverage to GitHub Code Quality
       uses: actions/upload-code-coverage@v1
       with:
