@@ -3,21 +3,20 @@ import Testing
 @testable import GunBound
 @testable import GunBoundProtocol
 
-/// End-to-end loopback coverage for the room lifecycle work: join-room error
-/// returns, the in-game tunnel relay, room-wide update broadcasts,
-/// master-only guards, the death → winner flow, and the leave/host-migration
-/// notifications. Real `GunBoundServer` + `NetworkClient` over real TCP
-/// sockets, like `LobbyLoopbackTests`.
+/// End-to-end coverage for the room lifecycle work: join-room error returns,
+/// the in-game tunnel relay, room-wide update broadcasts, master-only guards,
+/// the death → winner flow, and the leave/host-migration notifications. Real
+/// `GunBoundServer` + `NetworkClient` wired through an in-memory socket
+/// (`InMemoryTCPSocket`), like `LobbyLoopbackTests`.
 ///
-/// Deliberately a single sequential scenario over long-lived connections:
-/// repeatedly starting servers and opening/closing sockets within one test
-/// process trips fd-reuse and lost-wakeup races in the shared socket
-/// manager, so the suite mirrors the proven `LobbyLoopbackTests` shape
-/// instead — one server, a handful of clients, strictly sequential traffic.
+/// One sequential scenario over long-lived connections: the in-memory socket
+/// removes the fd-reuse/lost-wakeup races that made the real-socket version
+/// flaky, but the single-server, strictly-sequential shape is kept as it
+/// mirrors the real client's traffic pattern.
 @Suite(.serialized, .timeLimit(.minutes(2)))
 struct RoomLifecycleLoopbackTests {
 
-    private static func startServer() async throws -> (server: GunBoundServer<GunBoundSocketIPv4TCP, GunBoundSocketIPv4UDP, InMemoryGunBoundServerDataSource>, port: UInt16) {
+    private static func startServer() async throws -> (server: GunBoundServer<InMemoryTCPSocket, InMemoryUDPSocket, InMemoryGunBoundServerDataSource>, port: UInt16) {
         let dataSource = InMemoryGunBoundServerDataSource()
         await dataSource.update {
             for name in ["admin", "guest", "extra"] {
@@ -39,7 +38,7 @@ struct RoomLifecycleLoopbackTests {
                 let server = try await GunBoundServer(
                     configuration: GunBoundServerConfiguration(address: address, backlog: 8),
                     dataSource: dataSource,
-                    socket: (GunBoundSocketIPv4TCP.self, GunBoundSocketIPv4UDP.self)
+                    socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
                 )
                 return (server, port)
             } catch {
@@ -49,11 +48,11 @@ struct RoomLifecycleLoopbackTests {
         throw lastError ?? GunBoundDecodingError.invalidPacket
     }
 
-    private static func connect(_ username: String, port: UInt16) async throws -> NetworkClient<GunBoundSocketIPv4TCP> {
-        let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(NetworkConfig(
+    private static func connect(_ username: String, port: UInt16) async throws -> NetworkClient<InMemoryTCPSocket> {
+        let client = try await NetworkClient<InMemoryTCPSocket>.connect(NetworkConfig(
             username: username, password: "1234",
             serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-        ))
+        ), requestTimeout: .seconds(30))
         let auth = try await client.authenticate(username: username, password: "1234")
         #expect(auth.status == .success, "\(username)")
         let channel = try await client.joinChannel()
