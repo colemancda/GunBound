@@ -79,6 +79,27 @@ enum TestServer {
         return (delegate, server)
     }
 
+    /// Creates a room through `delegate.client`, joins it, and records it as
+    /// the session's current room — the state a Ready Room view model expects.
+    /// Returns the room id so a second client can join the same room.
+    @MainActor
+    @discardableResult
+    static func enterRoom(_ delegate: MockViewModelDelegate, name: String = "room") async throws -> RoomID {
+        let client = try #require(delegate.client)
+        let created = try await client.createRoom(name: name, password: "", capacity: ._4_4)
+        let joined = try await client.joinRoom(created.room)
+        delegate.session.currentRoom = joined
+        return created.room
+    }
+
+    /// Joins `delegate.client` into an existing room and records it as the
+    /// session's current room (a non-host player).
+    @MainActor
+    static func joinRoom(_ delegate: MockViewModelDelegate, id: RoomID) async throws {
+        let client = try #require(delegate.client)
+        delegate.session.currentRoom = try await client.joinRoom(id)
+    }
+
     /// Polls `condition` in real time until it holds or ~5s elapse, so a view
     /// model's fire-and-forget networking Task (and the server's async
     /// processing behind it) has wall-clock time to complete. Returns whether
