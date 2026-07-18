@@ -14,7 +14,7 @@
 /// The client should wait for this response before allowing further gifts.
 /// If successful, the item is removed from the sender's inventory and added
 /// to the recipient's inventory.
-public struct GiftResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Sendable {
+public struct GiftResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .giftResponse }
 

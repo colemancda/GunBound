@@ -8,7 +8,7 @@
 /// This ensures the UI displays the correct amount of available cash.
 ///
 /// **Note:** This packet is encrypted before transmission.
-public struct CashUpdate: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Hashable, Sendable {
+public struct CashUpdate: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .cashUpdateNotification }
 

@@ -10,7 +10,7 @@
 /// The RTC field indicates the result:
 /// - 0x0000: Success
 /// - Non-zero: Error codes
-public struct SetAvatarResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Sendable {
+public struct SetAvatarResponse: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .setAvatarResponse }
 

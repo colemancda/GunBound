@@ -10,7 +10,7 @@
 ///
 /// This packet contains no data - it's a simple heartbeat signal.
 /// Typical interval is every 30-60 seconds depending on server configuration.
-public struct KeepAlive: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Hashable, Sendable {
+public struct KeepAlive: GunBoundPacket, GunBoundPacketEncodable, GunBoundPacketDecodable, Equatable, Hashable, Sendable {
 
     public static var opcode: Opcode { .keepAlive }
 
