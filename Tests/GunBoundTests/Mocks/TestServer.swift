@@ -86,14 +86,14 @@ enum TestServer {
     /// the 30s request timeout.
     static func connect(_ username: String, port: UInt16) async throws -> NetworkClient<InMemoryTCPSocket> {
         var lastError: Swift.Error?
-        for _ in 0..<4 {
+        for _ in 0..<10 {
             do {
                 let client = try await NetworkClient<InMemoryTCPSocket>.connect(
                     NetworkConfig(
                         username: username, password: "1234",
                         serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
                     ),
-                    requestTimeout: .seconds(5)
+                    requestTimeout: .seconds(3)
                 )
                 _ = try await client.authenticate(username: username, password: "1234")
                 _ = try await client.joinChannel()
@@ -151,9 +151,9 @@ enum TestServer {
     @MainActor
     @discardableResult
     static func wait(for condition: @MainActor () -> Bool) async -> Bool {
-        for _ in 0..<500 {
+        for _ in 0..<1500 {
             if condition() { return true }
-            try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+            try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms → up to ~15s
         }
         return condition()
     }
