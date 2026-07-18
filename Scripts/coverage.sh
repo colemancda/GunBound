@@ -23,6 +23,10 @@
 #                            toward coverage (default: "$PWD/Sources/"). Narrow it
 #                            to a single target, e.g. "$PWD/Sources/MyLibrary/", to
 #                            gate on one target instead of every source file.
+#   COVERAGE_EXCLUDE_REGEX   Regex of source paths excluded from coverage (default:
+#                            the executable targets — entry points aren't linked
+#                            into the test binary, so counting them would only add
+#                            noise if that ever changes). Set to '^$' to disable.
 #   COVERAGE_OUTPUT          LCOV output file (default: .build/coverage/coverage.lcov).
 #   COBERTURA_OUTPUT         Cobertura XML output file (default: .build/coverage/coverage.xml).
 #   SKIP_TEST                If set to 1, reuse existing coverage data instead of
@@ -32,6 +36,9 @@ set -euo pipefail
 
 THRESHOLD="${1:-${COVERAGE_THRESHOLD:-80}}"
 SOURCE_PREFIX="${COVERAGE_SOURCE_PREFIX:-$PWD/Sources/}"
+# Library targets only: the executable targets are thin entry points
+# (argument parsing + main loops) that never link into the test binary.
+EXCLUDE_REGEX="${COVERAGE_EXCLUDE_REGEX:-Sources/(GunBoundServer|GunBoundSDL2|GunBoundSDL3|GunBoundExtract)/}"
 OUTPUT="${COVERAGE_OUTPUT:-.build/coverage/coverage.lcov}"
 COBERTURA_OUTPUT="${COBERTURA_OUTPUT:-.build/coverage/coverage.xml}"
 
@@ -79,7 +86,7 @@ if [ -n "$TEST_BINARY" ] && [ -f "$PROFDATA" ]; then
         -format=lcov \
         -instr-profile "$PROFDATA" \
         "$TEST_BINARY" \
-        -ignore-filename-regex='.build/(checkouts|.*\.build)/|Tests/|\.derived/|DerivedSources/' \
+        -ignore-filename-regex=".build/(checkouts|.*\.build)/|Tests/|\.derived/|DerivedSources/|$EXCLUDE_REGEX" \
         > "$OUTPUT"
 else
     echo "warning: could not locate test binary or profdata; skipping LCOV export" >&2
@@ -88,11 +95,12 @@ fi
 # 5. Generate a Cobertura XML report (for GitHub Code Quality / upload-code-coverage).
 echo "==> Writing Cobertura report to $COBERTURA_OUTPUT"
 mkdir -p "$(dirname "$COBERTURA_OUTPUT")"
-python3 - "$CODECOV_JSON" "$SOURCE_PREFIX" "$PWD" "$COBERTURA_OUTPUT" <<'PY'
-import json, os, sys, time
+python3 - "$CODECOV_JSON" "$SOURCE_PREFIX" "$PWD" "$COBERTURA_OUTPUT" "$EXCLUDE_REGEX" <<'PY'
+import json, os, re, sys, time
 from xml.sax.saxutils import escape, quoteattr
 
-report_path, source_prefix, repo_root, output = sys.argv[1:5]
+report_path, source_prefix, repo_root, output, exclude_regex = sys.argv[1:6]
+exclude = re.compile(exclude_regex)
 
 with open(report_path) as f:
     report = json.load(f)
@@ -101,7 +109,7 @@ files = []
 total_covered = total_lines = 0
 for file in report["data"][0]["files"]:
     name = file["filename"]
-    if not name.startswith(source_prefix):
+    if not name.startswith(source_prefix) or exclude.search(name):
         continue
     # Per-line hit count: the greatest region count starting on each line (a line
     # is covered if any region on it executed, so branch sub-regions don't hide it).
@@ -156,10 +164,11 @@ PY
 
 # 6. Compute line coverage for the package sources and enforce the threshold.
 echo "==> Computing coverage for ${SOURCE_PREFIX}"
-python3 - "$CODECOV_JSON" "$SOURCE_PREFIX" "$THRESHOLD" "$PWD" <<'PY'
-import json, os, sys
+python3 - "$CODECOV_JSON" "$SOURCE_PREFIX" "$THRESHOLD" "$PWD" "$EXCLUDE_REGEX" <<'PY'
+import json, os, re, sys
 
 report_path, source_prefix, threshold, repo_root = sys.argv[1], sys.argv[2], float(sys.argv[3]), sys.argv[4]
+exclude = re.compile(sys.argv[5])
 
 with open(report_path) as f:
     report = json.load(f)
@@ -168,7 +177,7 @@ covered = total = 0
 rows = []
 for file in report["data"][0]["files"]:
     name = file["filename"]
-    if not name.startswith(source_prefix):
+    if not name.startswith(source_prefix) or exclude.search(name):
         continue
     lines = file["summary"]["lines"]
     covered += lines["covered"]
