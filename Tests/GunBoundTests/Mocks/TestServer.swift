@@ -8,9 +8,48 @@ import Testing
 /// be injected into a `MockViewModelDelegate.client`, so the view models'
 /// networking Task bodies run against a real server over the deterministic
 /// in-memory socket.
+/// Serializes the server-spinning tests. swift-testing runs suites in
+/// parallel in-process; many in-memory servers/clients contending at once
+/// occasionally starves a login handshake past its timeout. Wrapping each
+/// such test in `TestServer.exclusive { }` runs them one at a time (other,
+/// non-networking suites still parallelize).
+actor SerialGate {
+    static let shared = SerialGate()
+    private var locked = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func lock() async {
+        if !locked {
+            locked = true
+            return
+        }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func unlock() {
+        if waiters.isEmpty {
+            locked = false
+        } else {
+            waiters.removeFirst().resume()
+        }
+    }
+}
+
 enum TestServer {
 
     typealias Server = GunBoundServer<InMemoryTCPSocket, InMemoryUDPSocket, InMemoryGunBoundServerDataSource>
+
+    /// Runs `body` with exclusive access to the in-memory networking harness.
+    static func exclusive(_ body: () async throws -> Void) async rethrows {
+        await SerialGate.shared.lock()
+        do {
+            try await body()
+        } catch {
+            await SerialGate.shared.unlock()
+            throw error
+        }
+        await SerialGate.shared.unlock()
+    }
 
     /// Starts a world server seeded with `admin`/`guest`/`extra` accounts on
     /// an in-memory port.
@@ -28,37 +67,42 @@ enum TestServer {
                 )
             }
         }
+        let port = await InMemoryTCPRegistry.shared.uniqueServerPort()
+        let address = GunBound.GunBoundAddress(address: "127.0.0.1", port: port)!
+        let server = try await GunBoundServer(
+            configuration: GunBoundServerConfiguration(address: address, backlog: 8),
+            dataSource: dataSource,
+            socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
+        )
+        return (server, port)
+    }
+
+    /// Connects a client for `username`, logs it in, and joins the lobby
+    /// channel — the state a view model reached from Server Select would be in.
+    ///
+    /// Retries on a short timeout: the in-memory socket handshake has a rare
+    /// lost-wakeup that wedges a single connection; a fresh socket pair
+    /// sidesteps it, so we fail fast (5s) and reconnect rather than hang on
+    /// the 30s request timeout.
+    static func connect(_ username: String, port: UInt16) async throws -> NetworkClient<InMemoryTCPSocket> {
         var lastError: Swift.Error?
-        for _ in 0..<5 {
-            let port = UInt16.random(in: 20_000...60_000)
-            guard let address = GunBound.GunBoundAddress(address: "127.0.0.1", port: port) else { continue }
+        for _ in 0..<4 {
             do {
-                let server = try await GunBoundServer(
-                    configuration: GunBoundServerConfiguration(address: address, backlog: 8),
-                    dataSource: dataSource,
-                    socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
+                let client = try await NetworkClient<InMemoryTCPSocket>.connect(
+                    NetworkConfig(
+                        username: username, password: "1234",
+                        serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
+                    ),
+                    requestTimeout: .seconds(5)
                 )
-                return (server, port)
+                _ = try await client.authenticate(username: username, password: "1234")
+                _ = try await client.joinChannel()
+                return client
             } catch {
                 lastError = error
             }
         }
         throw lastError ?? GunBoundDecodingError.invalidPacket
-    }
-
-    /// Connects a client for `username`, logs it in, and joins the lobby
-    /// channel — the state a view model reached from Server Select would be in.
-    static func connect(_ username: String, port: UInt16) async throws -> NetworkClient<InMemoryTCPSocket> {
-        let client = try await NetworkClient<InMemoryTCPSocket>.connect(
-            NetworkConfig(
-                username: username, password: "1234",
-                serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-            ),
-            requestTimeout: .seconds(30)
-        )
-        _ = try await client.authenticate(username: username, password: "1234")
-        _ = try await client.joinChannel()
-        return client
     }
 
     /// A `MockViewModelDelegate` wired to a live in-memory client, plus the

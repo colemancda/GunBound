@@ -15,7 +15,7 @@ struct ReadyRoomViewModelNetworkingTests {
     private let readyOrStartButton = (x: Float(708), y: Float(573))
     private let pickerToggle = (x: Float(49), y: Float(373))
 
-    @Test func hostStartGameRelaysToServer() async throws {
+    @Test func hostStartGameRelaysToServer() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(server) {} }
         try await TestServer.enterRoom(delegate)
@@ -29,9 +29,9 @@ struct ReadyRoomViewModelNetworkingTests {
         viewModel.handle(.pointerDown(x: readyOrStartButton.x, y: readyOrStartButton.y))
         #expect(await TestServer.wait { !viewModel.isBusy })
         viewModel.onExit()
-    }
+    } }
 
-    @Test func changeTeamAndSelectMobileRunToCompletion() async throws {
+    @Test func changeTeamAndSelectMobileRunToCompletion() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(server) {} }
         try await TestServer.enterRoom(delegate)
@@ -49,9 +49,9 @@ struct ReadyRoomViewModelNetworkingTests {
         viewModel.handle(.pointerDown(x: cell0.x + 5, y: cell0.y + 5))
         #expect(await TestServer.wait { !viewModel.isBusy })
         viewModel.onExit()
-    }
+    } }
 
-    @Test func nonHostReadyTogglesThroughTheServer() async throws {
+    @Test func nonHostReadyTogglesThroughTheServer() async throws { try await TestServer.exclusive {
         let (host, hostServer) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(hostServer) {} }
         let roomID = try await TestServer.enterRoom(host, name: "ready flow")
@@ -69,9 +69,9 @@ struct ReadyRoomViewModelNetworkingTests {
         viewModel.handle(.pointerDown(x: readyOrStartButton.x, y: readyOrStartButton.y))
         #expect(await TestServer.wait { !viewModel.isBusy })
         viewModel.onExit()
-    }
+    } }
 
-    @Test func leaveRoomClearsSessionAndReturnsToLobby() async throws {
+    @Test func leaveRoomClearsSessionAndReturnsToLobby() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(server) {} }
         try await TestServer.enterRoom(delegate)
@@ -82,9 +82,9 @@ struct ReadyRoomViewModelNetworkingTests {
         #expect(delegate.session.currentRoom == nil)
         #expect(delegate.requestedTransitions.contains(.gameRoomList))
         viewModel.onExit()
-    }
+    } }
 
-    @Test func sendChatEchoesBack() async throws {
+    @Test func sendChatEchoesBack() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate("admin")
         defer { withExtendedLifetime(server) {} }
         try await TestServer.enterRoom(delegate)
@@ -98,5 +98,5 @@ struct ReadyRoomViewModelNetworkingTests {
         viewModel.sendChat("   ")
         #expect(viewModel.chatMessages.count == before)
         viewModel.onExit()
-    }
+    } }
 }

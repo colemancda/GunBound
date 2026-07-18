@@ -10,7 +10,7 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(1))) @MainActor
 struct GameRoomListViewModelNetworkingTests {
 
-    @Test func onEnterLoadsRoomsAndObservesPushes() async throws {
+    @Test func onEnterLoadsRoomsAndObservesPushes() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate()
         defer { withExtendedLifetime(server) {} }
         let viewModel = GameRoomListViewModel(delegate: delegate)
@@ -20,9 +20,9 @@ struct GameRoomListViewModelNetworkingTests {
         await TestServer.wait { !viewModel.rooms.isEmpty == false }
         #expect(viewModel.rooms.isEmpty)
         viewModel.onExit()
-    }
+    } }
 
-    @Test func createRoomJoinsAndTransitionsToReadyRoom() async throws {
+    @Test func createRoomJoinsAndTransitionsToReadyRoom() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate()
         defer { withExtendedLifetime(server) {} }
         let viewModel = GameRoomListViewModel(delegate: delegate)
@@ -35,9 +35,9 @@ struct GameRoomListViewModelNetworkingTests {
         #expect(transitioned)
         #expect(delegate.session.currentRoom != nil)
         viewModel.onExit()
-    }
+    } }
 
-    @Test func sendChatEchoesBackAsAMessage() async throws {
+    @Test func sendChatEchoesBackAsAMessage() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate()
         defer { withExtendedLifetime(server) {} }
         let viewModel = GameRoomListViewModel(delegate: delegate)
@@ -54,9 +54,9 @@ struct GameRoomListViewModelNetworkingTests {
         viewModel.sendChat("   ")
         #expect(viewModel.chatMessages.count == before)
         viewModel.onExit()
-    }
+    } }
 
-    @Test func addAndRemoveBuddyUpdateTheRosterFromPushes() async throws {
+    @Test func addAndRemoveBuddyUpdateTheRosterFromPushes() async throws { try await TestServer.exclusive {
         let (delegate, server) = try await TestServer.delegate()
         defer { withExtendedLifetime(server) {} }
         let viewModel = GameRoomListViewModel(delegate: delegate)
@@ -70,5 +70,5 @@ struct GameRoomListViewModelNetworkingTests {
         let removed = await TestServer.wait { !viewModel.buddies.contains("guest") }
         #expect(removed)
         viewModel.onExit()
-    }
+    } }
 }

@@ -160,6 +160,7 @@ actor InMemoryTCPRegistry {
 
     private var listeners: [GunBound.GunBoundAddress: InMemoryTCPSocket] = [:]
     private var nextClientPort: UInt16 = 40000
+    private var nextServerPort: UInt16 = 10000
 
     func register(_ socket: InMemoryTCPSocket, at address: GunBound.GunBoundAddress) {
         listeners[address] = socket
@@ -172,6 +173,14 @@ actor InMemoryTCPRegistry {
     func uniqueClientAddress() -> GunBound.GunBoundAddress {
         defer { nextClientPort = nextClientPort &+ 1 }
         return GunBound.GunBoundAddress(address: "127.0.0.1", port: nextClientPort)!
+    }
+
+    /// A unique server port (10000…39999) so parallel test suites never
+    /// collide on the same listening address — random ports birthday-collide
+    /// across a full run and silently overwrite each other's listeners.
+    func uniqueServerPort() -> UInt16 {
+        defer { nextServerPort = nextServerPort == 39999 ? 10000 : nextServerPort &+ 1 }
+        return nextServerPort
     }
 }
 
@@ -196,7 +205,12 @@ actor InMemoryUDPSocket: GunBoundSocketUDP {
     func send(_ data: Data, to destination: GunBound.GunBoundAddress) async throws {}
 
     func recieve(_ bufferSize: Int) async throws -> (Data, GunBound.GunBoundAddress) {
-        try await Task.sleep(nanoseconds: 100_000_000)
+        // Park until the server's UDP loop is cancelled (no UDP traffic in
+        // tests) rather than spinning — a periodic wake per live server
+        // starves the cooperative pool when many run in parallel. Task.sleep
+        // throws CancellationError on teardown, which the loop treats as its
+        // exit signal.
+        try await Task.sleep(nanoseconds: .max)
         throw CancellationError()
     }
 }

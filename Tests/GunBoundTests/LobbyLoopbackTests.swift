@@ -27,44 +27,25 @@ struct LobbyLoopbackTests {
             $0.users["guest"] = User(id: "guest", isBanned: false, rank: .chick, gold: 0, cash: 0)
         }
         // Ephemeral port, retrying a few times in case of a collision.
-        var lastError: Swift.Error?
-        for _ in 0..<5 {
-            let port = UInt16.random(in: 20_000...60_000)
-            guard let address = GunBound.GunBoundAddress(address: "127.0.0.1", port: port) else { continue }
-            do {
-                let server = try await GunBoundServer(
-                    configuration: GunBoundServerConfiguration(address: address, backlog: 8),
-                    dataSource: dataSource,
-                    socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
-                )
-                return (server, port)
-            } catch {
-                lastError = error
-            }
-        }
-        throw lastError ?? GunBoundDecodingError.invalidPacket
+        let port = await InMemoryTCPRegistry.shared.uniqueServerPort()
+        let address = GunBound.GunBoundAddress(address: "127.0.0.1", port: port)!
+        let server = try await GunBoundServer(
+            configuration: GunBoundServerConfiguration(address: address, backlog: 8),
+            dataSource: dataSource,
+            socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
+        )
+        return (server, port)
     }
 
     /// login → join channel → create room → the server's room-update push
     /// (`0x3105`) arrives on the client's push stream, and the refreshed
     /// room list contains the created room.
-    @Test func createRoomEmitsARoomUpdatePush() async throws {
+    @Test func createRoomEmitsARoomUpdatePush() async throws { try await TestServer.exclusive {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
-        let config = NetworkConfig(
-            username: "admin", password: "1234",
-            serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-        )
-        let client = try await NetworkClient<InMemoryTCPSocket>.connect(config, requestTimeout: .seconds(30))
+        let client = try await TestServer.connect("admin", port: port)
         defer { Task { await client.close() } }
-
-        // Full login handshake over real sockets.
-        let auth = try await client.authenticate(username: "admin", password: "1234")
-        #expect(auth.status == .success)
-
-        let channel = try await client.joinChannel()
-        #expect(channel.isSuccess)
 
         // Empty lobby to start.
         let before = try await client.fetchRoomList()
@@ -86,27 +67,18 @@ struct LobbyLoopbackTests {
         // The refreshed list shows the created room.
         let after = try await client.fetchRoomList()
         #expect(after.contains { $0.id == created.room })
-    }
+    } }
 
     /// Channel chat round-trip over real sockets: the encrypted `0x2010`
     /// command goes out, the server broadcasts the (also encrypted) `0x201F`
     /// back to the channel, and the pump decrypts + decodes it into a typed
     /// push — AES exercised in both directions with the session key.
-    @Test func chatRoundTripsEncrypted() async throws {
+    @Test func chatRoundTripsEncrypted() async throws { try await TestServer.exclusive {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
-        let config = NetworkConfig(
-            username: "admin", password: "1234",
-            serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-        )
-        let client = try await NetworkClient<InMemoryTCPSocket>.connect(config, requestTimeout: .seconds(30))
+        let client = try await TestServer.connect("admin", port: port)
         defer { Task { await client.close() } }
-
-        let auth = try await client.authenticate(username: "admin", password: "1234")
-        #expect(auth.status == .success)
-        let channel = try await client.joinChannel()
-        #expect(channel.isSuccess)
 
         try await client.send(ChannelChatCommand(message: "hello loopback"))
 
@@ -119,27 +91,19 @@ struct LobbyLoopbackTests {
         }
         #expect(received?.message == "hello loopback")
         #expect(received.map { String(describing: $0.username) } == "admin")
-    }
+    } }
 
     /// The full Ready Room flow with two real clients: the host creates a
     /// room, a guest joins, picks a mobile (`0x3200`), switches to team B
     /// (`0x3210`), readies up (`0x3230`), and the host starts (`0x3430`) —
     /// then **both** clients receive the encrypted `0x3432` start push with
     /// the map and spawn data.
-    @Test func twoClientReadyRoomFlowStartsTheGame() async throws {
+    @Test func twoClientReadyRoomFlowStartsTheGame() async throws { try await TestServer.exclusive {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
         func connect(_ username: String) async throws -> NetworkClient<InMemoryTCPSocket> {
-            let client = try await NetworkClient<InMemoryTCPSocket>.connect(NetworkConfig(
-                username: username, password: "1234",
-                serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-            ), requestTimeout: .seconds(30))
-            let auth = try await client.authenticate(username: username, password: "1234")
-            #expect(auth.status == .success, "\(username)")
-            let channel = try await client.joinChannel()
-            #expect(channel.isSuccess, "\(username)")
-            return client
+            try await TestServer.connect(username, port: port)
         }
 
         let host = try await connect("admin")
@@ -194,26 +158,18 @@ struct LobbyLoopbackTests {
         // Both players return to the room for the next round.
         try await host.returnToRoom()
         try await guest.returnToRoom()
-    }
+    } }
 
     /// The buddy list end to end (our own convention — see `BuddyEntry`'s
     /// type-level note): an empty roster fetches clean, adding a connected
     /// username reports it online in the refreshed push, and removing it
     /// clears the roster again.
-    @Test func buddyListAddRemoveReflectsOnlineStatus() async throws {
+    @Test func buddyListAddRemoveReflectsOnlineStatus() async throws { try await TestServer.exclusive {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
         func connect(_ username: String) async throws -> NetworkClient<InMemoryTCPSocket> {
-            let client = try await NetworkClient<InMemoryTCPSocket>.connect(NetworkConfig(
-                username: username, password: "1234",
-                serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-            ), requestTimeout: .seconds(30))
-            let auth = try await client.authenticate(username: username, password: "1234")
-            #expect(auth.status == .success, "\(username)")
-            let channel = try await client.joinChannel()
-            #expect(channel.isSuccess, "\(username)")
-            return client
+            try await TestServer.connect(username, port: port)
         }
 
         let admin = try await connect("admin")
@@ -243,5 +199,5 @@ struct LobbyLoopbackTests {
         }
         #expect(afterRemove == [])
         #expect(try await admin.fetchBuddyList().isEmpty)
-    }
+    } }
 }
