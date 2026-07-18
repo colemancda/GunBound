@@ -14,7 +14,7 @@ struct GunBoundExtract: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "GunBoundExtract",
         abstract: "Extracts and decodes entries from GunBound .xfs archives — a Swift replacement for the decomp repo's Python tools/lzhuf scripts.",
-        subcommands: [List.self, Image.self, Raw.self, Montage.self, Glyphs.self, Text.self, Avatar.self, GBView.self],
+        subcommands: [List.self, Image.self, Xtf.self, Raw.self, Montage.self, Glyphs.self, Text.self, Avatar.self, GBView.self],
         defaultSubcommand: List.self
     )
 }
@@ -96,6 +96,38 @@ extension GunBoundExtract {
 
             #if canImport(CoreGraphics)
             try writePNG(decodedFrame, to: URL(fileURLWithPath: outputPath))
+            print("wrote \(outputPath)")
+            #else
+            throw ExtractError.pngUnsupported
+            #endif
+        }
+    }
+
+    struct Xtf: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Extracts and decodes a .xtf texture surface to a PNG.")
+
+        @Argument(help: "Path to the .xfs archive (e.g. graphics.xfs).")
+        var archivePath: String
+
+        @Argument(help: "Entry name (e.g. TornadoTexture.xtf).")
+        var entryName: String
+
+        @Argument(help: "Output PNG path.")
+        var outputPath: String
+
+        func run() throws {
+            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: archivePath)))
+            let entries = try XFSArchive.readEntries(data)
+            guard let entry = entries.first(where: { $0.name == entryName }) else {
+                throw ExtractError.entryNotFound(entryName)
+            }
+            let decoded = try XFSArchive.readEntryData(data, entry: entry)
+            let frame = try XtfFile.decode(decoded)
+            let opaque = frame.pixels.count(where: { $0.alpha > 0 })
+            print("\(entryName): \(frame.width)x\(frame.height), transparencyType=\(frame.transparencyType), \(opaque)/\(frame.pixels.count) px with alpha")
+
+            #if canImport(CoreGraphics)
+            try writePNG(frame, to: URL(fileURLWithPath: outputPath))
             print("wrote \(outputPath)")
             #else
             throw ExtractError.pngUnsupported
