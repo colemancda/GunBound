@@ -12,7 +12,7 @@ public final class ClientContext: ViewModelDelegate {
     public let assets: AssetLibrary
     public let renderer: ClientRenderer
     public let network: NetworkConfig
-    public var client: NetworkClient<GunBoundSocketIPv4TCP>?
+    public var client: (any GameClient)?
     public let session = ClientSession()
 
     /// Set by `requestQuit()` (e.g. the Server Select screen's "Exit"

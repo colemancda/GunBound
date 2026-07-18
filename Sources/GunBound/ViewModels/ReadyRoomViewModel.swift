@@ -284,7 +284,7 @@ public final class ReadyRoomViewModel: ScreenViewModel {
     private func startObservingPushes() {
         guard pushTask == nil, let client = delegate.client else { return }
         pushTask = Task { [weak self] in
-            for await push in await client.pushes {
+            for await push in client.pushes {
                 guard let self, !Task.isCancelled else { return }
                 self.apply(push)
             }

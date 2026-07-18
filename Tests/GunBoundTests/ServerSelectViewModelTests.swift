@@ -8,7 +8,7 @@ import Testing
 @MainActor
 final class MockViewModelDelegate: ViewModelDelegate {
     let network: NetworkConfig
-    var client: NetworkClient<GunBoundSocketIPv4TCP>?
+    var client: (any GameClient)?
     let session = ClientSession()
     private(set) var requestedTransitions: [ClientMode] = []
     private(set) var quitRequested = false
