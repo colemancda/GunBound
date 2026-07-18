@@ -297,6 +297,41 @@ struct ServerSelectViewModelTests {
     /// The SERVER button stays disabled until a row is selected: clicking
     /// it with no selection does nothing, one row click arms it, and then
     /// it connects.
+    /// The PLEASE WAIT overlay is debounced: the original draws it only once
+    /// its wait counter passes 40 game ticks (~0.67 s), so a fast reply never
+    /// flashes the spinner; it clears the moment the reply arrives, and a
+    /// fresh request re-arms the debounce.
+    @Test func waitOverlayIsDebounced() async throws {
+        let servers = try Self.decodedServerDirectory()
+        let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)
+        let delegate = MockViewModelDelegate(network: network)
+        let viewModel = ServerSelectViewModel(delegate: delegate, directoryFetcher: MockServerDirectoryFetcher(servers: servers))
+        viewModel.panelRect = Rect(x: 11, y: 13, width: 546, height: 530)
+
+        // Fresh screen: the directory fetch is in flight but within the
+        // debounce window — no overlay yet.
+        #expect(viewModel.state.isLoading)
+        #expect(!viewModel.showsWaitOverlay)
+        viewModel.update(deltaTime: 0.5)
+        #expect(!viewModel.showsWaitOverlay)  // 0.5 s < 40 ticks
+        viewModel.update(deltaTime: 0.2)      // past the 40-tick gate
+        #expect(viewModel.showsWaitOverlay)
+
+        // The reply arrives — the overlay clears immediately.
+        _ = await viewModel.fetchDirectoryAndChooseServer()
+        #expect(!viewModel.showsWaitOverlay)
+
+        // A new request (connect) re-arms the debounce from zero.
+        let row1 = viewModel.rowRect(at: 1)
+        viewModel.handle(.pointerDown(x: row1.x + 5, y: row1.y + 5))
+        let serverButton = try #require(viewModel.buttons.first { $0.name == "b_server_choiceserver.img" })
+        viewModel.handle(.pointerDown(x: serverButton.rect.x + 5, y: serverButton.rect.y + 5))
+        #expect(viewModel.state.isConnecting)
+        #expect(!viewModel.showsWaitOverlay)
+        viewModel.update(deltaTime: 1.0)
+        #expect(viewModel.showsWaitOverlay)
+    }
+
     @Test func serverButtonRequiresASelection() async throws {
         let servers = try Self.decodedServerDirectory()
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 9999, brokerPort: 8372)

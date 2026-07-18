@@ -141,7 +141,33 @@ public final class ServerSelectViewModel: ScreenViewModel {
     /// being fetched (input disabled), `.loaded` once rows are shown,
     /// `.connecting` while a connect attempt is in flight (drives the
     /// `waitmessage.img` overlay), `.error` when either fails.
-    public private(set) var state: State = .loading
+    public private(set) var state: State = .loading {
+        didSet {
+            // Entering a busy state re-arms the wait-overlay debounce — the
+            // original zeroes its wait counter when the request fires.
+            let wasBusy = oldValue.isLoading || oldValue.isConnecting
+            let isBusy = state.isLoading || state.isConnecting
+            if isBusy && !wasBusy { busyElapsed = 0 }
+        }
+    }
+
+    /// How long the current loading/connect has been in flight — the
+    /// original's wait counter (`DAT_0056d118`: 0 when the request fires,
+    /// +1 per `GameTick`, -1 when idle).
+    private var busyElapsed: Double = 0
+
+    /// The debounce before the PLEASE WAIT overlay appears: the original
+    /// draws it only once its wait counter passes 40 game ticks (the signed
+    /// `cmp eax, 0x28` gate at 0x41363f), so a fast server reply never
+    /// flashes the spinner. 40 ticks at the 60 Hz game tick ≈ 0.67 s.
+    public static let waitOverlayDelay: Double = 40.0 / 60.0
+
+    /// Whether the animated `waitmessage.img` PLEASE WAIT overlay should
+    /// draw: a request is in flight *and* it has been outstanding longer
+    /// than the debounce.
+    public var showsWaitOverlay: Bool {
+        (state.isLoading || state.isConnecting) && busyElapsed > Self.waitOverlayDelay
+    }
     
     /// The most world-server entries the client keeps, matching the
     /// decompiled `State02_ServerSelect_ProcessPacket` (`0x4e02b0`): it
@@ -300,6 +326,9 @@ public final class ServerSelectViewModel: ScreenViewModel {
 
     public func update(deltaTime: Double) {
         clock += deltaTime  // the double-click window's timebase
+        if state.isLoading || state.isConnecting {
+            busyElapsed += deltaTime
+        }
     }
 
     /// Switches the world-list view tab (`WorldListPanelWidget`'s View All /

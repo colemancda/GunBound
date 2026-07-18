@@ -240,9 +240,10 @@ public final class ServerSelectScreen: GameScreen {
         rootWidget.draw(renderer)
 
         // Animated "please wait" overlay — shown while fetching the world
-        // list as well as while a connect attempt is in flight, cycling
-        // waitmessage.img's four frames.
-        if viewModel.state.isLoading || viewModel.state.isConnecting, !waitFrames.isEmpty {
+        // list or while a connect attempt is in flight, cycling
+        // waitmessage.img's four frames. Debounced by the view model so a
+        // fast server reply never flashes it (the original's 40-tick gate).
+        if viewModel.showsWaitOverlay, !waitFrames.isEmpty {
             let frameIndex = Int(waitElapsed / 0.15) % waitFrames.count
             if let frame = waitFrames[frameIndex] {
                 let (width, height) = renderer.size(of: frame)
