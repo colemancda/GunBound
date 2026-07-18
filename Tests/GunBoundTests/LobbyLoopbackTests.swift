@@ -3,21 +3,22 @@ import Testing
 @testable import GunBound
 @testable import GunBoundProtocol
 
-/// End-to-end loopback: a real `GunBoundServer` on 127.0.0.1 and a real
-/// `NetworkClient` over actual TCP sockets — no mocks. Exercises the whole
-/// new stack together: login handshake, confirm-connect, the background
-/// packet pump, room create, and the server's `0x3105` room-update push
-/// arriving on `pushes` (the live-lobby refresh signal).
+/// End-to-end: a real `GunBoundServer` and a real `NetworkClient`, wired
+/// together through an in-memory socket (`InMemoryTCPSocket`) instead of a
+/// TCP loopback. Exercises the whole stack together — login handshake,
+/// confirm-connect, the background packet pump, room create, and the
+/// server's `0x3105` room-update push arriving on `pushes` (the live-lobby
+/// refresh signal) — deterministically, with no file descriptors.
 ///
-/// Serialized and time-limited: real sockets, and a hang here should fail
-/// fast instead of wedging the suite.
+/// Serialized so the shared socket registry hands each test its own server
+/// address; time-limited so a logic hang fails fast instead of wedging.
 @Suite(.serialized, .timeLimit(.minutes(1)))
 struct LobbyLoopbackTests {
 
     /// Starts an in-process world server on an ephemeral loopback port with
     /// the standard admin user (same seeding as the `GunBoundServer world`
     /// executable) plus a plain guest account for two-client tests.
-    private static func startServer() async throws -> (server: GunBoundServer<GunBoundSocketIPv4TCP, GunBoundSocketIPv4UDP, InMemoryGunBoundServerDataSource>, port: UInt16) {
+    private static func startServer() async throws -> (server: GunBoundServer<InMemoryTCPSocket, InMemoryUDPSocket, InMemoryGunBoundServerDataSource>, port: UInt16) {
         let dataSource = InMemoryGunBoundServerDataSource()
         await dataSource.update {
             $0.passwords["admin"] = "1234"
@@ -34,7 +35,7 @@ struct LobbyLoopbackTests {
                 let server = try await GunBoundServer(
                     configuration: GunBoundServerConfiguration(address: address, backlog: 8),
                     dataSource: dataSource,
-                    socket: (GunBoundSocketIPv4TCP.self, GunBoundSocketIPv4UDP.self)
+                    socket: (InMemoryTCPSocket.self, InMemoryUDPSocket.self)
                 )
                 return (server, port)
             } catch {
@@ -55,7 +56,7 @@ struct LobbyLoopbackTests {
             username: "admin", password: "1234",
             serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
         )
-        let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(config)
+        let client = try await NetworkClient<InMemoryTCPSocket>.connect(config, requestTimeout: .seconds(30))
         defer { Task { await client.close() } }
 
         // Full login handshake over real sockets.
@@ -99,7 +100,7 @@ struct LobbyLoopbackTests {
             username: "admin", password: "1234",
             serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
         )
-        let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(config)
+        let client = try await NetworkClient<InMemoryTCPSocket>.connect(config, requestTimeout: .seconds(30))
         defer { Task { await client.close() } }
 
         let auth = try await client.authenticate(username: "admin", password: "1234")
@@ -129,11 +130,11 @@ struct LobbyLoopbackTests {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
-        func connect(_ username: String) async throws -> NetworkClient<GunBoundSocketIPv4TCP> {
-            let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(NetworkConfig(
+        func connect(_ username: String) async throws -> NetworkClient<InMemoryTCPSocket> {
+            let client = try await NetworkClient<InMemoryTCPSocket>.connect(NetworkConfig(
                 username: username, password: "1234",
                 serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-            ))
+            ), requestTimeout: .seconds(30))
             let auth = try await client.authenticate(username: username, password: "1234")
             #expect(auth.status == .success, "\(username)")
             let channel = try await client.joinChannel()
@@ -203,11 +204,11 @@ struct LobbyLoopbackTests {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
 
-        func connect(_ username: String) async throws -> NetworkClient<GunBoundSocketIPv4TCP> {
-            let client = try await NetworkClient<GunBoundSocketIPv4TCP>.connect(NetworkConfig(
+        func connect(_ username: String) async throws -> NetworkClient<InMemoryTCPSocket> {
+            let client = try await NetworkClient<InMemoryTCPSocket>.connect(NetworkConfig(
                 username: username, password: "1234",
                 serverAddress: "127.0.0.1", serverPort: port, brokerPort: port
-            ))
+            ), requestTimeout: .seconds(30))
             let auth = try await client.authenticate(username: username, password: "1234")
             #expect(auth.status == .success, "\(username)")
             let channel = try await client.joinChannel()
