@@ -16,7 +16,7 @@ import GunBoundProtocol
 /// feeding it canned bytes captured from a real server, instead of opening
 /// an actual connection — production code always uses
 /// `NetworkClient<GunBoundSocketIPv4TCP>`.
-public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
+public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable>: GameClient {
 
     public enum Error: Swift.Error, Equatable {
         case invalidAddress(String)
@@ -45,7 +45,9 @@ public actor NetworkClient<Socket: GunBoundSocketTCP & Sendable> {
     /// Unsolicited server notifications (room updates, channel users, …),
     /// in arrival order. Single-consumer: one screen/view-model task should
     /// iterate this at a time. Finishes when the connection ends.
-    public let pushes: AsyncStream<ServerPush>
+    /// `nonisolated` (immutable, `Sendable`) so it satisfies `GameClient` and
+    /// can be read without an actor hop.
+    public nonisolated let pushes: AsyncStream<ServerPush>
     private let pushContinuation: AsyncStream<ServerPush>.Continuation
 
     /// One waiter per expected reply opcode, FIFO within an opcode. Each

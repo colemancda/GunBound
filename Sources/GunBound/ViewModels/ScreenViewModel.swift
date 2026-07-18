@@ -22,7 +22,7 @@ public protocol ScreenViewModel: AnyObject {
 @MainActor
 public protocol ViewModelDelegate: AnyObject {
     var network: NetworkConfig { get }
-    var client: NetworkClient<GunBoundSocketIPv4TCP>? { get set }
+    var client: (any GameClient)? { get set }
 
     /// Session state shared across screens (channel, current room + roster,
     /// inventory) — how one screen hands data to the next.
