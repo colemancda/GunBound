@@ -1,13 +1,17 @@
-/// LZHUF decompressor.
+/// LZHUF codec (decompressor + compressor).
 ///
 /// GunBound's asset containers (`.xfs` archives and `.dat` data files) are
 /// compressed with a codec that static analysis of the original client
 /// confirmed, function-by-function, to be a near-verbatim implementation of
 /// the classic public-domain `LZHUF.C` (Okumura/Yoshizaki, 1988-1991) — the
-/// same lineage used by LHA `.lzh` archives. This is a direct port of that
-/// reference algorithm's decode side (LZSS sliding-window matches + adaptive
-/// Huffman coding), verified byte-for-byte against fixtures produced by
-/// compiling the original reference `LZHUF.C` source.
+/// same lineage used by LHA `.lzh` archives. Both sides are direct ports of
+/// that reference algorithm (LZSS sliding-window matches + adaptive Huffman
+/// coding): the decoder is verified byte-for-byte against fixtures produced
+/// by compiling the original reference `LZHUF.C` source, and the encoder
+/// mirrors the client's own embedded compressor, whose functions the decomp
+/// identified as the reference's encode side (`EncodeLZHUFBlock` 0x4ea760,
+/// `LZHUFPutCode` 0x4ea230, `LZHUFDeleteNode` 0x4ea010, `LZHUFUpdate`
+/// 0x4ea580 — used by its XFS write-back path).
 ///
 /// **Note:** The original client's call sites pass a size value alongside
 /// the compressed bytes (`0x40` for the XFS table of contents, `0x14c0` for
@@ -258,6 +262,27 @@ public enum LZHUF {
             }
             return c | (iv & 0x3f)
         }
+
+        /// Emits `symbol`'s current Huffman code (`EncodeChar` in the
+        /// reference; the decomp's `EncodeLZHUFBlock` inlines the same walk):
+        /// climb from the leaf to the root collecting one bit per level —
+        /// a node's right-child status is its index parity, since `StartHuff`
+        /// and `update` keep sibling pairs at adjacent even/odd indices —
+        /// then evolve the tree exactly as `decodeChar` does on the way back
+        /// down, keeping encoder and decoder trees in lock-step.
+        mutating func encodeChar(_ symbol: Int, into writer: inout BitWriter) {
+            var code: UInt16 = 0
+            var length = 0
+            var k = prnt[symbol + T]
+            repeat {
+                code >>= 1
+                if k & 1 == 1 { code |= 0x8000 }
+                length += 1
+                k = prnt[k]
+            } while k != R
+            writer.putCode(length, code)
+            update(symbol)
+        }
     }
 
     /// Decompresses an LZHUF-compressed block read from a `ParserSpan`.
@@ -315,5 +340,229 @@ public enum LZHUF {
             }
         }
         return output
+    }
+
+    // MARK: - Compression
+
+    /// MSB-first bit sink, the reference's `Putcode`/`putbuf` (the decomp's
+    /// `LZHUFPutCode`, 0x4ea230) — the exact mirror of `BitReader`.
+    struct BitWriter {
+        private(set) var bytes: [UInt8] = []
+        private var putBuf: UInt16 = 0
+        private var putLen = 0
+
+        mutating func putCode(_ length: Int, _ code: UInt16) {
+            putBuf |= code >> putLen
+            putLen += length
+            if putLen >= 8 {
+                bytes.append(UInt8(putBuf >> 8))
+                putLen -= 8
+                if putLen >= 8 {
+                    bytes.append(UInt8(truncatingIfNeeded: putBuf))
+                    putLen -= 8
+                    putBuf = code << (length - putLen)
+                } else {
+                    putBuf <<= 8
+                }
+            }
+        }
+
+        /// `EncodeEnd` — flushes the partial trailing byte.
+        mutating func flush() {
+            if putLen > 0 {
+                bytes.append(UInt8(putBuf >> 8))
+                putBuf = 0
+                putLen = 0
+            }
+        }
+    }
+
+    /// The encoder-side position tables (`p_len`/`p_code`), derived from the
+    /// decoder's `dLen`/`dCode` rather than transcribed: for each upper-6-bit
+    /// value, the code prefix is the first decode-table index mapping to it
+    /// and the bit length is that index's `dLen` — provably the inverse of
+    /// `decodePosition`, so the pair can't drift apart.
+    private static let pTables: (len: [UInt8], code: [UInt8]) = {
+        var len = [UInt8](repeating: 0, count: 64)
+        var code = [UInt8](repeating: 0, count: 64)
+        var index = 0
+        for upper in 0..<64 {
+            while Int(dCode[index]) != upper { index += 1 }
+            len[upper] = dLen[index]
+            code[upper] = UInt8(index)
+        }
+        return (len, code)
+    }()
+
+    /// `EncodePosition`: the upper 6 bits of an LZSS back-reference go out
+    /// as their variable-length prefix code, the lower 6 raw.
+    private static func encodePosition(_ position: Int, into writer: inout BitWriter) {
+        let upper = position >> 6
+        writer.putCode(Int(pTables.len[upper]), UInt16(pTables.code[upper]) << 8)
+        writer.putCode(6, UInt16(position & 0x3f) << 10)
+    }
+
+    /// Compresses a block — the encode side of the same classic `LZHUF.C`
+    /// the client embeds (static analysis named its copy `EncodeLZHUFBlock`
+    /// 0x4ea760, with `LZHUFPutCode`/`LZHUFDeleteNode`/`LZHUFUpdate` as the
+    /// reference's `Putcode`/`DeleteNode`/`update`): greedy LZSS matching
+    /// over a 4096-byte ring via a per-first-byte binary search tree, each
+    /// literal or (length, position) pair adaptive-Huffman coded with the
+    /// identical tree `decompress` evolves.
+    ///
+    /// The output carries no size header (matching every GunBound container,
+    /// which store the decoded size out of band) — decompress with
+    /// `decompress(_:decodedSize: input.count)`.
+    public static func compress(_ input: [UInt8]) -> [UInt8] {
+        guard !input.isEmpty else { return [] }
+        let nilNode = N  // the reference's NIL tree sentinel
+
+        var writer = BitWriter()
+        var tree = HuffmanTree()
+        var textBuf = [UInt8](repeating: 0x20, count: N + F - 1)
+        // LZSS binary search tree: `rson[N+1...N+256]` are the 256
+        // per-first-byte roots, `dad[N]` absorbs writes through NIL links.
+        var lson = [Int](repeating: nilNode, count: N + 1)
+        var rson = [Int](repeating: nilNode, count: N + 257)
+        var dad = [Int](repeating: nilNode, count: N + 1)
+        var matchPosition = 0
+        var matchLength = 0
+
+        // `InsertNode(r)`: adds the F-byte string at `r` to the tree and
+        // records the longest (position-lowest on ties) match found on the
+        // way down; on a full-length match the old node is replaced.
+        func insertNode(_ r: Int) {
+            var cmp = 1
+            var p = N + 1 + Int(textBuf[r])
+            lson[r] = nilNode
+            rson[r] = nilNode
+            matchLength = 0
+            while true {
+                if cmp >= 0 {
+                    if rson[p] != nilNode {
+                        p = rson[p]
+                    } else {
+                        rson[p] = r
+                        dad[r] = p
+                        return
+                    }
+                } else {
+                    if lson[p] != nilNode {
+                        p = lson[p]
+                    } else {
+                        lson[p] = r
+                        dad[r] = p
+                        return
+                    }
+                }
+                var i = 1
+                while i < F {
+                    cmp = Int(textBuf[r + i]) - Int(textBuf[p + i])
+                    if cmp != 0 { break }
+                    i += 1
+                }
+                if i > THRESHOLD {
+                    if i > matchLength {
+                        matchPosition = ((r - p) & (N - 1)) - 1
+                        matchLength = i
+                        if matchLength >= F { break }
+                    } else if i == matchLength {
+                        let candidate = ((r - p) & (N - 1)) - 1
+                        if candidate < matchPosition { matchPosition = candidate }
+                    }
+                }
+            }
+            // Full-length match: `r` takes over `p`'s place in the tree.
+            dad[r] = dad[p]
+            lson[r] = lson[p]
+            rson[r] = rson[p]
+            dad[lson[p]] = r
+            dad[rson[p]] = r
+            if rson[dad[p]] == p {
+                rson[dad[p]] = r
+            } else {
+                lson[dad[p]] = r
+            }
+            dad[p] = nilNode
+        }
+
+        // `DeleteNode(p)` (the decomp's `LZHUFDeleteNode`, 0x4ea010).
+        func deleteNode(_ p: Int) {
+            guard dad[p] != nilNode else { return }
+            let q: Int
+            if rson[p] == nilNode {
+                q = lson[p]
+            } else if lson[p] == nilNode {
+                q = rson[p]
+            } else {
+                var candidate = lson[p]
+                if rson[candidate] != nilNode {
+                    repeat {
+                        candidate = rson[candidate]
+                    } while rson[candidate] != nilNode
+                    rson[dad[candidate]] = lson[candidate]
+                    dad[lson[candidate]] = dad[candidate]
+                    lson[candidate] = lson[p]
+                    dad[lson[p]] = candidate
+                }
+                rson[candidate] = rson[p]
+                dad[rson[p]] = candidate
+                q = candidate
+            }
+            dad[q] = dad[p]
+            if rson[dad[p]] == p {
+                rson[dad[p]] = q
+            } else {
+                lson[dad[p]] = q
+            }
+            dad[p] = nilNode
+        }
+
+        var inputIndex = 0
+        var s = 0
+        var r = N - F
+        var len = 0
+        while len < F && inputIndex < input.count {
+            textBuf[r + len] = input[inputIndex]
+            inputIndex += 1
+            len += 1
+        }
+        for i in 1...F { insertNode(r - i) }
+        insertNode(r)
+
+        repeat {
+            if matchLength > len { matchLength = len }
+            if matchLength <= THRESHOLD {
+                matchLength = 1
+                tree.encodeChar(Int(textBuf[r]), into: &writer)
+            } else {
+                tree.encodeChar(255 - THRESHOLD + matchLength, into: &writer)
+                encodePosition(matchPosition, into: &writer)
+            }
+            let lastMatchLength = matchLength
+            var i = 0
+            while i < lastMatchLength && inputIndex < input.count {
+                let c = input[inputIndex]
+                inputIndex += 1
+                deleteNode(s)
+                textBuf[s] = c
+                if s < F - 1 { textBuf[s + N] = c }
+                s = (s + 1) & (N - 1)
+                r = (r + 1) & (N - 1)
+                insertNode(r)
+                i += 1
+            }
+            while i < lastMatchLength {
+                i += 1
+                deleteNode(s)
+                s = (s + 1) & (N - 1)
+                r = (r + 1) & (N - 1)
+                len -= 1
+                if len > 0 { insertNode(r) }
+            }
+        } while len > 0
+
+        writer.flush()
+        return writer.bytes
     }
 }
