@@ -49,8 +49,8 @@ jobs:
       run: Scripts/coverage.sh
       env:
         # Ratcheted to 80 after screen + battle rendering coverage (overall
-        # libs ~83%); raise again as coverage grows.
-        COVERAGE_THRESHOLD: 80
+        # libs ~84%); raise again as coverage grows.
+        COVERAGE_THRESHOLD: 83
     - name: Upload coverage to GitHub Code Quality
       uses: actions/upload-code-coverage@v1
       with:
