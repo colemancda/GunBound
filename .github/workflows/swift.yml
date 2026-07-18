@@ -28,6 +28,46 @@ jobs:
     - name: Test
       run: swift test -c ${{ matrix.config }}
 
+  coverage:
+    name: Code Coverage
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      code-quality: write # required by actions/upload-code-coverage
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    # Same Homebrew SDL set as the build/test job — `swift test` builds the
+    # GunBoundSDL2/GunBoundSDL3 targets too.
+    - name: Install SDL
+      run: brew install sdl2 sdl2_mixer sdl3 sdl3_mixer
+    - name: Export coverage and enforce threshold
+      run: Scripts/coverage.sh
+      env:
+        # Baseline measured at 65.48% — start green, ratchet up as
+        # coverage grows.
+        COVERAGE_THRESHOLD: 65
+    - name: Upload coverage to GitHub Code Quality
+      uses: actions/upload-code-coverage@v1
+      with:
+        file: .build/coverage/coverage.xml
+        language: Swift
+        label: code-coverage/llvm-cov
+        # Tolerate repos without Code Quality enabled so a failed upload
+        # doesn't break CI.
+        fail-on-error: false
+    - name: Upload coverage artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage
+        path: .build/coverage/
+        if-no-files-found: error
+
   linux:
     name: Linux
     runs-on: ubuntu-24.04
