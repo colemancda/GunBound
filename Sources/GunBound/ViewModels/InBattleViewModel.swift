@@ -490,7 +490,7 @@ public final class InBattleViewModel: ScreenViewModel {
                 turnOrder: Int($0.turnOrder)
             )
         }
-        let settings = delegate.session.battle?.settings ?? 0
+        let settings = delegate.session.currentRoom?.settings ?? 0
         gameMode = GunBoundProtocol.GameMode(settings: settings) ?? .solo
         teamLives = gameMode == .score && players.count > 1
             ? (a: Self.scoreLives(forPlayerCount: players.count), b: Self.scoreLives(forPlayerCount: players.count))
