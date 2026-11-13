@@ -3,10 +3,6 @@ public struct StartGameNotification: GunBoundPacket, GunBoundPacketEncodable, Eq
 
     public static var opcode: Opcode { .startGameNotification }
 
-    /// The room's game settings bitmask, repeated here so clients enter the
-    /// match with the exact configuration the game was started with.
-    public let settings: UInt32
-
     public let map: GameMap
 
     public let players: [Player]
@@ -17,13 +13,11 @@ public struct StartGameNotification: GunBoundPacket, GunBoundPacketEncodable, Eq
     public let commandData: [UInt8]
 
     public init(
-        settings: UInt32,
         map: GameMap,
         players: [Player],
         events: UInt16,
         commandData: [UInt8]
     ) {
-        self.settings = settings
         self.map = map
         self.players = players
         self.events = events
@@ -34,7 +28,6 @@ public struct StartGameNotification: GunBoundPacket, GunBoundPacketEncodable, Eq
 extension StartGameNotification: GunBoundPacketDecodable {
 
     public init(parsing input: inout ParserSpan) throws {
-        self.settings = try UInt32(parsingLittleEndian: &input)
         self.map = try GameMap(parsing: &input)
         let playersCount = try UInt16(parsingLittleEndian: &input)
         var players = [Player]()
@@ -51,7 +44,6 @@ extension StartGameNotification: GunBoundPacketDecodable {
 extension StartGameNotification {
 
     public func encode(to output: inout ByteWriter) {
-        output.write(settings, endianness: .little)
         map.encode(to: &output)
         output.write(UInt16(players.count), endianness: .little)
         for player in players {
