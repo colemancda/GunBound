@@ -13,8 +13,8 @@ struct InBattleViewModelTests {
         let network = NetworkConfig(username: "admin", password: "1234", serverAddress: "127.0.0.1", serverPort: 8370, brokerPort: 8372)
         let delegate = MockViewModelDelegate(network: network)
         if battle {
+            delegate.session.currentRoom = JoinRoomResponse(room: 1, name: "R", map: .metropolis, settings: settings, capacity: ._1_1, players: [])
             delegate.session.battle = StartGameNotification(
-                settings: settings,
                 map: .metropolis,
                 players: [
                     StartGameNotification.Player(id: 0, username: "admin", team: .a, primaryTank: .boomer, secondaryTank: .random, xPosition: 600, yPosition: 900, turnOrder: 1),
