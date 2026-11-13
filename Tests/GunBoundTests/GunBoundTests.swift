@@ -756,10 +756,9 @@ import Testing
         // 60 bytes — a whole number of the cipher's 12-byte blocks, so the
         // encrypt/decrypt roundtrip is exact (no padding appended).
         let plainText = [UInt8](
-            hexString: "0000000000020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF6749000000000")!
+            hexString: "00020000636F6C656D616E6364610000000408FD00000000000161646D696E00000000000000010107A8030000010000FFF674900000000000000000")!
         let key = Key(username: "colemancda", password: "1234", nonce: 0x0001_0203)
         let value = StartGameNotification(
-            settings: 0,
             map: .random,
             players: [
                 StartGameNotification.Player(
@@ -784,7 +783,7 @@ import Testing
                 )
             ],
             events: 0xFF00,
-            commandData: [0xF6, 0x74, 0x90, 0x00, 0x00, 0x00, 0x00]
+            commandData: [0xF6, 0x74, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
         )
         let plainTextPacket = Packet(opcode: .startGameNotification, id: 0x7A01, parameters: plainText)
         #expect(plainTextPacket.opcode.type == .notification)
