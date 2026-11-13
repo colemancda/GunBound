@@ -45,7 +45,6 @@ struct LoadingViewModelTests {
         // Room says .random; the start notification resolved it to a map.
         delegate.session.currentRoom = JoinRoomResponse(room: 1, name: "R", map: .random, settings: 0, capacity: ._2_2, players: [])
         delegate.session.battle = StartGameNotification(
-            settings: 0,
             map: .seaHero,
             players: [
                 StartGameNotification.Player(id: 0, username: "admin", team: .a, primaryTank: .boomer, secondaryTank: .random, xPosition: 100, yPosition: 200, turnOrder: 0),
