@@ -1310,7 +1310,7 @@ internal extension GunBoundServer {
                             primaryTank: player.primaryTank,
                             secondary: player.secondaryTank,
                             team: player.team,
-                            value0: player.status.rawValue,
+                            value0: player.status == .waiting ? 0x01 : player.status.rawValue,
                             avatarEquipped: user.avatarEquipped,
                             guild: user.guild,
                             rankCurrent: user.rankCurrent,
@@ -1678,15 +1678,15 @@ internal extension GunBoundServer {
                 }
                 guard started else { return }
                 // update random stage and tank
-                let map = (room.map == .random) ? (GameMap.allCases.randomElement() ?? .random) : room.map
+                let map = (room.map == .random) ? (GameMap.allCases.filter { $0 != .random }.randomElement() ?? .random) : room.map
                 let playerIDs = room.players.map { $0.id }
                 let playerTurnOrder = playerIDs.shuffled()
                 // send notifications
                 var players = [StartGameNotification.Player]()
                 players.reserveCapacity(room.players.count)
                 for player in room.players {
-                    let primaryTank = (player.primaryTank == .random) ? Mobile.random : player.primaryTank
-                    let secondaryTank = (player.secondaryTank == .random) ? Mobile.random : player.secondaryTank
+                    let primaryTank = (player.primaryTank == .random) ? Mobile.randomMobile : player.primaryTank
+                    let secondaryTank = (player.secondaryTank == .random) ? Mobile.randomMobile : player.secondaryTank
                     let turnOrder = playerTurnOrder.firstIndex(of: player.id)!
                     let position = try await self.server.dataSource.position(for: player.id, in: id, map: map)
                     let notificationPlayer = StartGameNotification.Player(
@@ -1703,7 +1703,6 @@ internal extension GunBoundServer {
                 }
                 assert(players.count == room.players.count)
                 let notification = StartGameNotification(
-                    settings: room.settings,
                     map: map,
                     players: players,
                     events: 0xFF00,
