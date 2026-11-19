@@ -145,6 +145,12 @@ public extension Room {
     /// momentary wipe between a death and its resurrect must not end the
     /// game. In every other mode a team with no alive players loses.
     var winningTeam: Team? {
+        // a team with nobody left in the room has lost, whatever the mode (a player who dropped
+        // mid-game is no longer a player of the room); an empty room has no winner
+        let teamAPresent = players.contains { $0.team == .a }
+        let teamBPresent = players.contains { $0.team == .b }
+        if teamAPresent == false && teamBPresent { return .b }
+        if teamBPresent == false && teamAPresent { return .a }
         if gameMode == .score, let score = score {
             if score.a <= 0 { return .b }
             if score.b <= 0 { return .a }

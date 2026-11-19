@@ -141,6 +141,34 @@ public final class GunBoundServer<TCPSocket: GunBoundSocketTCP, UDPSocket: GunBo
         }
     }
 
+    /// End-of-game check, run after a player dies and after a player leaves or drops in the
+    /// middle of a game. A team with no alive players loses (in score mode also when its lives
+    /// run out or nobody is left on it); the winner is announced to the room as a game-end
+    /// notification (0x4410) and the room returns to the waiting state.
+    internal func checkPlayEnd(roomID: Room.ID) async {
+        do {
+            let room = try await dataSource.room(for: roomID)
+            guard room.isPlaying else { return }
+            guard let winner = room.winningTeam else { return }
+
+            let players = try await dataSource.update(room: roomID) { room in
+                room.isPlaying = false
+                room.score = nil
+                for i in room.players.indices {
+                    room.players[i].status = .waiting
+                }
+                return room.players
+            }
+            let notification = GameEndNotification(winner: winner)
+            for player in players {
+                guard let connection = await storage.connections[player.address] else { continue }
+                await connection.send(notification)
+            }
+        } catch {
+            print("checkPlayEnd error: \(error)")
+        }
+    }
+
     /// Room-leave lifecycle: removes the player from their current room,
     /// elects a new master if the leaver held the seat, and notifies the
     /// remaining players — `UserQuitNotification` (0x3020) with the vacated
@@ -181,6 +209,11 @@ public final class GunBoundServer<TCPSocket: GunBoundSocketTCP, UDPSocket: GunBo
             for player in room.players {
                 await storage.connections[player.address]?.send(migration)
             }
+        }
+        // the leaver may have been the last one alive on their team: without this the game went
+        // on with the player who was left, who had to die to end it
+        if room.isPlaying {
+            await checkPlayEnd(roomID: roomID)
         }
     }
 }
@@ -1609,34 +1642,10 @@ internal extension GunBoundServer {
             }
         }
 
-        /// Server-side end-of-game check, called after every player death.
-        /// In score mode a team whose lives reach zero loses; in every mode a
-        /// team with no alive players loses (jewel mode additionally ends via
-        /// the client's 0x4200 submission). The winner is announced to the
-        /// whole room as a game-end notification (0x4410) and the room
-        /// returns to the waiting state.
+        /// Server-side end-of-game check, called after every player death (and, in the server,
+        /// after a player leaves or drops during a game).
         private func checkPlayEnd(roomID: Room.ID) async {
-            do {
-                let room = try await self.server.dataSource.room(for: roomID)
-                guard room.isPlaying else { return }
-                guard let winner = room.winningTeam else { return }
-
-                let players = try await self.server.dataSource.update(room: roomID) { room in
-                    room.isPlaying = false
-                    room.score = nil
-                    for i in room.players.indices {
-                        room.players[i].status = .waiting
-                    }
-                    return room.players
-                }
-                let notification = GameEndNotification(winner: winner)
-                for player in players {
-                    guard let connection = await self.server.storage.connections[player.address] else { continue }
-                    await connection.send(notification)
-                }
-            } catch {
-                log("checkPlayEnd error: \(error)")
-            }
+            await self.server.checkPlayEnd(roomID: roomID)
         }
 
         private func startGame(_ command: StartGameCommand) async {

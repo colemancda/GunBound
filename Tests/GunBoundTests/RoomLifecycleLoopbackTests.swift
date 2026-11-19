@@ -57,6 +57,8 @@ struct RoomLifecycleLoopbackTests {
     ///    the room to the waiting state
     /// 6. the master disconnecting hands the seat to the lowest occupied
     ///    slot and notifies the survivors
+    /// 7. a player dropping in the middle of a game ends it: the survivors
+    ///    get the quit and the winner, and the room returns to waiting
     @Test func roomLifecycleEndToEnd() async throws { try await TestServer.exclusive {
         let (server, port) = try await Self.startServer()
         defer { withExtendedLifetime(server) {} }
@@ -180,7 +182,35 @@ struct RoomLifecycleLoopbackTests {
         #expect(migration?.masterSlot == guestJoin.slot)
         #expect(migration?.name == "lifecycle")
 
-        await guest.close()
+        // — a player dropping in the middle of a game ends it: the guest (the master now, on
+        // team B) plays `extra` (team A), whose connection then drops without a death or a leave.
+        // Before, the game went on and the player left behind had to die to end it —
+        let extraJoin = try await extra.joinRoom(created.room, password: "abcd")
+        #expect(extraJoin.isSuccess)
+        #expect(try await extra.setReady(true).isSuccess)
+        try await guest.startGame()
+        for await push in await extra.pushes {
+            if case .gameStarted = push { break }
+        }
         await extra.close()
+        var droppedQuit: UserQuitNotification?
+        var droppedEnd: GameEndNotification?
+        for await push in await guest.pushes {
+            if case .userQuit(let value) = push {
+                droppedQuit = value
+            }
+            if case .gameEnded(let value) = push {
+                droppedEnd = value
+            }
+            if droppedQuit != nil && droppedEnd != nil {
+                break
+            }
+        }
+        #expect(droppedQuit?.slot == UInt16(extraJoin.slot))
+        #expect(droppedEnd?.winner == .b)
+        let afterDrop = try await guest.fetchRoomList()
+        #expect(afterDrop.first { $0.id == created.room }?.isPlaying == false)
+
+        await guest.close()
     } }
 }
